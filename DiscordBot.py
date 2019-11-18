@@ -1,9 +1,9 @@
 import discord
-import asyncio
+import asyncio   # check if installed
 import random
-import psycopg2
+import psycopg2  # check if installed
 from time import sleep
-from discord.utils import get
+from discord.utils import get   # just unused statement, cause I use discord.utils.get everywhere (for explicity)
 from discord.ext import commands
 
 token = 'NTAzNTQ5MDA1ODMwMDI5MzEy.Du8B4w.jXHBly_o8-E1EJDYsgYMOmxVAhs'
