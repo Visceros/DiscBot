@@ -122,8 +122,8 @@ async def checkme(ctx):
     else:
         await ctx.send('sorry you have no money')
 
-
-async def showall(pass_context=True):
+@bot.command(pass_context=True)
+async def showall(ctx):
     await ctx.send(list(db['user_currency'].keys()))
 
 
