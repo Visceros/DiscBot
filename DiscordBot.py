@@ -76,12 +76,12 @@ def get_userlist(ctx):
 
 @bot.command()
 async def echo(*args):  # Название функции = название команды, в нашем случае это будет ">echo"
-    """ prints your message like a bot said it """
-    out = ''
-    for word in args:
-        out += word
-        out += ' '
-    await bot.say(out)
+    """ prints your message like a bot said it """   # DOESN"T WORK ANYMORE
+    # out = ''
+    # for word in args:
+    #     out = out.join(args)
+    #     out += ' '
+    # await bot.say(out)
 
 
 @bot.command(pass_context=True)  # Функция для начисления собственно денег
@@ -118,7 +118,7 @@ async def money_start(ctx):
 async def checkme(ctx):
     me = ctx.message.author
     if me.id in list(db['user_currency'].keys()):
-        await ctx.send('your money amount now is: ',db['user_currency'][me.id])
+        await ctx.send('your money amount now is: ', db['user_currency'][me.id])
     else:
         await ctx.send('sorry you have no money')
 
@@ -138,13 +138,6 @@ async def on_ready():
 #     me = ctx.message.author
 #     bonus_money = random.randint(50,150)
 #     if me.id in list(db['user_currency'].keys()):
-
-# <---------Блок с командой для "радужного" ника----------->
-# def colorize():
-#     global colours
-#     for clr in colours:
-#         sleep(2)
-#         return clr
 
 
 # Команда для радужного ника
@@ -166,7 +159,8 @@ async def rainbowise(ctx):
 # ------------- ИГРА СУНДУЧКИ -----------
 @bot.command(pass_context=True)
 async def play_chests(ctx):
-    reactions_chestnumbers = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine']
+    reactions_silverchests = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
+    reactions_goldchests = ['1️⃣', '2️⃣', '3️⃣']
     author = ctx.message.author
     channel = ctx.message.channel
     check_role = discord.utils.get(ctx.message.author.roles, name='Сокланы GC')
@@ -174,18 +168,19 @@ async def play_chests(ctx):
     if 'сундучки' in channel.name.lower():
         pass
     else:
-        ctx.send('Error! Извините, эта команда работает только в специальном канале.')
+        # return await ctx.send('Error! Извините, эта команда работает только в специальном канале.')
+        pass  # Убрать строку, когда игра будет готова
     isClanMate = False
     if check_role in author.roles:
         isClanMate = True
     if not isClanMate:
-        await ctx.send('Error! Извините, доступ имеют только члены клана с ролью "Сокланы GC"')
+        return await ctx.send('Error! Извините, доступ имеют только члены клана с ролью "Сокланы GC"')
     else:
         # IF all correct we head further
         start_message = await ctx.send(''' Решили испытать удачу и выиграть главный приз? Отлично! \nВыберите, какой из шести простых сундуков открываем?''')
-        for react in reactions_chestnumbers:
-            emoj = discord.utils.get(ctx.guild.emojis, name=react)
-            await start_message.add_reaction(emoj)
+        for react in reactions_silverchests:
+            await start_message.add_reaction(react)
+        #bot.wait_for()
 
 
         # await reaction.remove(author)
