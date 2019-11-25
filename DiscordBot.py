@@ -1,7 +1,10 @@
+# coding: utf8
+
 import discord
 import asyncio   # check if installed
 import random
 import psycopg2  # check if installed
+import os
 from time import sleep
 from discord.utils import get   # just unused statement, cause I use discord.utils.get everywhere (for explicity)
 from discord.ext import commands
@@ -10,8 +13,6 @@ token = 'NTAzNTQ5MDA1ODMwMDI5MzEy.Du8B4w.jXHBly_o8-E1EJDYsgYMOmxVAhs'
 prefix = '>'
 des = 'A discord bot for doing some automatic things that I am to lazy to do myself.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
-colours = [discord.Color.dark_orange(),discord.Color.orange(),discord.Color.dark_gold(),discord.Color.gold(),discord.Color.dark_magenta(),discord.Color.magenta(),discord.Color.red(),discord.Color.dark_red(),discord.Color.blue(),discord.Color.dark_blue(),discord.Color.teal(),discord.Color.dark_teal(),discord.Color.green(),discord.Color.dark_green(),discord.Color.purple(),discord.Color.dark_purple()]
-rainbowrolename = 'V.I.P. НИК'
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
@@ -69,19 +70,19 @@ def get_userlist(ctx):
 #    ctx.send(online_users)
     return online_users
 
-
 # @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
 # async def who_online(ctx):
 
 
-@bot.command()
-async def echo(*args):  # Название функции = название команды, в нашем случае это будет ">echo"
-    """ prints your message like a bot said it """   # DOESN"T WORK ANYMORE
-    # out = ''
-    # for word in args:
-    #     out = out.join(args)
-    #     out += ' '
-    # await bot.say(out)
+@bot.command(pass_context=True)
+async def echo(ctx, *args):  # Название функции = название команды, в нашем случае это будет ">echo"
+    """ prints your message like a bot said it """
+    # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста
+    out = ''
+    for word in ctx.message.split():
+        out += word
+        out += ' '
+    await ctx.send(out)
 
 
 @bot.command(pass_context=True)  # Функция для начисления собственно денег
@@ -118,9 +119,10 @@ async def money_start(ctx):
 async def checkme(ctx):
     me = ctx.message.author
     if me.id in list(db['user_currency'].keys()):
-        await ctx.send('your money amount now is: ', db['user_currency'][me.id])
+        await ctx.send('your money amount now is: ',db['user_currency'][me.id])
     else:
         await ctx.send('sorry you have no money')
+
 
 @bot.command(pass_context=True)
 async def showall(ctx):
@@ -143,49 +145,65 @@ async def on_ready():
 # Команда для радужного ника
 @bot.command(pass_context=True)
 async def rainbowise(ctx):
-    global rainbowrolename
+    rainbowrolename = 'V.I.P. радужный ник'
     role = discord.utils.get(ctx.guild.roles, name=rainbowrolename)
     while not Client.is_closed():
         for clr in rgb_colors:
+            clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                sleep(3600)
+                sleep(600)
             except Exception as e:
-                await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or my role is higher than {rainbowrolename} role')
+                await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{rainbowrolename}" role')
                 print(e.args, e.__cause__)
                 pass
 
 
 # ------------- ИГРА СУНДУЧКИ -----------
 @bot.command(pass_context=True)
-async def play_chests(ctx):
+async def chest(ctx):
+    usual_rewards = []
+    with open(os.path.join(os.getcwd(), 'usual-rewards.txt'), mode='r', encoding='utf-8') as file:
+        for line in file:
+            usual_rewards.append(str(line))
+    golden_rewards = []
     reactions_silverchests = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
     reactions_goldchests = ['1️⃣', '2️⃣', '3️⃣']
     author = ctx.message.author
     channel = ctx.message.channel
-    check_role = discord.utils.get(ctx.message.author.roles, name='Сокланы GC')
+    check_role = discord.utils.get(ctx.message.author.roles, name='Сокланы')
     # Check if it's the right channel to write to and if user have relevant role
-    if 'сундучки' in channel.name.lower():
-        pass
-    else:
-        # return await ctx.send('Error! Извините, эта команда работает только в специальном канале.')
-        pass  # Убрать строку, когда игра будет готова
+    # if 'сундучки' in channel.name.lower():
+    #     pass
+    # else:
+    #      await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
     isClanMate = False
     if check_role in author.roles:
         isClanMate = True
     if not isClanMate:
-        return await ctx.send('Error! Извините, доступ имеют только члены клана с ролью "Сокланы GC"')
+        await ctx.send(f'```Error! Извините, доступ имеют только члены клана с ролью "{check_role}"```')
     else:
         # IF all correct we head further
-        start_message = await ctx.send(''' Решили испытать удачу и выиграть главный приз? Отлично! \nВыберите, какой из шести простых сундуков открываем?''')
+        start_message = await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
+                                       'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
+        # showBasicChests = await ctx.send()  # картинка с простыми сундуками
         for react in reactions_silverchests:
             await start_message.add_reaction(react)
-        #bot.wait_for()
 
+        def check(reaction, user):
+            return user == author and str(reaction.emoji) in reactions_silverchests
 
-        # await reaction.remove(author)
-
-
-
+        try:
+            reaction, user = await bot.wait_for('reaction_add', timeout=120, check=check)
+        except asyncio.TimeoutError:
+            await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
+        else:
+            # await reaction.remove(author)
+            random.shuffle(usual_rewards)
+            usual_reward = random.choice(usual_rewards)
+            await channel.send(f'```yaml\nСундук со скрипом открывается и... {usual_reward}```')
+            if 'золотой ключ' in usual_reward.lower():
+                #Вы проворачиваете Золотой ключ в замочной скважине и крышка тихонько открывается.
+                pass
 
 bot.run(token)
