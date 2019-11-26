@@ -10,6 +10,15 @@ import os
 from time import sleep
 from discord.utils import get   # just unused statement, cause I use discord.utils.get everywhere (for explicity)
 from discord.ext import commands
+import logging
+
+# ------- LOGGER FOR DEBUG PURPOSES
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
+# ------- LOGGER FOR DEBUG PURPOSES
 
 token = 'NTAzNTQ5MDA1ODMwMDI5MzEy.Du8B4w.jXHBly_o8-E1EJDYsgYMOmxVAhs'
 prefix = '>'
