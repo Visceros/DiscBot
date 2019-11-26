@@ -2,6 +2,8 @@
 
 import discord
 import asyncio   # check if installed
+import io
+import aiohttp
 import random
 import psycopg2  # check if installed
 import os
@@ -167,34 +169,47 @@ async def chest(ctx):
         for line in file:
             usual_rewards.append(str(line))
     golden_rewards = []
-    reactions_silverchests = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
-    reactions_goldchests = ['1️⃣', '2️⃣', '3️⃣']
+    with open(os.path.join(os.getcwd(), 'golden-rewards.txt'), mode='r', encoding='utf-8') as file:
+        for line in file:
+            golden_rewards.append(str(line))
+    reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
     author = ctx.message.author
     channel = ctx.message.channel
     check_role = discord.utils.get(ctx.message.author.roles, name='Сокланы')
     # Check if it's the right channel to write to and if user have relevant role
-    # if 'сундучки' in channel.name.lower():
-    #     pass
-    # else:
-    #      await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
+    if 'сундучки' in channel.name.lower():
+        pass
+    else:
+         return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
     isClanMate = False
     if check_role in author.roles:
         isClanMate = True
     if not isClanMate:
-        await ctx.send(f'```Error! Извините, доступ имеют только члены клана с ролью "{check_role}"```')
+        return await ctx.send(f'```Error! Извините, доступ имеют только члены клана с ролью "{check_role}"```')
     else:
         # IF all correct we head further
-        start_message = await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
+        await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
                                        'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-        # showBasicChests = await ctx.send()  # картинка с простыми сундуками
-        for react in reactions_silverchests:
+        # Начало вставки картинки с простыми сундуками
+        async with aiohttp.ClientSession() as session:
+            async with session.get('https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
+                if resp.status != 200:
+                    return await channel.send('Error! Could not get the file...')
+                data = io.BytesIO(await resp.read())
+                start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
+                await session.close()
+        # Конец вставки картинки с простыми сундуками
+        for react in reactions:
             await start_message.add_reaction(react)
 
-        def check(reaction, user):
-            return user == author and str(reaction.emoji) in reactions_silverchests
+        def checkS(reaction, user):
+            return user == author and str(reaction.emoji) in reactions
+
+        def checkG(reaction, user):
+            return user == author and str(reaction.emoji) in reactions[0:3]
 
         try:
-            reaction, user = await bot.wait_for('reaction_add', timeout=120, check=check)
+            reaction, user = await bot.wait_for('reaction_add', timeout=120, check=checkS)
         except asyncio.TimeoutError:
             await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
         else:
@@ -203,7 +218,29 @@ async def chest(ctx):
             usual_reward = random.choice(usual_rewards)
             await channel.send(f'```yaml\nСундук со скрипом открывается и... {usual_reward}```')
             if 'золотой ключ' in usual_reward.lower():
-                #Вы проворачиваете Золотой ключ в замочной скважине и крышка тихонько открывается.
-                pass
+                await ctx.send('```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
+                # Начало вставки картинки с золотыми сундуками
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(
+                            'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
+                        if resp.status != 200:
+                            return await channel.send('Error! Could not get the file...')
+                        data = io.BytesIO(await resp.read())
+                        start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
+                        await session.close()
+                # Конец вставки картинки с золотыми сундуками
+                for react in reactions[0:3]:
+                    await start_message.add_reaction(react)
+                try:
+                    reaction, user = await bot.wait_for('reaction_add', timeout=120, check=checkG)
+                except asyncio.TimeoutError:
+                    return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
+                else:
+                    random.shuffle(golden_rewards)
+                    golden_reward = random.choice(golden_rewards)
+                    await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
+                                       f'и крышка тихонько открывается...\n{golden_reward}```')
+
+
 
 bot.run(token)
