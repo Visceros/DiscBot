@@ -27,8 +27,8 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
-db_user = 'postgres'
-db_pwd = '32167'
+# db_user = 'postgres'
+# db_pwd = 'Prophesy4'  # 32167 - пароль дома
 # db = psycopg2.connect(
 #     dbname='DiscBot_db',
 #     user=db_user,
@@ -37,38 +37,53 @@ db_pwd = '32167'
 #     port='5432'
 # )
 # cursor = db.cursor()
-# cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot+db.tables WHERE table_name=discord_users)')
+# cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
 # if cursor.fetchone()[0] is True:
 #     pass
 # else:
 #     try:
 #         cursor.execute('''CREATE TABLE discord_users
-#             ID INT PRIMARY KEY NOT NULL,
-#             NAME TEXT NOT NULL,
-#             ACTIVITY INT,
-#             GOLD INT);''')
+#             Id INT PRIMARY KEY NOT NULL,
+#             Name TEXT NOT NULL,
+#             Join_date TIMESTAMP
+#             Activity INT DEFAULT 0,
+#             Gold INT DEFAULT 0);''')
 #     except Exception as e:
 #         print(e)
 #         print(e.__traceback__)
-
-class User:
-    def __init__(self, user_id, user_name, activity=0, gold=0):
-        """We use separate class "User" for discord users to simplify the data handling
-        at least 2 *args should be given: 1)user id 2) user name (nick)"""
-        self.id = user_id
-        self.username = user_name
-        self.join_date = join_date
-        self.activity = activity
-        self.gold = gold
-
-    def db_add(self):  #добавляем юзера как строку в БД
-        pass
-
-    def db_update(self):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
-        pass
-
-    def db_del(self):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
-        pass
+#
+# class User:
+#     def __init__(self):
+#         pass
+#
+#     def add(self, userId, userName, activity=0, gold=0):  #добавляем юзера как строку в БД
+#         """We use separate class "User" for our discord server users -  to simplify the data handling
+#         at least 2 *args should be given: 1)user id 2) user name (nick)"""
+#         self.id = userId
+#         self.username = userName
+#         self.join_date =   # вписать сюда обращение к АПИ для получения даты присоединения к серверу
+#         self.activity = activity
+#         self.gold = gold
+#
+#     def update(self):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
+#         pass
+#
+#     def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
+#         self.name = name
+#         pass
+#
+#     def show(self, name):
+#         cursor.execute('')
+#         user = cursor.fetchone()
+#
+# @bot.event
+# async def on_ready():
+#     print('I\'m ready to do your biddings, Master')
+#
+#
+# @bot.event()
+# async def on_member_remove(member):
+#     User.delete(member.display_name)
 
 
 # Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате
@@ -90,7 +105,7 @@ async def echo(ctx, *args):  # Название функции = названи�
     """ prints your message like a bot said it """
     # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста
     out = ''
-    for word in ctx.message.split():
+    for word in ctx.message.content.split():
         out += word
         out += ' '
     await ctx.send(out)
@@ -140,11 +155,6 @@ async def showall(ctx):
     await ctx.send(list(db['user_currency'].keys()))
 
 
-@bot.event
-async def on_ready():
-    print('I\'m ready to do your biddings, Master')
-
-
 # Команда для запуска функции ежедневного начисления клановой валюты
 # @bot.command()
 # async def daily(ctx):
@@ -157,6 +167,7 @@ async def on_ready():
 @bot.command(pass_context=True)
 async def rainbowise(ctx):
     rainbowrolename = 'V.I.P. радужный ник'
+    print(f'starting rainbow for {rainbowrolename}')
     role = discord.utils.get(ctx.guild.roles, name=rainbowrolename)
     while not Client.is_closed():
         for clr in rgb_colors:
@@ -184,16 +195,17 @@ async def chest(ctx):
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
     author = ctx.message.author
     channel = ctx.message.channel
-    check_role = discord.utils.get(ctx.message.author.roles, name='Сокланы')
+    check_role = discord.utils.get(ctx.message.author.roles, name='АДМИН')
+    me = discord.utils.get(ctx.message.author.roles, name='КЛАНОВЫЙ ПРОГРАММИСТ')
     # Check if it's the right channel to write to and if user have relevant role
     if 'сундучки' in channel.name.lower():
         pass
     else:
          return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
-    isClanMate = False
-    if check_role in author.roles:
-        isClanMate = True
-    if not isClanMate:
+    Eligible = False
+    if [check_role in author.roles] or [me in author.roles]:
+        Eligible = True
+    if not Eligible:
         return await ctx.send(f'```Error! Извините, доступ имеют только члены клана с ролью "{check_role}"```')
     else:
         # IF all correct we head further
@@ -212,10 +224,10 @@ async def chest(ctx):
             await start_message.add_reaction(react)
 
         def checkS(reaction, user):
-            return user == author and str(reaction.emoji) in reactions
+            return user in ctx.guild.members and str(reaction.emoji) in reactions
 
         def checkG(reaction, user):
-            return user == author and str(reaction.emoji) in reactions[0:3]
+            return user in ctx.guild.members and str(reaction.emoji) in reactions[0:3]
 
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=120, check=checkS)
@@ -250,6 +262,14 @@ async def chest(ctx):
                     await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
                                        f'и крышка тихонько открывается...\n{golden_reward}```')
 
+@bot.command(pass_context=True)
+async def casino(ctx):
+    prize = 0
+    ed_msg = ctx.send(*[random.randint(0,9) for i in range(3)])
+    # rules ---> ctx.send('```fix\nВведите через пробел 6 чисел от 1 до 59. Интересно, совпадут ли они с теми, что загадал я!```')
+    for i in range(1,9):
+        await ed_msg.edit(*[random.randint(0,9) for i in range(3)])
+        sleep(0.2)
 
 
 bot.run(token)
