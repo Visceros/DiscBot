@@ -265,10 +265,17 @@ async def chest(ctx):
 @bot.command(pass_context=True)
 async def casino(ctx):
     prize = 0
-    ed_msg = ctx.send(*[random.randint(0,9) for i in range(3)])
+
+    def makenums():
+        nums = ""
+        for i in range(3):
+            nums += str(random.randint(0,9))
+        return nums
+
+    ed_msg = await ctx.send(makenums())
     # rules ---> ctx.send('```fix\nВведите через пробел 6 чисел от 1 до 59. Интересно, совпадут ли они с теми, что загадал я!```')
-    for i in range(1,9):
-        await ed_msg.edit(*[random.randint(0,9) for i in range(3)])
+    for i in range(3,9):
+        await ed_msg.edit(makenums())  # TypeError: edit() takes 1 positional argument but 2 were given
         sleep(0.2)
 
 
