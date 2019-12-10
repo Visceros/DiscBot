@@ -75,10 +75,11 @@ bot = commands.Bot(description=des, command_prefix=prefix)
 #     def show(self, name):
 #         cursor.execute('')
 #         user = cursor.fetchone()
-#
-# @bot.event
-# async def on_ready():
-#     print('I\'m ready to do your biddings, Master')
+
+
+@bot.event
+async def on_ready():
+    print('I\'m ready to do your biddings, Master')
 #
 #
 # @bot.event()
@@ -268,15 +269,17 @@ async def casino(ctx):
 
     def makenums():
         nums = ""
-        for i in range(3):
+        for _ in range(3):
             nums += str(random.randint(0,9))
         return nums
 
     ed_msg = await ctx.send(makenums())
-    # rules ---> ctx.send('```fix\nВведите через пробел 6 чисел от 1 до 59. Интересно, совпадут ли они с теми, что загадал я!```')
+    # rules ---> ctx.send('```fix\n каковы правила? ```')
     for i in range(3,9):
-        await ed_msg.edit(makenums())  # TypeError: edit() takes 1 positional argument but 2 were given
+        ed = makenums()
+        await ed_msg.edit(content=ed, suppress=False)
         sleep(0.2)
+    await ctx.send('fin')
 
 
 bot.run(token)
