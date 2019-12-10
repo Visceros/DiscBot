@@ -143,10 +143,10 @@ async def money_start(ctx):
 
 
 @bot.command(pass_context=True)
-async def checkme(ctx):
+async def mymoney(ctx):
     me = ctx.message.author
     if me.id in list(db['user_currency'].keys()):
-        await ctx.send('your money amount now is: ',db['user_currency'][me.id])
+        await ctx.send('your money amount now is: ', db['user_currency'][me.id])
     else:
         await ctx.send('sorry you have no money')
 
@@ -156,11 +156,8 @@ async def showall(ctx):
     await ctx.send(list(db['user_currency'].keys()))
 
 
-# Команда для запуска функции ежедневного начисления клановой валюты
-# @bot.command()
-# async def daily(ctx):
-#     me = ctx.message.author
-#     bonus_money = random.randint(50,150)
+# Функция ежедневного начисления клановой валюты
+# def daily(ctx):
 #     if me.id in list(db['user_currency'].keys()):
 
 
@@ -199,14 +196,14 @@ async def chest(ctx):
     check_role = discord.utils.get(ctx.message.author.roles, name='АДМИН')
     me = discord.utils.get(ctx.message.author.roles, name='КЛАНОВЫЙ ПРОГРАММИСТ')
     # Check if it's the right channel to write to and if user have relevant role
-    if 'сундучки' in channel.name.lower():
+    if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
         pass
     else:
          return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
-    Eligible = False
+    isClanMate = False
     if [check_role in author.roles] or [me in author.roles]:
-        Eligible = True
-    if not Eligible:
+        isClanMate = True
+    if not isClanMate:
         return await ctx.send(f'```Error! Извините, доступ имеют только члены клана с ролью "{check_role}"```')
     else:
         # IF all correct we head further
@@ -225,17 +222,16 @@ async def chest(ctx):
             await start_message.add_reaction(react)
 
         def checkS(reaction, user):
-            return user in ctx.guild.members and str(reaction.emoji) in reactions
+            return str(reaction.emoji) in reactions and user.bot is not True
 
         def checkG(reaction, user):
-            return user in ctx.guild.members and str(reaction.emoji) in reactions[0:3]
+            return str(reaction.emoji) in reactions[0:3] and user.bot is not True
 
         try:
             reaction, user = await bot.wait_for('reaction_add', timeout=120, check=checkS)
         except asyncio.TimeoutError:
             await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
         else:
-            # await reaction.remove(author)
             random.shuffle(usual_rewards)
             usual_reward = random.choice(usual_rewards)
             await channel.send(f'```yaml\nСундук со скрипом открывается и... {usual_reward}```')
