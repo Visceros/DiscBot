@@ -27,54 +27,61 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
-# db_user = 'postgres'
-# db_pwd = 'Prophesy4'  # 32167 - пароль дома
-# db = psycopg2.connect(
-#     dbname='DiscBot_db',
-#     user=db_user,
-#     password=db_pwd,
-#     host='',
-#     port='5432'
-# )
-# cursor = db.cursor()
-# cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
-# if cursor.fetchone()[0] is True:
-#     pass
-# else:
-#     try:
-#         cursor.execute('''CREATE TABLE discord_users
-#             Id INT PRIMARY KEY NOT NULL,
-#             Name TEXT NOT NULL,
-#             Join_date TIMESTAMP
-#             Activity INT DEFAULT 0,
-#             Gold INT DEFAULT 0);''')
-#     except Exception as e:
-#         print(e)
-#         print(e.__traceback__)
-#
-# class User:
-#     def __init__(self):
-#         pass
-#
-#     def add(self, userId, userName, activity=0, gold=0):  #добавляем юзера как строку в БД
-#         """We use separate class "User" for our discord server users -  to simplify the data handling
-#         at least 2 *args should be given: 1)user id 2) user name (nick)"""
-#         self.id = userId
-#         self.username = userName
-#         self.join_date =   # вписать сюда обращение к АПИ для получения даты присоединения к серверу
-#         self.activity = activity
-#         self.gold = gold
-#
-#     def update(self):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
-#         pass
-#
-#     def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
-#         self.name = name
-#         pass
-#
-#     def show(self, name):
-#         cursor.execute('')
-#         user = cursor.fetchone()
+db_user = 'postgres'
+db_pwd = 'Prophesy4'  # 32167 - пароль дома
+db = psycopg2.connect(
+    dbname='DiscBot_db',
+    user=db_user,
+    password=db_pwd,
+    host='',
+    port='5432'
+)
+cursor = db.cursor()
+cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
+if cursor.fetchone()[0] is True:
+    pass
+else:
+    try:
+        cursor.execute('''CREATE TABLE discord_users
+            Id INT PRIMARY KEY NOT NULL,
+            Name TEXT NOT NULL,
+            Join_date TIMESTAMP
+            Activity INT DEFAULT 0,
+            Gold INT DEFAULT 0);''')
+    except Exception as e:
+        print(e)
+        print(e.__traceback__)
+
+
+class User:
+    def __init__(self):
+        pass
+
+    def add(self, user, activity=0, gold=0):  #добавляем юзера как строку в БД
+        """We use separate class "User" for our discord server users -  to simplify the data handling
+        at least 2 *args should be given: 1)user id 2) user name (nick)"""
+        self.id = user.id
+        self.username = user.name
+        self.join_date = user.joined_at  # вписать сюда обращение к АПИ для получения даты присоединения к серверу
+        self.activity = activity
+        self.gold = gold
+        cursor.execute('INSERT ')
+
+    def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
+        self.gold = gold
+        self.user_id = user.id
+        cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
+        record = cursor.fetchone()
+
+    # def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
+    #     self.name = name
+    #     pass
+
+    def show(self, user):
+        self.user_id = user.id
+        cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
+        record = cursor.fetchone()
+
 
 
 @bot.event
@@ -97,6 +104,12 @@ def get_userlist(ctx):
 #    ctx.send(online_users)
     return online_users
 
+
+# функция для изначального заполнения базы данных пользователями сервера
+def db_initiate(ctx):
+    for usr in ctx.guild.members:
+        User.add(usr)
+
 # @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
 # async def who_online(ctx):
 
@@ -112,34 +125,26 @@ async def echo(ctx, *args):  # Название функции = названи�
     await ctx.send(out)
 
 
-@bot.command(pass_context=True)  # Функция для начисления собственно денег
-async def money_start(ctx):
-    global db
-    db['user_names'] = {}
-    db['user_currency'] = {}
-    await ctx.send('Okay I will give em money')
-    while not Client.is_closed():
-        onvoice_list = get_userlist(ctx)
-        for usr in ctx.guild.members:
-            if usr.id in onvoice_list:
-                if usr.id not in db['user_names'].keys():
-                    await ctx.send('adding to base: {}'.format(usr.id))
-                    db['user_names'][usr.id] = str(usr.display_name)
-                    db['user_currency'][usr.id] = 1
-                    print('айдишники:', list(db['user_names'].keys()), '\n', 'значения:', list(db['user_names'].values()))
-                elif usr.id in db['user_names'].keys():
-                    db['user_currency'][usr.id] = db['user_currency'][usr.id] + 1
-        print('users data:')
-        print(db['user_names'])
-        print('currency data:')
-        print(db['user_currency'])
-        sleep(60) # 1 minute
-        if ctx.message.content.startswith('_money_stop'):
-            await ctx.send('Okay I will stop giving money')
-            break
-        else:
-            pass
-    return db['user_names'], db['user_currency']
+# @bot.command(pass_context=True)  # Функция для начисления собственно денег - переписать под PostgreSQL <<--------
+# async def money_start(ctx):
+#     global db
+#     await ctx.send('Okay I will give em money')
+#     while not Client.is_closed():
+#         onvoice_list = get_userlist(ctx)
+#         for usr in ctx.guild.members:
+#             if usr.id in onvoice_list:
+#                 if usr.id not in db['user_names'].keys():
+#                     await ctx.send('adding to base: {}'.format(usr.id))
+#                     db['user_names'][usr.id] = str(usr.display_name)
+#                     db['user_currency'][usr.id] = 1
+#                     print('айдишники:', list(db['user_names'].keys()), '\n', 'значения:', list(db['user_names'].values()))
+#                 elif usr.id in db['user_names'].keys():
+#                     db['user_currency'][usr.id] = db['user_currency'][usr.id] + 1
+#         print('users data:')
+#         print(db['user_names'])
+#         print('currency data:')
+#         print(db['user_currency'])
+#         sleep(60)  # 1 minute
 
 
 @bot.command(pass_context=True)
@@ -259,6 +264,7 @@ async def chest(ctx):
                     await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
                                        f'и крышка тихонько открывается...\n{golden_reward}```')
 
+
 @bot.command(pass_context=True)
 async def casino(ctx):
     prize = 0
@@ -279,3 +285,4 @@ async def casino(ctx):
 
 
 bot.run(token)
+User = User()
