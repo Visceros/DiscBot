@@ -8,7 +8,6 @@ import random
 import psycopg2  # check if installed
 import os
 from time import sleep
-from discord.utils import get   # just unused statement, cause I use discord.utils.get everywhere (for explicity)
 from discord.ext import commands
 import logging
 
@@ -55,7 +54,11 @@ else:
 
 class User:
     def __init__(self):
-        pass
+        self.id = None
+        self.username = None
+        self.join_date = None
+        self.activity = None
+        self.gold = None
 
     def add(self, user, activity=0, gold=0):  #добавляем юзера как строку в БД
         """We use separate class "User" for our discord server users -  to simplify the data handling
@@ -69,9 +72,10 @@ class User:
 
     def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
         self.gold = gold
-        self.user_id = user.id
-        cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
+        self.id = user.id #вероятно неправильно, надо - передаём ник, по нему ищем юзер_айди в дискорде, далее если его ник != нику в ДБ - перезаписываем
+        cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
         record = cursor.fetchone()
+        #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
 
     # def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
     #     self.name = name
@@ -105,31 +109,14 @@ def get_userlist(ctx):
     return online_users
 
 
-# функция для изначального заполнения базы данных пользователями сервера
-def db_initiate(ctx):
-    for usr in ctx.guild.members:
-        User.add(usr)
-
-# @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
-# async def who_online(ctx):
-
-
-@bot.command(pass_context=True)
-async def echo(ctx, *args):  # Название функции = название команды, в нашем случае это будет ">echo"
-    """ prints your message like a bot said it """
-    # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста
-    out = ''
-    for word in ctx.message.content.split():
-        out += word
-        out += ' '
-    await ctx.send(out)
-
-
 # @bot.command(pass_context=True)  # Функция для начисления собственно денег - переписать под PostgreSQL <<--------
-# async def money_start(ctx):
+# async def money(ctx, arg):
+#     """Uses: money on - to enable | money off - to disable"""
+#     server_id = ctx.message.server # Важно - определяем айдишник сервера, он будет использоваться в разных командах.
+#     global server_id
 #     global db
-#     await ctx.send('Okay I will give em money')
-#     while not Client.is_closed():
+#     await ctx.send(f'Money function is {arg}')
+#     while arg.lower()=='on':
 #         onvoice_list = get_userlist(ctx)
 #         for usr in ctx.guild.members:
 #             if usr.id in onvoice_list:
@@ -146,9 +133,37 @@ async def echo(ctx, *args):  # Название функции = названи�
 #         print(db['user_currency'])
 #         sleep(60)  # 1 minute
 
+# функция для изначального заполнения базы данных пользователями сервера
+def initial_db_read():
+    cursor.execute('SELECT * FROM TABLE discord_users')
+    records_count = len(cursor.fetchall())
+    return records_count
+
+
+def initial_db_fill():
+# проверить, все ли пользователи занесены в ДБ, если нет - решить - дозаписать недостающих или перезаписать полностью
+    cursor.execute('')
+#    for usr in ctx.guild.members:
+#        User.add(usr)
+
+
+# @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
+# async def who_online(ctx):
+
 
 @bot.command(pass_context=True)
-async def mymoney(ctx):
+async def echo(ctx, *args):  # Название функции = название команды, в нашем случае это будет ">echo"
+    """ prints your message like a bot said it """
+    # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста
+    out = ''
+    for word in ctx.message.content.split():
+        out += word
+        out += ' '
+    await ctx.send(out)
+
+
+@bot.command(pass_context=True)
+async def mymoney(ctx):     #------- Тоже переписать под PostgreSQL
     me = ctx.message.author
     if me.id in list(db['user_currency'].keys()):
         await ctx.send('your money amount now is: ', db['user_currency'][me.id])
