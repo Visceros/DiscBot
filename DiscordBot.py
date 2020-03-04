@@ -184,9 +184,9 @@ async def showall(ctx):
 # Команда для радужного ника
 @bot.command(pass_context=True)
 async def rainbowise(ctx):
-    rainbowrolename = 'V.I.P. радужный ник'
-    print(f'starting rainbow for {rainbowrolename}')
-    role = discord.utils.get(ctx.guild.roles, name=rainbowrolename)
+    name = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), ctx.guild.roles)
+    role = discord.utils.get(ctx.guild.roles, name=str(name))
+    await ctx.send(f'starting rainbow for {role}')
     while not Client.is_closed():
         for clr in rgb_colors:
             clr = random.choice(rgb_colors)
@@ -194,7 +194,7 @@ async def rainbowise(ctx):
                 await role.edit(color=discord.Colour(int(clr, 16)))
                 sleep(600)
             except Exception as e:
-                await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{rainbowrolename}" role')
+                await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
                 pass
 
