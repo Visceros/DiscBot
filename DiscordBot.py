@@ -26,30 +26,30 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
-db_user = 'postgres'
-db_pwd = 'Prophesy4'  # 32167 - пароль дома
-db = psycopg2.connect(
-    dbname='DiscBot_db',
-    user=db_user,
-    password=db_pwd,
-    host='',
-    port='5432'
-)
-cursor = db.cursor()
-cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
-if cursor.fetchone()[0] is True:
-    pass
-else:
-    try:
-        cursor.execute('''CREATE TABLE discord_users
-            Id INT PRIMARY KEY NOT NULL,
-            Name TEXT NOT NULL,
-            Join_date TIMESTAMP
-            Activity INT DEFAULT 0,
-            Gold INT DEFAULT 0);''')
-    except Exception as e:
-        print(e)
-        print(e.__traceback__)
+# db_user = 'postgres'
+# db_pwd = '32167'  # 32167 - пароль дома
+# db = psycopg2.connect(
+#     dbname='DiscBot_db',
+#     user=db_user,
+#     password=db_pwd,
+#     host='',
+#     port='5432'
+# )
+# cursor = db.cursor()
+# cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
+# if cursor.fetchone()[0] is True:
+#     pass
+# else:
+#     try:
+#         cursor.execute('''CREATE TABLE discord_users
+#             Id INT PRIMARY KEY NOT NULL,
+#             Name TEXT NOT NULL,
+#             Join_date TIMESTAMP
+#             Activity INT DEFAULT 0,
+#             Gold INT DEFAULT 0);''')
+#     except Exception as e:
+#         print(e)
+#         print(e.__traceback__)
 
 
 class User:
@@ -198,23 +198,58 @@ async def rainbowise(ctx):
                 print(e.args, e.__cause__)
                 pass
 
+def chests_getrewards():  # Здесь прописано соответствие фраз и картинок.
+    rewardslist = {
+        'Ты выиграл 15 платины! А ведь, в соседнем сундуке лежал намного больший приз.': 'https://cdn.discordapp.com/attachments/585041003967414272/686865238158606352/15-pl.png',
+        'Ты выиграл 20 платины. С каждым участием шанс на получение главного приза становится больше.': 'https://cdn.discordapp.com/attachments/585041003967414272/686865241983811594/20-pl.png',
+        'Ты выиграл 30 платины. Участвуй чаще, чтобы увеличить шанс на получение главного приза!': 'https://cdn.discordapp.com/attachments/585041003967414272/686865242617020452/30-pl.png',
+        'Ты выиграл 40 платины. Прекрасный выигрыш!': 'https://cdn.discordapp.com/attachments/585041003967414272/686865244483878912/40-pl.png',
+        'Ого, что это тут?! Слот под оружие!': 'https://cdn.discordapp.com/attachments/585041003967414272/686890014256267264/slot-pod-oruzhie.png',
+        'Вот это да, - Слот под Варфрейма!': 'https://cdn.discordapp.com/attachments/585041003967414272/686890018530394117/slot-pod-warfreima.png',
+        'Космос зовёт, так получи под Арчвинг слот!': 'https://cdn.discordapp.com/attachments/585041003967414272/686890012343795744/slot-pod-archwing.png',
+        'Отличному игроку, отличный - Слот под Стража!': 'https://cdn.discordapp.com/attachments/585041003967414272/686890017024376842/slot-pod-strazha.png',
+        'Смотри, это же кусок брони! Ты можешь получить любой кусок в виде наплечников, наголенников и нагрудника на выбор.': 'https://cdn.discordapp.com/attachments/585041003967414272/686890718194827284/kusok-broni.png',
+        'Вау! Это же бустер на кредиты! Это твой шанс собрать пати и поднять кредитов на Индексе!': 'https://cdn.discordapp.com/attachments/585041003967414272/686891777932001290/umnojitel-creditov.png',
+        'Ух ты! Это же бустер на синтез! Настало время идти качаться!': 'https://cdn.discordapp.com/attachments/585041003967414272/686891782142820372/umnojitel-sinteza.png',
+        'Ого! Это же бустер на ресурсы! Пора фармить ресурсы, Куву и отголоски!': 'https://cdn.discordapp.com/attachments/585041003967414272/686891780465098833/umnojitel-resursov.png',
+        'Супер! Это увеличение шанса выпадения ресурсов! Пора идти на выживание! И возьми ребят из клана!': 'https://cdn.discordapp.com/attachments/585041003967414272/686892637805871116/shans-vipadeniya.png',
+        'Тебе выпадает Адаптер Эксилус для Варфрейма.': 'https://cdn.discordapp.com/attachments/585041003967414272/686892860707962990/eksilus.png',
+        'Тебе выпадает Адаптер Эксилус для оружия.': 'https://cdn.discordapp.com/attachments/585041003967414272/686892875312529481/eksilus-na-orujie.png',
+        'Реактор Орокин озаряет все своим светом.': 'https://cdn.discordapp.com/attachments/585041003967414272/686893125041389570/reactor.png',
+        'Катализатор Орокин озаряет все своим светом.': 'https://cdn.discordapp.com/attachments/585041003967414272/686893122155708453/catalizator.png',
+        'Волшебное сияние дарит вам крепеж на ваше оружие ближнего боя.': 'https://cdn.discordapp.com/attachments/585041003967414272/686893331103744022/krepezh.png',
+        # Далее золотые награды
+        'И в сундуке вы находите 50 платины! Поздравляю! Но выбрав соседний сундук, вы могли получить аж 1,500 платины.': 'https://cdn.discordapp.com/attachments/585041003967414272/686894139371028521/50-pl.png',
+        'И в сундуке вы находите 100 платины! Отличный выигрыш.': 'https://cdn.discordapp.com/attachments/585041003967414272/686894156857344023/100-pl.png',
+        'И из сундука вываливается древняя броня на питомца. Теперь ваше животное будет в тепле!': 'https://cdn.discordapp.com/attachments/585041003967414272/686894390803038266/bronya-kavat.png',
+        'И комнату наполняют чарующие звуки Шазина.': 'https://cdn.discordapp.com/attachments/585041003967414272/686894583363141647/shazin.png',
+        'И радуга вырывается на свободу, заливая комнату ярким свечением. Из света появляется Палитра!': 'https://cdn.discordapp.com/attachments/585041003967414272/686894646068117514/palitra.png',
+        'И вам в руки попадает красивая Сандана.': 'https://cdn.discordapp.com/attachments/585041003967414272/686894622244732933/sandana.png',
+        'И из сгустков кинетической энергии появляется Анимация на варфрейма.': 'https://cdn.discordapp.com/attachments/585041003967414272/686894952013496340/animatsiya.png',
+        'И сотканная из множества форм, появляется Форма-аура.': 'https://cdn.discordapp.com/attachments/585041003967414272/686894662124044328/forma-aura.png',
+        'И на свет появляется аксессуар на Оружие!': 'https://cdn.discordapp.com/attachments/585041003967414272/686895370160308254/aksessuar.png'
+    }
+    return rewardslist
 
 # ------------- ИГРА СУНДУЧКИ -----------
 @bot.command(pass_context=True)
 async def chest(ctx):
-    usual_rewards = []
-    with open(os.path.join(os.getcwd(), 'usual-rewards.txt'), mode='r', encoding='utf-8') as file:
-        for line in file:
-            usual_rewards.append(str(line))
-    golden_rewards = []
-    with open(os.path.join(os.getcwd(), 'golden-rewards.txt'), mode='r', encoding='utf-8') as file:
-        for line in file:
-            golden_rewards.append(str(line))
+    rewardslist = chests_getrewards()
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
     author = ctx.message.author
     channel = ctx.message.channel
     check_role = discord.utils.get(ctx.message.author.roles, name='АДМИН')
     me = discord.utils.get(ctx.message.author.roles, name='КЛАНОВЫЙ ПРОГРАММИСТ')
+    usual_rewards = []
+
+    with open(os.path.join(os.getcwd(), 'usual-rewards.txt'), mode='r', encoding='utf-8') as file:
+        for line in file:
+            usual_rewards.append(str(line))
+
+    golden_rewards = []
+    with open(os.path.join(os.getcwd(), 'golden-rewards.txt'), mode='r', encoding='utf-8') as file:
+        for line in file:
+            golden_rewards.append(str(line))
     # Check if it's the right channel to write to and if user have relevant role
     if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
         pass
@@ -232,7 +267,7 @@ async def chest(ctx):
         # Начало вставки картинки с простыми сундуками
         async with aiohttp.ClientSession() as session:
             async with session.get('https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
-                if resp.status != 200:
+                if resp.status != 200 and 301:
                     return await channel.send('Error! Could not get the file...')
                 data = io.BytesIO(await resp.read())
                 start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
@@ -245,23 +280,30 @@ async def chest(ctx):
             return str(reaction.emoji) in reactions and user.bot is not True
 
         def checkG(reaction, user):
-            return str(reaction.emoji) in reactions[0:3] and user.bot is not True
+            return str(reaction.emoji) in reactions[0:2] and user.bot is not True
 
         try:
-            reaction, user = await bot.wait_for('reaction_add', timeout=120, check=checkS)
+            reaction, user = await bot.wait_for('reaction_add', timeout=180, check=checkS)
         except asyncio.TimeoutError:
             await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
         else:
             random.shuffle(usual_rewards)
-            usual_reward = random.choice(usual_rewards)
+            usual_reward = random.choice(usual_rewards).rstrip()
             await channel.send(f'```yaml\nСундук со скрипом открывается и... {usual_reward}```')
+            if usual_reward in rewardslist.keys():
+                async with aiohttp.ClientSession() as session:
+                    async with session.get(rewardslist[usual_reward]) as resp:
+                        if resp.status != 200 and 301:
+                            return await channel.send('Error! Could not get the file...')
+                        data = io.BytesIO(await resp.read())
+                        await channel.send(file=discord.File(data, 'reward.png'))
             if 'золотой ключ' in usual_reward.lower():
                 await ctx.send('```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
                 # Начало вставки картинки с золотыми сундуками
                 async with aiohttp.ClientSession() as session:
                     async with session.get(
                             'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
-                        if resp.status != 200:
+                        if resp.status != 200 and 301:
                             return await channel.send('Error! Could not get the file...')
                         data = io.BytesIO(await resp.read())
                         start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
@@ -270,7 +312,7 @@ async def chest(ctx):
                 for react in reactions[0:3]:
                     await start_message.add_reaction(react)
                 try:
-                    reaction, user = await bot.wait_for('reaction_add', timeout=120, check=checkG)
+                    reaction, user = await bot.wait_for('reaction_add', timeout=180, check=checkG)
                 except asyncio.TimeoutError:
                     return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
                 else:
@@ -278,6 +320,13 @@ async def chest(ctx):
                     golden_reward = random.choice(golden_rewards)
                     await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
                                        f'и крышка тихонько открывается...\n{golden_reward}```')
+                    if golden_reward in rewardslist.keys():
+                        async with aiohttp.ClientSession() as session:
+                            async with session.get(rewardslist[golden_reward]) as resp:
+                                if resp.status != 200 and 301:
+                                    return await channel.send('Error! Could not get the file...')
+                                data = io.BytesIO(await resp.read())
+                                await channel.send(file=discord.File(data, 'gold-reward.png'))
 
 
 @bot.command(pass_context=True)
