@@ -1,11 +1,11 @@
 # coding: utf8
 
 import discord
-import asyncio   # check if installed
+import asyncio   # check if installed / проверьте, установлен ли модуль
 import io
 import aiohttp
 import random
-import psycopg2  # check if installed
+import psycopg2  # check if installed / проверьте, установлен ли модуль
 import os
 from time import sleep
 from discord.ext import commands
@@ -13,28 +13,28 @@ from chests_rewards import usual_reward, gold_reward
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+# logger = logging.getLogger('discord')
+# logger.setLevel(logging.DEBUG)
+# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+# handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+# logger.addHandler(handler)
 # ------- LOGGER FOR DEBUG PURPOSES
 
 token = 'NTAzNTQ5MDA1ODMwMDI5MzEy.Du8B4w.jXHBly_o8-E1EJDYsgYMOmxVAhs'
 prefix = '>'
-des = 'A discord bot for doing some automatic things that I am to lazy to do myself.'
+des = 'GoldenBot for discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
 # db_user = 'postgres'
-# db_pwd = '32167'  # 32167 - пароль дома
+# db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
 # db = psycopg2.connect(
 #     dbname='DiscBot_db',
 #     user=db_user,
 #     password=db_pwd,
-#     host='',
-#     port='5432'
+#     host='127.0.0.1',
+#     port='51766'
 # )
 # cursor = db.cursor()
 # cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
@@ -43,8 +43,8 @@ bot = commands.Bot(description=des, command_prefix=prefix)
 # else:
 #     try:
 #         cursor.execute('''CREATE TABLE discord_users
-#             Id INT PRIMARY KEY NOT NULL,
-#             Name TEXT NOT NULL,
+#             Id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
+#             Name varchar(255) NOT NULL,
 #             Join_date TIMESTAMP
 #             Activity INT DEFAULT 0,
 #             Gold INT DEFAULT 0);''')
@@ -53,39 +53,35 @@ bot = commands.Bot(description=des, command_prefix=prefix)
 #         print(e.__traceback__)
 
 
-class User:
-    def __init__(self):
-        self.id = None
-        self.username = None
-        self.join_date = None
-        self.activity = None
-        self.gold = None
-
-    def add(self, user, activity=0, gold=0):  #добавляем юзера как строку в БД
-        """We use separate class "User" for our discord server users -  to simplify the data handling
-        at least 2 *args should be given: 1)user id 2) user name (nick)"""
-        self.id = user.id
-        self.username = user.name
-        self.join_date = user.joined_at  # вписать сюда обращение к АПИ для получения даты присоединения к серверу
-        self.activity = activity
-        self.gold = gold
-        cursor.execute('INSERT ')
-
-    def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
-        self.gold = gold
-        self.id = user.id #вероятно неправильно, надо - передаём ник, по нему ищем юзер_айди в дискорде, далее если его ник != нику в ДБ - перезаписываем
-        cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
-        record = cursor.fetchone()
-        #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
-
-    # def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
-    #     self.name = name
-    #     pass
-
-    def show(self, user):
-        self.user_id = user.id
-        cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
-        record = cursor.fetchone()
+# class User:
+#
+#     def add(self, user, activity=0, gold=0):  #добавляем юзера как строку в БД
+#         """We use separate class "User" for our discord server users -  to simplify the data handling.
+#         This function needs you to specify at least user's display name (nick)"""
+#
+#         self.id = user.id
+#         self.username = user.name
+#         self.join_date = user.joined_at  # вписать сюда обращение к АПИ для получения даты присоединения к серверу
+#         self.activity = activity
+#         self.gold = gold
+#         cursor.execute(f'INSERT INTO discord_users VALUES({self.id}, {self.username}, {self.join_date}, 0, 0)')
+#
+#     def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
+#         self.gold = gold
+#         self.id = user.id # неправильно, надо - передаём ник, по нему ищем юзер_айди в дискорде, далее если его ник != нику в ДБ - перезаписываем
+#         cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
+#         record = cursor.fetchone()
+#         #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
+#         #отбой. Эту часть буду делать в рамках функции дискорда. Есть ли тогда смысл делать класс Юзера?
+#
+#     def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
+#         self.name = name
+#         pass
+#
+#     def show(self, user):
+#         self.user_id = user.id
+#         cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
+#         record = cursor.fetchone()
 
 #
 # @bot.event()
@@ -94,7 +90,7 @@ class User:
 
 
 async def start_rainbowise():
-    async for guild in bot.fetch_guilds(limit=150):
+    async for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
     try:
@@ -107,7 +103,7 @@ async def start_rainbowise():
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                sleep(600)
+                await asyncio.sleep(600)
             except Exception as e:
                 channel = discord.utils.get(crown.channels, name='system')
                 print(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
@@ -117,8 +113,8 @@ async def start_rainbowise():
 
 @bot.event
 async def on_ready():
-    await start_rainbowise()
     print('I\'m ready to do your biddings, Master')
+    await start_rainbowise()
 
 
 # Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате
@@ -160,24 +156,46 @@ def get_userlist(ctx):
 def initial_db_read():
     cursor.execute('SELECT * FROM TABLE discord_users')
     records_count = len(cursor.fetchall())
+    print(records_count, ' пользователей в базе')
     return records_count
 
 
 def initial_db_fill():
 # проверить, все ли пользователи занесены в ДБ, если нет - решить - дозаписать недостающих или перезаписать полностью
-    cursor.execute('')
+    users_now = initial_db_read()
+    for guild in bot.fetch_guilds:
+        if 'golden crown' in guild.name.lower():
+            crown = bot.get_guild(guild.id)
+    if users_now < len(crown.members):
+        for member in crown.members:
+            cursor.execute(f'INSERT IF NOT EXISTS INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0)')
+
+
 #    for usr in ctx.guild.members:
-#        User.add(usr)
+#
 
 
 # @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
 # async def who_online(ctx):
 
+@bot.command(pass_context=True)
+async def user(ctx, member: discord.Member, arg=None):
+    # кратко - "user" - меню-функция для пользователя/админа - аргументы "add" "del" "show"?? "update"
+    # проверить как работает
+    if arg==None:
+        data = cursor.fetchone(f'SELECT ALL FROM TABLE discord_users WHERE Name={member.display_name})')
+        for element in data.split(','):
+            ctx.send(element)
+    elif arg=='add':
+        cursor.execute(f'INSERT INTO discord_users VALUES({member.display_name},{member.joined_at}, 0, 0)')
+        ctx.send('user added to database')
+    pass
+
 
 @bot.command(pass_context=True)
 async def echo(ctx, *args):  # Название функции = название команды, в нашем случае это будет ">echo"
     """ prints your message like a bot said it """
-    # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста
+    # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста. Проблема решена?
     out = ''
     for word in ctx.message.content.split():
         out += word
