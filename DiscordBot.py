@@ -13,11 +13,11 @@ from chests_rewards import usual_reward, gold_reward
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
-# logger = logging.getLogger('discord')
-# logger.setLevel(logging.DEBUG)
-# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-# handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-# logger.addHandler(handler)
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 # ------- LOGGER FOR DEBUG PURPOSES
 
 token = 'NTAzNTQ5MDA1ODMwMDI5MzEy.Du8B4w.jXHBly_o8-E1EJDYsgYMOmxVAhs'
@@ -27,30 +27,32 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
-# db_user = 'postgres'
-# db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
-# db = psycopg2.connect(
-#     dbname='DiscBot_db',
-#     user=db_user,
-#     password=db_pwd,
-#     host='127.0.0.1',
-#     port='51766'
-# )
-# cursor = db.cursor()
-# cursor.execute('SELECT EXISTS(SELECT * FROM DiscBot_db.tables WHERE table_name=discord_users)')
-# if cursor.fetchone()[0] is True:
-#     pass
-# else:
-#     try:
-#         cursor.execute('''CREATE TABLE discord_users
-#             Id INT PRIMARY KEY NOT NULL AUTO_INCREMENT,
-#             Name varchar(255) NOT NULL,
-#             Join_date TIMESTAMP
-#             Activity INT DEFAULT 0,
-#             Gold INT DEFAULT 0);''')
-#     except Exception as e:
-#         print(e)
-#         print(e.__traceback__)
+db_user = 'postgres'
+db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
+try:
+    print('connecting to database')
+    db = psycopg2.connect(
+        dbname='DiscBot_db',
+        user=db_user,
+        password=db_pwd,
+        host='localhost',
+        port='5000'
+    )
+except Exception as e:
+    print('could not coonnect to database:\n', e.args, e.__traceback__)
+cursor = db.cursor()
+print(cursor.execute('SELECT version();'))
+try:
+    cursor.execute('''CREATE TABLE IF NOT EXISTS discord_users (
+        Id SERIAL PRIMARY KEY NOT NULL,
+        Nickname varchar(255) NOT NULL,
+        Join_date TIMESTAMP,
+        Activity INT DEFAULT 0,
+        Coin INT DEFAULT 0);''')
+    print('table discord_users created')
+except Exception as e:
+    print(e)
+    print(e.__traceback__)
 
 
 # class User:
@@ -352,4 +354,3 @@ async def casino(ctx):
 
 
 bot.run(token)
-User = User()
