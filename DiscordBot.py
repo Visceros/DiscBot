@@ -41,7 +41,7 @@ try:
 except Exception as e:
     print('could not coonnect to database:\n', e.args, e.__traceback__)
 cursor = db.cursor()
-print(cursor.execute('SELECT version();'))
+
 try:
     cursor.execute('''CREATE TABLE IF NOT EXISTS discord_users (
         Id SERIAL PRIMARY KEY NOT NULL,
@@ -49,11 +49,38 @@ try:
         Join_date TIMESTAMP,
         Activity INT DEFAULT 0,
         Coin INT DEFAULT 0);''')
-    print('table discord_users created')
+    print('connection to database established')
 except Exception as e:
     print(e)
     print(e.__traceback__)
 
+# считываем базу данных
+def initial_db_read():
+    cursor.execute('SELECT * FROM discord_users')
+    records_count = 0
+    print(cursor.fetchall())
+    if len(cursor.fetchall()) >= 1:
+        records_count = len(cursor.fetchall())
+        print(records_count, ' пользователей в базе')
+    cursor.close()
+    return records_count
+
+# функция для изначального заполнения базы данных пользователями сервера
+def initial_db_fill():
+# проверить, все ли пользователи занесены в ДБ, если нет - решить - дозаписать недостающих или перезаписать полностью
+    users_now = initial_db_read()
+    for guild in bot.guilds:
+        if 'golden crown' in guild.name.lower():
+            crown = bot.get_guild(guild.id)
+            if users_now < len(crown.members):
+                for member in crown.members:
+                    with db.cursor() as cursor:
+                        db.autocommit = True
+                        cursor.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) '
+                                       f'SELECT {member.display_name}, {member.joined_at} FROM DUAL '
+                                       f'WHERE NOT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at})')
+            else:
+                pass
 
 # class User:
 #
@@ -116,6 +143,9 @@ async def start_rainbowise():
 @bot.event
 async def on_ready():
     print('I\'m ready to do your biddings, Master')
+    print('initial database fill starting...')  # ON script start - this line and further lines didn't work.
+    initial_db_fill()
+    print('initial database fill finished')
     await start_rainbowise()
 
 
@@ -153,24 +183,6 @@ def get_userlist(ctx):
 #         print('currency data:')
 #         print(db['user_currency'])
 #         sleep(60)  # 1 minute
-
-# функция для изначального заполнения базы данных пользователями сервера
-def initial_db_read():
-    cursor.execute('SELECT * FROM TABLE discord_users')
-    records_count = len(cursor.fetchall())
-    print(records_count, ' пользователей в базе')
-    return records_count
-
-
-def initial_db_fill():
-# проверить, все ли пользователи занесены в ДБ, если нет - решить - дозаписать недостающих или перезаписать полностью
-    users_now = initial_db_read()
-    for guild in bot.fetch_guilds:
-        if 'golden crown' in guild.name.lower():
-            crown = bot.get_guild(guild.id)
-    if users_now < len(crown.members):
-        for member in crown.members:
-            cursor.execute(f'INSERT IF NOT EXISTS INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0)')
 
 
 #    for usr in ctx.guild.members:
@@ -235,7 +247,7 @@ async def rainbowise(ctx):
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                sleep(600)
+                await asyncio.sleep(600)
             except Exception as e:
                 await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
