@@ -5,7 +5,7 @@ import asyncio   # check if installed / проверьте, установлен
 import io
 import aiohttp
 import random
-import psycopg2  # check if installed / проверьте, установлен ли модуль
+import asyncpg  # check if installed / проверьте, установлен ли модуль
 import os
 from time import sleep
 from discord.ext import commands
@@ -27,60 +27,61 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
-db_user = 'postgres'
-db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
-try:
-    print('connecting to database')
-    db = psycopg2.connect(
-        dbname='DiscBot_db',
-        user=db_user,
-        password=db_pwd,
-        host='localhost',
-        port='5000'
-    )
-except Exception as e:
-    print('could not coonnect to database:\n', e.args, e.__traceback__)
-cursor = db.cursor()
+async def db_connection():
+    db_user = 'postgres'
+    db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
+    db_name = 'DiscBot_db'
+    global db
+    # db_address = reserved variable for database http address
+    try:
+        print('connecting to database')
+        db = await asyncpg.connect(f'postgresql://{db_user}:{db_pwd}@localhost:5000/{db_name}')
+        print('connection successful')
+    except Exception as e:
+        print('could not connect to database:\n', e.args, e.__traceback__)
+    try:
+        await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
+            Id SERIAL PRIMARY KEY NOT NULL,
+            Nickname varchar(255) NOT NULL,
+            Join_date TIMESTAMP,
+            Activity INT DEFAULT 0,
+            Coin INT DEFAULT 0);''')
+        print('connection to users base established')
+    except Exception as e:
+        print(e)
+        print(e.__traceback__)
+    return db
 
-try:
-    cursor.execute('''CREATE TABLE IF NOT EXISTS discord_users (
-        Id SERIAL PRIMARY KEY NOT NULL,
-        Nickname varchar(255) NOT NULL,
-        Join_date TIMESTAMP,
-        Activity INT DEFAULT 0,
-        Coin INT DEFAULT 0);''')
-    print('connection to database established')
-except Exception as e:
-    print(e)
-    print(e.__traceback__)
 
 # считываем базу данных
-def initial_db_read():
-    cursor.execute('SELECT * FROM discord_users')
-    records_count = 0
-    print(cursor.fetchall())
-    if len(cursor.fetchall()) >= 1:
-        records_count = len(cursor.fetchall())
+async def initial_db_read():
+    records_in_db = 0
+    records_in_db = await db.fetch('SELECT * FROM discord_users')
+    print(records_in_db)
+    if len(records_in_db) >= 1:
+        records_count = len(records_in_db)
         print(records_count, ' пользователей в базе')
-    cursor.close()
-    return records_count
+        await db.close()
+        return records_count
+    else:
+        await db.close()
+        return len(records_in_db)
 
 # функция для изначального заполнения базы данных пользователями сервера
-def initial_db_fill():
-# проверить, все ли пользователи занесены в ДБ, если нет - решить - дозаписать недостающих или перезаписать полностью
-    users_now = initial_db_read()
+async def initial_db_fill():
+# проверить, все ли пользователи занесены в ДБ, если нет - дозаписать недостающих
+    users_now = await initial_db_read()
     for guild in bot.guilds:
         if 'golden crown' in guild.name.lower():
-            crown = bot.get_guild(guild.id)
+            crown = await bot.get_guild(guild.id)
             if users_now < len(crown.members):
                 for member in crown.members:
-                    with db.cursor() as cursor:
-                        db.autocommit = True
-                        cursor.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) '
-                                       f'SELECT {member.display_name}, {member.joined_at} FROM DUAL '
-                                       f'WHERE NOT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at})')
+                    await db.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) '
+                                     f'SELECT {member.display_name}, {member.joined_at} FROM DUAL '
+                                     f'WHERE NOT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at})')
             else:
                 pass
+    print('Данные пользователей в базе обновлены')
 
 # class User:
 #
@@ -93,13 +94,13 @@ def initial_db_fill():
 #         self.join_date = user.joined_at  # вписать сюда обращение к АПИ для получения даты присоединения к серверу
 #         self.activity = activity
 #         self.gold = gold
-#         cursor.execute(f'INSERT INTO discord_users VALUES({self.id}, {self.username}, {self.join_date}, 0, 0)')
+#         db.execute(f'INSERT INTO discord_users VALUES({self.id}, {self.username}, {self.join_date}, 0, 0)')
 #
 #     def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
 #         self.gold = gold
 #         self.id = user.id # неправильно, надо - передаём ник, по нему ищем юзер_айди в дискорде, далее если его ник != нику в ДБ - перезаписываем
-#         cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
-#         record = cursor.fetchone()
+#         db.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
+#         record = db.fetchrow()
 #         #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
 #         #отбой. Эту часть буду делать в рамках функции дискорда. Есть ли тогда смысл делать класс Юзера?
 #
@@ -108,9 +109,9 @@ def initial_db_fill():
 #         pass
 #
 #     def show(self, user):
-#         self.user_id = user.id
-#         cursor.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
-#         record = cursor.fetchone()
+#         self.user_id = user.id #obsolete
+#         record = db.fetchrow(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
+#         ctx.send(record)
 
 #
 # @bot.event()
@@ -142,9 +143,10 @@ async def start_rainbowise():
 
 @bot.event
 async def on_ready():
+    await db_connection()
     print('I\'m ready to do your biddings, Master')
     print('initial database fill starting...')  # ON script start - this line and further lines didn't work.
-    initial_db_fill()
+    await initial_db_fill()
     print('initial database fill finished')
     await start_rainbowise()
 
@@ -197,11 +199,11 @@ async def user(ctx, member: discord.Member, arg=None):
     # кратко - "user" - меню-функция для пользователя/админа - аргументы "add" "del" "show"?? "update"
     # проверить как работает
     if arg==None:
-        data = cursor.fetchone(f'SELECT ALL FROM TABLE discord_users WHERE Name={member.display_name})')
+        data = await db.fetchrow(f'SELECT ALL FROM TABLE discord_users WHERE Name={member.display_name})')
         for element in data.split(','):
             ctx.send(element)
     elif arg=='add':
-        cursor.execute(f'INSERT INTO discord_users VALUES({member.display_name},{member.joined_at}, 0, 0)')
+        await db.execute(f'INSERT INTO discord_users VALUES({member.display_name},{member.joined_at}, 0, 0)')
         ctx.send('user added to database')
     pass
 
