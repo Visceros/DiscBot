@@ -43,7 +43,7 @@ async def db_connection():
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
             Id SERIAL PRIMARY KEY NOT NULL,
             Nickname varchar(255) NOT NULL,
-            Join_date TIMESTAMP,
+            Join_date timestamptz,
             Activity INT DEFAULT 0,
             Coin INT DEFAULT 0);''')
         print('connection to users base established')
@@ -61,10 +61,8 @@ async def initial_db_read():
     if len(records_in_db) >= 1:
         records_count = len(records_in_db)
         print(records_count, ' пользователей в базе')
-        await db.close()
         return records_count
     else:
-        await db.close()
         return len(records_in_db)
 
 # функция для изначального заполнения базы данных пользователями сервера
@@ -72,13 +70,21 @@ async def initial_db_fill():
 # проверить, все ли пользователи занесены в ДБ, если нет - дозаписать недостающих
     users_now = await initial_db_read()
     for guild in bot.guilds:
-        if 'golden crown' in guild.name.lower():
-            crown = await bot.get_guild(guild.id)
+        if 'free zone' in guild.name.lower():
+            crown = bot.get_guild(guild.id)
             if users_now < len(crown.members):
-                for member in crown.members:
-                    await db.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) '
-                                     f'SELECT {member.display_name}, {member.joined_at} FROM DUAL '
-                                     f'WHERE NOT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at})')
+                for member in crown.members:  # SELECT {member.display_name}, {member.joined_at} FROM DUAL
+                    exist_chk = await db.fetchrow('SELECT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname=%s, Join_date=%s));', (member.display_name, str(member.joined_at)))
+                    # if exist_chk == 'NULL':
+                    pass
+                    #     pass
+                    # else:
+                    #     await db.execute('INSERT INTO discord_users VALUES(%s, %s, 0, 0);', (member.display_name, member.joined_at))
+                    await db.execute('INSERT INTO discord_users VALUES(%s, %s, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=%s, Join_date=%s);', (member.display_name, member.joined_at, member.display_name, member.joined_at))
+                    # await db.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) IF NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at});')
+                    # await db.execute(
+                    #     'INSERT INTO discord_users VALUES(?, ?, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=? AND Join_date=?));',
+                    #     (member.display_name, member.joined_at, member.display_name, member.joined_at))
             else:
                 pass
     print('Данные пользователей в базе обновлены')
