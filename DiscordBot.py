@@ -73,8 +73,8 @@ async def initial_db_fill():
         if 'free zone' in guild.name.lower():
             crown = bot.get_guild(guild.id)
             if users_now < len(crown.members):
-                for member in crown.members:  # SELECT {member.display_name}, {member.joined_at} FROM DUAL
-                    exist_chk = await db.fetchrow('SELECT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname=%s, Join_date=%s));', (member.display_name, str(member.joined_at)))
+                for member in crown.members:
+                    exist_chk = await db.fetchrow('SELECT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname=$1 AND Join_date=$2));', member.display_name, member.joined_at)
                     # if exist_chk == 'NULL':
                     pass
                     #     pass
@@ -83,7 +83,7 @@ async def initial_db_fill():
                     await db.execute('INSERT INTO discord_users VALUES(%s, %s, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=%s, Join_date=%s);', (member.display_name, member.joined_at, member.display_name, member.joined_at))
                     # await db.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) IF NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at});')
                     # await db.execute(
-                    #     'INSERT INTO discord_users VALUES(?, ?, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=? AND Join_date=?));',
+                    #     'INSERT INTO discord_users VALUES($1, $2, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=$1 AND Join_date=$2));',
                     #     (member.display_name, member.joined_at, member.display_name, member.joined_at))
             else:
                 pass
