@@ -41,15 +41,15 @@ async def db_connection():
         print('could not connect to database:\n', e.args, e.__traceback__)
     try:
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
-            Id SERIAL PRIMARY KEY NOT NULL,
-            Nickname varchar(255) NOT NULL,
+            Id SERIAL PRIMARY KEY NOT NULL UNIQUE,
+            Nickname varchar(255) NOT NULL UNIQUE,
             Join_date timestamptz,
             Activity INT DEFAULT 0,
-            Coin INT DEFAULT 0);''')
+            Coin INT DEFAULT 0,
+            CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
         print('connection to users base established')
     except Exception as e:
-        print(e)
-        print(e.__traceback__)
+        print(e.args, e.__cause__, e.__context__)
     return db
 
 
@@ -75,16 +75,7 @@ async def initial_db_fill():
             if users_now < len(crown.members):
                 for member in crown.members:
                     exist_chk = await db.fetchrow('SELECT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname=$1 AND Join_date=$2));', member.display_name, member.joined_at)
-                    # if exist_chk == 'NULL':
-                    pass
-                    #     pass
-                    # else:
-                    #     await db.execute('INSERT INTO discord_users VALUES(%s, %s, 0, 0);', (member.display_name, member.joined_at))
-                    await db.execute('INSERT INTO discord_users VALUES(%s, %s, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=%s, Join_date=%s);', (member.display_name, member.joined_at, member.display_name, member.joined_at))
-                    # await db.execute(f'INSERT INTO discord_users VALUES({member.display_name}, {member.joined_at}, 0, 0) IF NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname={member.display_name}, Join_date={member.joined_at});')
-                    # await db.execute(
-                    #     'INSERT INTO discord_users VALUES($1, $2, 0, 0) WHERE NOT EXISTS (SELECT * FROM discord_users WHERE (Nickname=$1 AND Join_date=$2));',
-                    #     (member.display_name, member.joined_at, member.display_name, member.joined_at))
+                    await db.execute('INSERT INTO discord_users VALUES(DEFAULT, $1, $2, 0, 0) ON CONFLICT (Nickname) DO NOTHING;', member.display_name, member.joined_at)
             else:
                 pass
     print('Данные пользователей в базе обновлены')
