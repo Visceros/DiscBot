@@ -140,11 +140,11 @@ async def start_rainbowise():
 
 @bot.event
 async def on_ready():
-    await db_connection()
+    # await db_connection()
     print('I\'m ready to do your biddings, Master')
-    print('initial database fill starting...')  # ON script start - this line and further lines didn't work.
-    await initial_db_fill()
-    print('initial database fill finished')
+    # print('initial database fill starting...')  # ON script start - this line and further lines didn't work.
+    # await initial_db_fill()
+    # print('initial database fill finished')
     await start_rainbowise()
 
 
