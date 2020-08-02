@@ -29,7 +29,7 @@ bot = commands.Bot(description=des, command_prefix=prefix)
 
 async def db_connection():
     db_user = 'postgres'
-    db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
+    db_pwd = '32167'  # 32167 - пароль дома; Prophesy4 - пароль там.
     db_name = 'DiscBot_db'
     global db
     # db_address = reserved variable for database http address
@@ -252,6 +252,16 @@ async def rainbowise(ctx):
                 print(e.args, e.__cause__)
                 pass
 
+# ------------- ИГРА БИНГО -----------
+@bot.command(pass_context=True)
+async def bingo(ctx):
+    bingo_numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '1️⃣1️⃣', '1️⃣2️⃣',
+                     '1️⃣3️⃣', '1️⃣4️⃣', '1️⃣5️⃣', '1️⃣6️⃣', '1️⃣7️⃣', '1️⃣8️⃣', '1️⃣9️⃣', '2️⃣0️⃣', '2️⃣1️⃣',
+                     '2️⃣2️⃣', '2️⃣3️⃣', '2️⃣4️⃣', '2️⃣5️⃣', '2️⃣6️⃣']
+    for i in range(3):
+        ctx.send(random.choice(bingo_numbers))
+# ------------- КОНЕЦ ИГРЫ БИНГО -----------
+
 
 # ------------- ИГРА СУНДУЧКИ -----------
 @bot.command(pass_context=True)
@@ -343,7 +353,7 @@ async def chest(ctx):
                                 return await channel.send('Error! Could not get the file...')
                             data = io.BytesIO(await resp.read())
                             await channel.send(file=discord.File(data, 'gold-reward.png'))
-
+# ------------- КОНЕЦ ИГРЫ СУНДУЧКИ -----------
 
 @bot.command(pass_context=True)
 async def casino(ctx):
@@ -357,10 +367,10 @@ async def casino(ctx):
 
     ed_msg = await ctx.send(makenums())
     # rules ---> ctx.send('```fix\n каковы правила? ```')
-    for i in range(3,9):
+    for i in range(3,6):
         ed = makenums()
         await ed_msg.edit(content=ed, suppress=False)
-        sleep(0.2)
+        sleep(0.4)
     await ctx.send('fin')
 
 
