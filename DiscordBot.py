@@ -197,7 +197,6 @@ async def user(ctx):
     # проверить как работает            <<<<<-----------------------------------------------------------работаю сейчас
     if ctx.invoked_subcommand is None:
         await ctx.send('you didn\'t specify any subcommand. / Вы не ввели никакой команды')
-
     pass
 
 
