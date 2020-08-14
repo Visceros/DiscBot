@@ -41,11 +41,11 @@ async def db_connection():
         print('could not connect to database:\n', e.args, e.__traceback__)
     try:
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
-            Id SERIAL PRIMARY KEY NOT NULL UNIQUE,
+            Id INT PRIMARY KEY NOT NULL UNIQUE,
             Nickname varchar(255) NOT NULL UNIQUE,
             Join_date timestamptz,
             Activity INT DEFAULT 0,
-            Coin INT DEFAULT 0,
+            Gold INT DEFAULT 0,
             CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
         print('connection to users base established')
     except Exception as e:
@@ -74,8 +74,8 @@ async def initial_db_fill():
             crown = bot.get_guild(guild.id)
             if users_now < len(crown.members):
                 for member in crown.members:
-                    exist_chk = await db.fetchrow('SELECT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname=$1 AND Join_date=$2));', member.display_name, member.joined_at)
-                    await db.execute('INSERT INTO discord_users VALUES(DEFAULT, $1, $2, 0, 0) ON CONFLICT (Nickname) DO NOTHING;', member.display_name, member.joined_at)
+                    if not member.bot:
+                        await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0) ON CONFLICT (Nickname) DO NOTHING;', member.id, member.display_name, member.joined_at)
             else:
                 pass
     print('Данные пользователей в базе обновлены')
@@ -93,13 +93,6 @@ async def initial_db_fill():
 #         self.gold = gold
 #         db.execute(f'INSERT INTO discord_users VALUES({self.id}, {self.username}, {self.join_date}, 0, 0)')
 #
-#     def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
-#         self.gold = gold
-#         self.id = user.id # неправильно, надо - передаём ник, по нему ищем юзер_айди в дискорде, далее если его ник != нику в ДБ - перезаписываем
-#         db.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
-#         record = db.fetchrow()
-#         #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
-#         #отбой. Эту часть буду делать в рамках функции дискорда. Есть ли тогда смысл делать класс Юзера?
 #
 #     def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
 #         self.name = name
@@ -113,7 +106,7 @@ async def initial_db_fill():
 #
 # @bot.event()
 # async def on_member_remove(member):
-#     User.delete(member.display_name)
+#     user.delete(member.display_name)
 
 
 async def start_rainbowise():
@@ -123,7 +116,7 @@ async def start_rainbowise():
     try:
         role = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
     except Exception as e:
-        print('no server "Golden Crown" in my server list')
+        print(f'something gone wrong when changing {role} role color')
         print(e.__traceback__)
     while not Client.is_closed():
         for clr in rgb_colors:
@@ -141,11 +134,11 @@ async def start_rainbowise():
 @bot.event
 async def on_ready():
     await db_connection()
-    print('I\'m ready to do your biddings, Master')
-    print('initial database fill starting...')  # ON script start - this line and further lines didn't work.
+    print('initial database fill starting...')
     await initial_db_fill()
     print('initial database fill finished')
     await start_rainbowise()
+    print('I\'m ready to serve.')
 
 
 # Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате
@@ -188,41 +181,62 @@ def get_userlist(ctx):
 #
 
 
-# @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
-# async def who_online(ctx):
+async def is_admin(ctx):
+    if ctx.message.author.has_permissions(administrator=True):
+        ctx.send(ctx.message.author.has_permissions(administrator=True))
+        return ctx.message.author.has_permissions(administrator=True)
+    else:
+        return ctx.send('you don\'t have the rights to perform this command')
 
-@bot.command(pass_context=True)
-async def user(ctx, member: discord.Member, arg=None):
+
+# -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
+@bot.group()
+@commands.check(is_admin)
+async def user(ctx):
     # кратко - "user" - меню-функция для пользователя/админа - аргументы "add" "del" "show"?? "update"
-    # проверить как работает
-    if arg==None:
-        data = await db.fetchrow(f'SELECT ALL FROM TABLE discord_users WHERE Name={member.display_name})')
-        for element in data.split(','):
-            ctx.send(element)
-    elif arg=='add':
-        await db.execute(f'INSERT INTO discord_users VALUES({member.display_name},{member.joined_at}, 0, 0)')
-        ctx.send('user added to database')
+    # проверить как работает            <<<<<-----------------------------------------------------------работаю сейчас
+    if ctx.invoked_subcommand is None:
+        await ctx.send('you didn\'t specify any subcommand. / Вы не ввели никакой команды')
+
     pass
 
 
+@user.command()
+async def add(ctx, member:discord.member):
+    await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0)', member.id, member.display_name, member.joined_at)
+    ctx.send('user added to database')
+
+
+@user.command()
+async def show(ctx, member: discord.member):
+    data = await db.fetchrow(f'SELECT ALL FROM TABLE discord_users WHERE Id={member.id})')
+    for element in data.split(','):
+        ctx.send(element+' ')
+
+
+def update(ctx, member: discord.member, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
+    record = db.fetchrow(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id=$1', member.id) #нужно доработать согласно комменту выше
+    #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
+
+
+
+
+
 @bot.command(pass_context=True)
-async def echo(ctx, *args):  # Название функции = название команды, в нашем случае это будет ">echo"
+async def echo(ctx, *, msg:str):  # Название функции = название команды, в нашем случае это будет ">echo"
     """ prints your message like a bot said it """
-    # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста. Проблема решена?
-    out = ''
-    for word in ctx.message.content.split():
-        out += word
-        out += ' '
-    await ctx.send(out)
+    await ctx.send(msg)
+    await ctx
 
 
 @bot.command(pass_context=True)
-async def mymoney(ctx):     #------- Тоже переписать под PostgreSQL
+async def me(ctx):     #------- Тоже переписать под PostgreSQL
     me = ctx.message.author
-    if me.id in list(db['user_currency'].keys()):
-        await ctx.send('your money amount now is: ', db['user_currency'][me.id])
+    me_data = await db.fetchrow(f'SELECT Gold FROM TABLE discord_users WHERE Id={me.id})')
+    if me_data is not None:
+        await ctx.send('your amount of Gold now is: ', me_data)
     else:
-        await ctx.send('sorry you have no money')
+        await ctx.send('sorry you have no money, or I do not know you')
 
 
 @bot.command(pass_context=True)
@@ -275,10 +289,10 @@ async def chest(ctx):
         pass
     else:
          return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
-    isClanMate = False
+    is_clan_mate = False
     if [check_role in author.roles] or [me in author.roles]:
-        isClanMate = True
-    if not isClanMate:
+        is_clan_mate = True
+    if not is_clan_mate:
         return await ctx.send(f'```Error! Извините, доступ имеют только члены клана с ролью "{check_role}"```')
     else:
         # IF all correct we head further
@@ -343,6 +357,19 @@ async def chest(ctx):
                                 return await channel.send('Error! Could not get the file...')
                             data = io.BytesIO(await resp.read())
                             await channel.send(file=discord.File(data, 'gold-reward.png'))
+# -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
+
+
+# ------------- ИГРА БИНГО -----------
+@bot.command(pass_context=True)
+async def bingo(ctx):
+    bingo_numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '1️⃣1️⃣', '1️⃣2️⃣',
+                     '1️⃣3️⃣', '1️⃣4️⃣', '1️⃣5️⃣', '1️⃣6️⃣', '1️⃣7️⃣', '1️⃣8️⃣', '1️⃣9️⃣', '2️⃣0️⃣', '2️⃣1️⃣',
+                     '2️⃣2️⃣', '2️⃣3️⃣', '2️⃣4️⃣', '2️⃣5️⃣', '2️⃣6️⃣']
+    for i in range(3):
+        ctx.send(random.choice(bingo_numbers))
+        sleep(0.2)
+# ------------- КОНЕЦ ИГРЫ БИНГО -----------
 
 
 @bot.command(pass_context=True)

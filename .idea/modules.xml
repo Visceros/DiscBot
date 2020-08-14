@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/DiscordBot.iml" filepath="$PROJECT_DIR$/.idea/DiscordBot.iml" />
+      <module fileurl="file://$USER_HOME$/PycharmProjects/proxytest/.idea/proxytest.iml" filepath="$USER_HOME$/PycharmProjects/proxytest/.idea/proxytest.iml" />
     </modules>
   </component>
 </project>
