@@ -62,8 +62,9 @@ async def initial_db_read():
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
-        for i in range(records_count):
-            id = await db.fetch(f'SELECT Id FROM discord_users WHERE rownum={i}')
+        for i in range(1, records_count):
+            # id = await db.fetch(f'SELECT Id FROM discord_users OFFSET {i-1} FETCH FIRST ONLY;')
+            id = await db.fetch(f'SELECT Id FROM discord_users ORDER BY Id LIMIT 1 OFFSET {i-1};')
             print(f'result of {i}th select query in initial_db_read() = ', id)
             users_idlist.append(id)
         print(records_count, ' пользователей в базе')
