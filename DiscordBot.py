@@ -57,17 +57,15 @@ async def db_connection():
 async def initial_db_read():
     records_in_db = 0
     records_in_db = await db.fetch('SELECT * FROM discord_users')
-    print('records in db object type = ', type(records_in_db))
-    print('records in db are:\n', records_in_db)
+    # print('records in db are:\n', records_in_db)   # debug print
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
-        for i in range(1, records_count):
-            # id = await db.fetch(f'SELECT Id FROM discord_users OFFSET {i-1} FETCH FIRST ONLY;')
-            id = await db.fetch(f'SELECT Id FROM discord_users ORDER BY Id LIMIT 1 OFFSET {i-1};')
-            print(f'result of {i}th select query in initial_db_read() = ', id)
+        for i in range(1, records_count+1):
+            id = await db.fetchval(f'SELECT Id FROM discord_users ORDER BY Id LIMIT 1 OFFSET {i-1};')
             users_idlist.append(id)
         print(records_count, ' пользователей в базе')
+        print(users_idlist)
         return records_count, users_idlist
     else:
         return 0, []
@@ -76,43 +74,52 @@ async def initial_db_read():
 # функция для изначального заполнения базы данных пользователями сервера. Работает раз в сутки
 # проверяет, все ли пользователи занесены в ДБ, если нет - дозаписывает недостающих   -   обновлена логика! ПРОВЕРИТЬ!!!
 async def initial_db_fill():
-    while True:
+    while True:    # похоже while блокирует выполнение последующего кода! Разобраться!
         users_count, users_ids = await initial_db_read()
         for guild in bot.guilds:
             if 'free zone' in guild.name.lower():
+                print('1')
                 crown = bot.get_guild(guild.id)
                 if users_count < len(crown.members):
                     for member in crown.members:
                         if not member.bot and not member.id in users_ids:
                             await db.execute('INSERT INTO discord_users (id, nickname, join_date, activity, gold) VALUES($1, $2, $3, 0, 0) ON CONFLICT (Id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                     print('Данные пользователей в базе обновлены')
+                    break
                 else:
                     pass
-        sleep(86400)
+        # await asyncio.sleep(86400)
 
 
 async def start_rainbowise():
+    print(2)
     async for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
+            print('Гильдия "Golden Crown" найдена в списке')
+        else:
+            print('Не найден сервер "Golden Crown"')
+            return False
     try:
-        role = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
+        role = await discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
     except Exception as e:
         print(f'something gone wrong when changing {role} role color')
         print(e.__traceback__)
     while not Client.is_closed():
-        for clr in rgb_colors:
+        for color in rgb_colors:
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                await asyncio.sleep(600)
+                await asyncio.sleep(300)
             except Exception as e:
                 channel = discord.utils.get(crown.channels, name='system')
                 print(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 await channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
-                print(e.args, e.__cause__)
+                print(e.__cause__, e, sep='\n')
                 break
 
+#------------------------------------------ВАЖНО! ТО НА ЧЕМ ТЫ ОСТАНОВИЛСЯ-----------------------------------------------
+# НЕ ПОНИМАЮ. Почему-то начала бесконечно отрабатывать initial_db_fill(). Бот просто не доходит до функции start_rainbowise()
 @bot.event
 async def on_ready():
     await db_connection()
@@ -124,52 +131,27 @@ async def on_ready():
 
 # -------- Функция ежедневного начисления клановой валюты  --------
 
-def daily():
+async def daily():
     """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
     online_users = []
-    for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
-        if 'golden crown' in guild.name.lower():
-            crown = bot.get_guild(guild.id)
+    async for guild in await bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
+        # if 'golden crown' in guild.name.lower():
+        #     crown = bot.get_guild(guild.id)
+        if 'free zone' in guild.name.lower():
+            crown = await bot.get_guild(guild.id)
         else:
             print('Error. No guild named "Golden Crown" found.')
     while True:
-        for member in crown.members:
-            if str(member.status) not in(['offline', 'invisible', 'dnd']):
+        async for member in crown.members:
+            if str(member.status) not in (['offline', 'invisible', 'dnd']):
                 if member.voice is not None and str(member.channel.name) is not 'AFK':
-                    gold = db.fetchrow(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
+                    gold = await db.fetchval(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
                     gold = int(gold)+1
-                    db.execute(f'UPDATE discord_users SET Gold={gold} WHERE Id={member.id};')
+                    await db.execute(f'UPDATE discord_users SET Gold={gold} WHERE Id={member.id};')
+        await asyncio.sleep(60)  # 1 minute
 
 
-# @bot.command(pass_context=True)  # Функция для начисления собственно денег - переписать под PostgreSQL <<--------
-# async def money(ctx, arg):
-#     """Uses: money on - to enable | money off - to disable"""
-#     server_id = ctx.message.server # Важно - определяем айдишник сервера, он будет использоваться в разных командах.
-#     global server_id
-#     global db
-#     await ctx.send(f'Money function is {arg}')
-#     while arg.lower()=='on':
-#         onvoice_list = get_userlist(ctx)
-#         for usr in ctx.guild.members:
-#             if usr.id in onvoice_list:
-#                 if usr.id not in db['user_names'].keys():
-#                     await ctx.send('adding to base: {}'.format(usr.id))
-#                     db['user_names'][usr.id] = str(usr.display_name)
-#                     db['user_currency'][usr.id] = 1
-#                     print('айдишники:', list(db['user_names'].keys()), '\n', 'значения:', list(db['user_names'].values()))
-#                 elif usr.id in db['user_names'].keys():
-#                     db['user_currency'][usr.id] = db['user_currency'][usr.id] + 1
-#         print('users data:')
-#         print(db['user_names'])
-#         print('currency data:')
-#         print(db['user_currency'])
-#         sleep(60)  # 1 minute
-
-
-#    for usr in ctx.guild.members:
-#
-
-
+# проверка на наличие админ-прав у того, кто запускает команды управления пользователями
 async def is_admin(ctx):
     if ctx.message.author.has_permissions(administrator=True):
         ctx.send(ctx.message.author.has_permissions(administrator=True))
@@ -180,16 +162,15 @@ async def is_admin(ctx):
 
 # -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 @bot.group()
-@commands.check(is_admin)
 async def user(ctx):
     # кратко - "user" - меню-функция для пользователя/админа - аргументы "add" "del" "show"?? "update"
     # проверить как работает            <<<<<-----------------------------------------------------------работаю сейчас
     if ctx.invoked_subcommand is None:
-        await ctx.send('you didn\'t specify any subcommand. / Вы не ввели никакой команды')
-    pass
+        await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
 
 
 @user.command()
+@commands.check(is_admin)
 async def add(ctx, member:discord.member):
     '''Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)'''
     await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
@@ -197,6 +178,7 @@ async def add(ctx, member:discord.member):
 
 
 @user.command()
+@commands.check(is_admin)
 async def show(ctx, member: discord.member):
     '''Shows the info about user/ показываем данные пользователя'''
     data = await db.fetchrow(f'SELECT ALL FROM TABLE discord_users WHERE Id={member.id};')
@@ -205,14 +187,16 @@ async def show(ctx, member: discord.member):
 
 
 @user.command()
+@commands.check(is_admin)
 async def give(ctx, member: discord.member, gold):
     '''Give user some gold / Даём пользователю деньги'''
-    gold_was = await db.fetchrow(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
+    gold_was = await db.fetchval(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
     newgold = int(gold_was) + gold
     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
 
 
 @user.command()
+@commands.check(is_admin)
 async def clear(ctx, member: discord.member):
     '''Use this to clear the data about user to default and 0 values'''
     await db.execute(f'DELETE FROM TABLE discord_users WHERE Id={member.id};')
@@ -254,7 +238,7 @@ async def rainbowise(ctx):
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                await asyncio.sleep(600)
+                await asyncio.sleep(300)
             except Exception as e:
                 await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
