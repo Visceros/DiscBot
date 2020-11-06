@@ -9,7 +9,6 @@ import asyncpg  # check if installed / проверьте, установлен 
 import os
 from time import sleep
 from discord.ext import commands, tasks
-from chests_rewards import usual_reward, gold_reward
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
@@ -80,7 +79,6 @@ async def initial_db_fill():
     for guild in bot.guilds:
         #if 'golden crown' in guild.name.lower():
         if 'free zone' in guild.name.lower():
-            print(1)
             current_members_list = []
             crown = bot.get_guild(guild.id)
             for member in crown.members:
@@ -88,13 +86,13 @@ async def initial_db_fill():
                     current_members_list.append(member.id)
             if users_count < len(current_members_list):
                 for member in crown.members:
-                    if not member.bot and not member.id in users_ids:
+                    if not member.bot and member.id not in users_ids:
                         await db.execute('INSERT INTO discord_users (id, nickname, join_date, activity, gold) VALUES($1, $2, $3, 0, 0) ON CONFLICT (Id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                 print('Данные пользователей в базе обновлены')
                 #break
             else:
-                print(3)
                 pass
+    print('database fill cycle ended')
 
 
 @tasks.loop(minutes=5.0)
@@ -108,7 +106,7 @@ async def auto_rainbowise():
             print('Не найден сервер "Golden Crown"')
             return False
     try:
-        role = await discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
+        role = await discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
     except Exception as e:
         print(f'something gone wrong when changing {role} role color')
         print(e.__traceback__)
@@ -124,22 +122,20 @@ async def auto_rainbowise():
                 print(e.__cause__, e, sep='\n')
                 break
 
-# ------------------------------------------ВАЖНО! ТО НА ЧЕМ ТЫ ОСТАНОВИЛСЯ---------------------------------------------
-# НЕ ПОНИМАЮ. Почему-то Бот просто не доходит до функции auto_rainbowise()
+
 @bot.event
 async def on_ready():
     await db_connection()
     print('initial database fill starting...')
-    await initial_db_fill.start()
+    initial_db_fill.start()
     print('initial database fill finished')
-    await auto_rainbowise.start()
+    auto_rainbowise.start()
     print('I\'m ready to serve.')
 
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
 async def daily():
     """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
-    online_users = []
     async for guild in await bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
         # if 'golden crown' in guild.name.lower():
         #     crown = bot.get_guild(guild.id)
@@ -194,7 +190,7 @@ async def show(ctx, member: discord.member):
 
 @user.command()
 @commands.check(is_admin)
-async def give(ctx, member: discord.member, gold):
+async def give(member: discord.member, gold):
     """Give user some gold / Даём пользователю деньги"""
     gold_was = await db.fetchval(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
     newgold = int(gold_was) + gold
@@ -203,11 +199,10 @@ async def give(ctx, member: discord.member, gold):
 
 @user.command()
 @commands.check(is_admin)
-async def clear(ctx, member: discord.member):
+async def clear(member: discord.member):
     """Use this to clear the data about user to default and 0 values"""
     await db.execute(f'DELETE FROM TABLE discord_users WHERE Id={member.id};')
     await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
-
 
 
 @bot.command(pass_context=True)
@@ -244,121 +239,6 @@ async def rainbowise(ctx):
                 await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
                 pass
-
-
-# ------------- ИГРА СУНДУЧКИ -----------
-@bot.command(pass_context=True)
-async def chest(ctx):
-    reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
-    author = ctx.message.author
-    channel = ctx.message.channel
-    check_role = discord.utils.get(ctx.message.author.roles, name='АДМИН')
-    me = discord.utils.get(ctx.message.author.roles, name='КЛАНОВЫЙ ПРОГРАММИСТ')
-    # Check if it's the right channel to write to and if user have relevant role
-    if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
-        pass
-    else:
-         return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
-    is_eligible = False
-    if [check_role in author.roles] or [me in author.roles]:
-        is_eligible = True
-    if not is_eligible:
-        return await ctx.send(f'```Error! Извините, доступ имеют только пользователи с ролью "{check_role}"```')
-    else:
-        # IF all correct we head further
-        await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
-                                       'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-        # Начало вставки картинки с простыми сундуками
-        async with aiohttp.ClientSession() as session:
-            async with session.get('https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
-                if resp.status != 200 and 301:
-                    return await channel.send('Error! Could not get the file...')
-                data = io.BytesIO(await resp.read())
-                start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
-                await session.close()
-        # Конец вставки картинки с простыми сундуками
-        for react in reactions:
-            await start_message.add_reaction(react)
-
-        def checkS(reaction, user):
-            return str(reaction.emoji) in reactions and user.bot is not True
-
-        def checkG(reaction, user):
-            return str(reaction.emoji) in reactions[0:2] and user.bot is not True
-
-        try:
-            reaction, user = await bot.wait_for('reaction_add', timeout=180, check=checkS)
-        except asyncio.TimeoutError:
-            await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
-        else:
-            reward, pic = usual_reward()
-            await channel.send(f'```yaml\nСундук со скрипом открывается и... {reward}```')
-            async with aiohttp.ClientSession() as session:
-                async with session.get(pic) as resp:
-                        if resp.status != 200 and 301:
-                            return await channel.send('Error! Could not get the file...')
-                        data = io.BytesIO(await resp.read())
-                        await channel.send(file=discord.File(data, 'reward.png'))
-            if 'золотой ключ' in reward.lower():
-                await ctx.send('```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
-                # Начало вставки картинки с золотыми сундуками
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                            'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
-                        if resp.status != 200 and 301:
-                            return await channel.send('Error! Could not get the file...')
-                        data = io.BytesIO(await resp.read())
-                        start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
-                        await session.close()
-                # Конец вставки картинки с золотыми сундуками
-                for react in reactions[0:3]:
-                    await start_message.add_reaction(react)
-                try:
-                    reaction, user = await bot.wait_for('reaction_add', timeout=180, check=checkG)
-                except asyncio.TimeoutError:
-                    return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
-                else:
-                    reward, pic = gold_reward()
-                    await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
-                                       f'и крышка тихонько открывается...\n{reward}```')
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(pic) as resp:
-                            if resp.status != 200 and 301:
-                                return await channel.send('Error! Could not get the file...')
-                            data = io.BytesIO(await resp.read())
-                            await channel.send(file=discord.File(data, 'gold-reward.png'))
-# -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
-
-
-# ------------- ИГРА БИНГО -----------
-@bot.command(pass_context=True)
-async def bingo(ctx):
-    bingo_numbers = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '🔟', '1️⃣1️⃣', '1️⃣2️⃣',
-                     '1️⃣3️⃣', '1️⃣4️⃣', '1️⃣5️⃣', '1️⃣6️⃣', '1️⃣7️⃣', '1️⃣8️⃣', '1️⃣9️⃣', '2️⃣0️⃣', '2️⃣1️⃣',
-                     '2️⃣2️⃣', '2️⃣3️⃣', '2️⃣4️⃣', '2️⃣5️⃣', '2️⃣6️⃣']
-    for i in range(3):
-        ctx.send(random.choice(bingo_numbers))
-        sleep(0.2)
-# ------------- КОНЕЦ ИГРЫ БИНГО -----------
-
-
-@bot.command(pass_context=True)
-async def casino(ctx):
-    prize = 0
-
-    def makenums():
-        nums = ""
-        for _ in range(3):
-            nums += str(random.randint(0,9))
-        return nums
-
-    ed_msg = await ctx.send(makenums())
-    # rules ---> ctx.send('```fix\n каковы правила? ```')
-    for i in range(3,9):
-        ed = makenums()
-        await ed_msg.edit(content=ed, suppress=False)
-        sleep(0.2)
-    await ctx.send('fin')
 
 
 bot.run(token, reconnect=True)
