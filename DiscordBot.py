@@ -62,7 +62,7 @@ async def echo(ctx, *args):  # Название функции = названи�
     """ prints your message like a bot said it """
     # тут какая-то проблема, теперь вместо слов в "args" находится объект контекста. Проблема решена?
     out = ''
-    for word in ctx.message.content.split():
+    for word in ctx.message.split():
         out += word
         out += ' '
     await ctx.send(out)
