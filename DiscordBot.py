@@ -27,94 +27,6 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
-async def db_connection():
-    db_user = 'postgres'
-    db_pwd = '32167'  # 32167 - пароль дома; Prophesy4 - пароль там.
-    db_name = 'DiscBot_db'
-    global db
-    # db_address = reserved variable for database http address
-    try:
-        print('connecting to database')
-        db = await asyncpg.connect(f'postgresql://{db_user}:{db_pwd}@localhost:5000/{db_name}')
-        print('connection successful')
-    except Exception as e:
-        print('could not connect to database:\n', e.args, e.__traceback__)
-    try:
-        await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
-            Id SERIAL PRIMARY KEY NOT NULL UNIQUE,
-            Nickname varchar(255) NOT NULL UNIQUE,
-            Join_date timestamptz,
-            Activity INT DEFAULT 0,
-            Coin INT DEFAULT 0,
-            CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
-        print('connection to users base established')
-    except Exception as e:
-        print(e.args, e.__cause__, e.__context__)
-    return db
-
-
-# считываем базу данных
-async def initial_db_read():
-    records_in_db = 0
-    records_in_db = await db.fetch('SELECT * FROM discord_users')
-    print(records_in_db)
-    if len(records_in_db) >= 1:
-        records_count = len(records_in_db)
-        print(records_count, ' пользователей в базе')
-        return records_count
-    else:
-        return len(records_in_db)
-
-# функция для изначального заполнения базы данных пользователями сервера
-async def initial_db_fill():
-# проверить, все ли пользователи занесены в ДБ, если нет - дозаписать недостающих
-    users_now = await initial_db_read()
-    for guild in bot.guilds:
-        if 'free zone' in guild.name.lower():
-            crown = bot.get_guild(guild.id)
-            if users_now < len(crown.members):
-                for member in crown.members:
-                    exist_chk = await db.fetchrow('SELECT EXISTS (SELECT 1 FROM discord_users WHERE (Nickname=$1 AND Join_date=$2));', member.display_name, member.joined_at)
-                    await db.execute('INSERT INTO discord_users VALUES(DEFAULT, $1, $2, 0, 0) ON CONFLICT (Nickname) DO NOTHING;', member.display_name, member.joined_at)
-            else:
-                pass
-    print('Данные пользователей в базе обновлены')
-
-# class User:
-#
-#     def add(self, user, activity=0, gold=0):  #добавляем юзера как строку в БД
-#         """We use separate class "User" for our discord server users -  to simplify the data handling.
-#         This function needs you to specify at least user's display name (nick)"""
-#
-#         self.id = user.id
-#         self.username = user.name
-#         self.join_date = user.joined_at  # вписать сюда обращение к АПИ для получения даты присоединения к серверу
-#         self.activity = activity
-#         self.gold = gold
-#         db.execute(f'INSERT INTO discord_users VALUES({self.id}, {self.username}, {self.join_date}, 0, 0)')
-#
-#     def update(self, user, gold):  #обновляем юзверя - ник, если изменился, начисляем деньги и активность.
-#         self.gold = gold
-#         self.id = user.id # неправильно, надо - передаём ник, по нему ищем юзер_айди в дискорде, далее если его ник != нику в ДБ - перезаписываем
-#         db.execute(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}') #нужно доработать согласно комменту выше
-#         record = db.fetchrow()
-#         #дописать дальше обновление - идея, передаём ник, по нему ищем юзер_айди в дискорде, далее если какая-то инфа изменилась - перезаписываем
-#         #отбой. Эту часть буду делать в рамках функции дискорда. Есть ли тогда смысл делать класс Юзера?
-#
-#     def delete(self, name):  #если юзера забанили или удалили с сервера, удаляем из ДБ (под вопросом)
-#         self.name = name
-#         pass
-#
-#     def show(self, user):
-#         self.user_id = user.id #obsolete
-#         record = db.fetchrow(f'SELECT TOP 1 FROM TABLE discord_users WHERE Id={self.user_id}')
-#         ctx.send(record)
-
-#
-# @bot.event()
-# async def on_member_remove(member):
-#     User.delete(member.display_name)
-
 
 async def start_rainbowise():
     async for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
@@ -138,71 +50,11 @@ async def start_rainbowise():
                 print(e.args, e.__cause__)
                 break
 
+
 @bot.event
 async def on_ready():
-    # await db_connection()
     print('I\'m ready to do your biddings, Master')
-    # print('initial database fill starting...')  # ON script start - this line and further lines didn't work.
-    # await initial_db_fill()
-    # print('initial database fill finished')
     await start_rainbowise()
-
-
-# Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате
-def get_userlist(ctx):
-    online_users = []
-    for usr in ctx.guild.members:
-        if str(usr.status) not in(['offline', 'invisible', 'dnd']):
-            if usr.voice is not None and str(usr.channel.name) is not 'AFK':
-                online_users.append(usr.id)
-#    ctx.send(online_users)
-    return online_users
-
-
-# @bot.command(pass_context=True)  # Функция для начисления собственно денег - переписать под PostgreSQL <<--------
-# async def money(ctx, arg):
-#     """Uses: money on - to enable | money off - to disable"""
-#     server_id = ctx.message.server # Важно - определяем айдишник сервера, он будет использоваться в разных командах.
-#     global server_id
-#     global db
-#     await ctx.send(f'Money function is {arg}')
-#     while arg.lower()=='on':
-#         onvoice_list = get_userlist(ctx)
-#         for usr in ctx.guild.members:
-#             if usr.id in onvoice_list:
-#                 if usr.id not in db['user_names'].keys():
-#                     await ctx.send('adding to base: {}'.format(usr.id))
-#                     db['user_names'][usr.id] = str(usr.display_name)
-#                     db['user_currency'][usr.id] = 1
-#                     print('айдишники:', list(db['user_names'].keys()), '\n', 'значения:', list(db['user_names'].values()))
-#                 elif usr.id in db['user_names'].keys():
-#                     db['user_currency'][usr.id] = db['user_currency'][usr.id] + 1
-#         print('users data:')
-#         print(db['user_names'])
-#         print('currency data:')
-#         print(db['user_currency'])
-#         sleep(60)  # 1 minute
-
-
-#    for usr in ctx.guild.members:
-#
-
-
-# @bot.command()  # команда вывода списка ID пользователей сервера (игнорируя тех кто оффлайн)
-# async def who_online(ctx):
-
-@bot.command(pass_context=True)
-async def user(ctx, member: discord.Member, arg=None):
-    # кратко - "user" - меню-функция для пользователя/админа - аргументы "add" "del" "show"?? "update"
-    # проверить как работает
-    if arg==None:
-        data = await db.fetchrow(f'SELECT ALL FROM TABLE discord_users WHERE Name={member.display_name})')
-        for element in data.split(','):
-            ctx.send(element)
-    elif arg=='add':
-        await db.execute(f'INSERT INTO discord_users VALUES({member.display_name},{member.joined_at}, 0, 0)')
-        ctx.send('user added to database')
-    pass
 
 
 @bot.command(pass_context=True)
@@ -215,24 +67,6 @@ async def echo(ctx, *args):  # Название функции = названи�
         out += ' '
     await ctx.send(out)
 
-
-@bot.command(pass_context=True)
-async def mymoney(ctx):     #------- Тоже переписать под PostgreSQL
-    me = ctx.message.author
-    if me.id in list(db['user_currency'].keys()):
-        await ctx.send('your money amount now is: ', db['user_currency'][me.id])
-    else:
-        await ctx.send('sorry you have no money')
-
-
-@bot.command(pass_context=True)
-async def showall(ctx):
-    await ctx.send(list(db['user_currency'].keys()))
-
-
-# Функция ежедневного начисления клановой валюты
-# def daily(ctx):
-#     if me.id in list(db['user_currency'].keys()):
 
 
 # Ручная команда для радужного ника
@@ -261,16 +95,6 @@ async def chest(ctx):
     channel = ctx.message.channel
     check_role = discord.utils.get(ctx.message.author.roles, name='АДМИН')
     me = discord.utils.get(ctx.message.author.roles, name='КЛАНОВЫЙ ПРОГРАММИСТ')
-    usual_rewards = []
-    # with open(os.path.join(os.getcwd(), 'usual-rewards.txt'), mode='r', encoding='utf-8') as file:
-    #     for line in file:
-    #         usual_rewards.append(str(line))
-    #
-    # golden_rewards = []
-    # with open(os.path.join(os.getcwd(), 'golden-rewards.txt'), mode='r', encoding='utf-8') as file:
-    #     for line in file:
-    #         golden_rewards.append(str(line))
-    # Check if it's the right channel to write to and if user have relevant role
     if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
         pass
     else:
