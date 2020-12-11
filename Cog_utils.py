@@ -7,7 +7,7 @@ import io
 import random
 
 
-class Utils(commands.Cog):
+class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
@@ -126,3 +126,8 @@ class Utils(commands.Cog):
             ed = makenums()
             await ed_msg.edit(content=ed, suppress=False)
             await asyncio.sleep(0.2)
+
+
+class Utils(commands.Cog):
+    pass
+

@@ -2,12 +2,10 @@
 
 import discord
 import asyncio   # check if installed / проверьте, установлен ли модуль
-import io
-import aiohttp
+import Cog_utils
 import random
 import asyncpg  # check if installed / проверьте, установлен ли модуль
 import os
-from time import sleep
 from discord.ext import commands, tasks
 import logging
 
@@ -131,6 +129,7 @@ async def on_ready():
     print('initial database fill finished')
     auto_rainbowise.start()
     print('I\'m ready to serve.')
+    bot.add_cog(Cog_utils.Games(bot))
 
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
