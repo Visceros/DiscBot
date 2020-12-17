@@ -2,11 +2,12 @@
 
 import discord
 import asyncio   # check if installed / проверьте, установлен ли модуль
-import Cog_utils
+from Cog_utils import Games, Utils
 import random
 import asyncpg  # check if installed / проверьте, установлен ли модуль
 import os
 from discord.ext import commands, tasks
+from dotenv import load_dotenv
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
@@ -17,7 +18,10 @@ handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(me
 logger.addHandler(handler)
 # ------- LOGGER FOR DEBUG PURPOSES
 
-token = 'NTAzNTQ5MDA1ODMwMDI5MzEy.Du8B4w.jXHBly_o8-E1EJDYsgYMOmxVAhs'
+dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
+load_dotenv(dotenv_path)
+
+token = os.getenv('bot_key')
 prefix = '>'
 des = 'GoldenBot for discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
@@ -26,17 +30,17 @@ bot = commands.Bot(description=des, command_prefix=prefix)
 
 
 async def db_connection():
-    db_user = 'postgres'
-    db_pwd = 'Prophesy4'  # 32167 - пароль дома; Prophesy4 - пароль там.
-    db_name = 'DiscBot_db'
+    db_user = os.getenv('db_user')
+    db_pwd = os.getenv('db_pwd')
+    db_name = os.getenv('db_name')
     global db
-    # db_address = reserved variable for database http address
+    # db_address = os.getenv('db_address')  # reserved variable for database http address
     try:
-        print('connecting to database server')
+        print('connecting to database server...')
         db = await asyncpg.connect(f'postgresql://{db_user}:{db_pwd}@localhost:5000/{db_name}')
-        print('connection successful')
+        print('connection successful!')
     except Exception as e:
-        print('could not connect to database:\n', e.args, e.__traceback__)
+        print('Could not connect to database:\n', e.args, e.__traceback__)
     try:
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
             Id BIGINT PRIMARY KEY NOT NULL UNIQUE,
@@ -45,7 +49,7 @@ async def db_connection():
             Activity INT DEFAULT 0,
             Gold INT DEFAULT 0,
             CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
-        print('connection to users base established')
+        print('connection to users base established.')
     except Exception as e:
         print(e.args, e.__cause__, e.__context__)
     return db
@@ -129,7 +133,8 @@ async def on_ready():
     print('initial database fill finished')
     auto_rainbowise.start()
     print('I\'m ready to serve.')
-    bot.add_cog(Cog_utils.Games(bot))
+    bot.add_cog(Games(bot))
+    bot.add_cog(Utils(bot))
 
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
