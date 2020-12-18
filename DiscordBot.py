@@ -83,6 +83,18 @@ async def initial_db_fill():
         if 'free zone' in guild.name.lower():
             current_members_list = []
             crown = bot.get_guild(guild.id)
+            global sys_channel
+            sys_channel = discord.utils.get(crown.channels, name='system')       # Работают над автосозданием системного канала.
+            if type(sys_channel) == 'NoneType':
+                try:
+                    await crown.create_text_channel('system',
+                                                overwrites={guild.default_role:[discord.PermissionOverwrite(read_messages=False),
+                                                                                discord.PermissionOverwrite(send_messages=False)]}
+                                                )
+                except discord.Forbidden:
+                    print(f'No permissions to create system channel in {crown} guild server')
+                except Exception as ex:
+                    print(ex)
             for member in crown.members:
                 if not member.bot:
                     current_members_list.append(member.id)
@@ -99,28 +111,26 @@ async def initial_db_fill():
 
 @tasks.loop(minutes=5.0)
 async def auto_rainbowise():
-    print(2)
     async for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
             print('Гильдия "Golden Crown" найдена в списке')
+            break
         else:
             print('Не найден сервер "Golden Crown"')
-            return False
     try:
         role = await discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
     except Exception as e:
         print(f'something gone wrong when changing {role} role color')
         print(e.__traceback__)
     while not Client.is_closed():
-        for color in rgb_colors:
+        async for color in rgb_colors:
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
             except Exception as e:
-                channel = discord.utils.get(crown.channels, name='system')
                 print(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
-                await channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
+                await sys_channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.__cause__, e, sep='\n')
                 break
 
@@ -132,38 +142,49 @@ async def on_ready():
     initial_db_fill.start()
     print('initial database fill finished')
     auto_rainbowise.start()
+    await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot))
-    bot.add_cog(Utils(bot))
+#    bot.add_cog(Utils(bot))
 
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
-async def daily():
+async def accounting():
     """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
-    async for guild in await bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
-        # if 'golden crown' in guild.name.lower():
-        #     crown = bot.get_guild(guild.id)
-        if 'free zone' in guild.name.lower():
-            crown = await bot.get_guild(guild.id)
-        else:
+    try:
+        async for guild in bot.fetch_guilds():
+            # if 'golden crown' in guild.name.lower():
+            #     crown = bot.get_guild(guild.id)
+            if 'free zone' in guild.name.lower():
+                crown = bot.get_guild(guild.id)
+    except Exception as e:
+        print(e)
+    else:
+        if not isinstance(crown, discord.Guild):
             print('Error. No guild named "Golden Crown" found.')
+
     while True:
-        async for member in crown.members:
-            if str(member.status) not in (['offline', 'invisible', 'dnd']):
-                if member.voice is not None and str(member.channel.name) is not 'AFK':
-                    gold = await db.fetchval(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
+        try:
+            for member in crown.members:
+                if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
+                    #if member.voice is not None and str(member.channel.name) is not 'AFK':
+                    gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+                    print(member.display_name, gold)
                     gold = int(gold)+1
+                    print('new gold=', gold)
                     await db.execute(f'UPDATE discord_users SET Gold={gold} WHERE Id={member.id};')
+        except Exception as ex:
+            sys_channel.send(ex)
         await asyncio.sleep(60)  # 1 minute
 
 
 # проверка на наличие админ-прав у того, кто запускает команды управления пользователями
-async def is_admin(ctx):
-    if ctx.message.author.has_permissions(administrator=True):
-        ctx.send(ctx.message.author.has_permissions(administrator=True))
-        return ctx.message.author.has_permissions(administrator=True)
-    else:
-        return ctx.send('you don\'t have the rights to perform this command')
+# async def is_admin(ctx):
+#     if 'administrator' in ctx.message.author.guid_permissions:
+#         ctx.send(ctx.message.author.has_permissions(administrator=True))
+#         return ctx.message.author.has_permissions(administrator=True)
+#     else:
+#         return ctx.send('you don\'t have the rights to perform this command')
 
 
 # -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
@@ -176,41 +197,60 @@ async def user(ctx):
 
 
 @user.command()
-@commands.check(is_admin)
-async def add(ctx, member:discord.member):
+@commands.has_permissions(administrator=True)
+async def add(ctx, member:discord.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)"""
     await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
     ctx.send('user added to database')
 
 
 @user.command()
-@commands.check(is_admin)
-async def show(ctx, member: discord.member):
+@commands.has_permissions(administrator=True)
+async def show(ctx, member: discord.Member):                                   # Не работает. Пофиксить
     """Shows the info about user/ показываем данные пользователя"""
-    data = await db.fetchrow(f'SELECT ALL FROM TABLE discord_users WHERE Id={member.id};')
-    for element in data.split(','):
-        ctx.send(element+' ')
+    money = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+    ctx.send(money)
+    data = await db.fetchval(f'SELECT * FROM discord_users WHERE Id={member.id};')
+    print(data)
+    # for element in data.split(','):
+    #     ctx.send(element+' ')
 
 
 @user.command()
-@commands.check(is_admin)
-async def give(member: discord.member, gold):
+@commands.has_permissions(administrator=True)
+async def give(ctx, member: discord.Member, gold):
     """Give user some gold / Даём пользователю деньги"""
-    gold_was = await db.fetchval(f'SELECT Gold FROM TABLE discord_users WHERE Id={member.id};')
-    newgold = int(gold_was) + gold
+    gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+    newgold = int(gold_was) + int(gold)
     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
 
+#----------------------------------------------------------------------------------------- НЕ ЗАБЫТЬ
+# Чтобы работало и для пользователей, нужно либо переделать мою кастомную проверку, либо переделать в соответствии с
+# указанным здесь https://discordpy.readthedocs.io/en/latest/ext/commands/api.html?highlight=commands%20check#help-commands
+
+    # if ctx.message.author.has_permissions(administrator=True):
+    #     gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+    #     newgold = int(gold_was) + int(gold)
+    #     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
+    # else:
+    #     user_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={ctx.message.author.id};')
+    #     newgold = int(gold_was) - int(gold)
+    #     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={ctx.message.author.id};')
+    #     target_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+    #     newtargetgold = target_gold + int(gold)
+    #     await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE Id={member.id};')
+
 
 @user.command()
-@commands.check(is_admin)
-async def clear(member: discord.member):
+@commands.has_permissions(administrator=True)
+async def clear(ctx, member: discord.Member):
     """Use this to clear the data about user to default and 0 values"""
-    await db.execute(f'DELETE FROM TABLE discord_users WHERE Id={member.id};')
+    await db.execute(f'DELETE FROM discord_users WHERE Id={member.id};')
     await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
 
 
 @bot.command(pass_context=True)
-async def echo(ctx, *, msg:str):  # Название функции = название команды, в нашем случае это будет ">echo"
+async def echo(ctx, msg: str):  # Название функции = название команды, в нашем случае это будет ">echo"
     """ prints your message like a bot said it """
     message = ctx.message
     await message.delete()
@@ -220,9 +260,10 @@ async def echo(ctx, *, msg:str):  # Название функции = назва
 @bot.command(pass_context=True)
 async def me(ctx):
     usr = ctx.message.author
-    me_data = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={usr.id};')
+    me_data = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={usr.id};') #переписать под показ всего профиля
     if me_data is not None:
-        await ctx.send('your amount of Gold now is: ', me_data)
+        await ctx.send(f'your amount of Gold now is: {me_data}')
+        #print(*iter(ctx.message.author.guild_permissions))
     else:
         await ctx.send('sorry you have no money, or I do not know you')
 
