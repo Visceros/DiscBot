@@ -8,14 +8,16 @@ import asyncpg  # check if installed / проверьте, установлен 
 import os
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
+import datetime
+import time
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-logger.addHandler(handler)
+# logger = logging.getLogger('discord')
+# logger.setLevel(logging.DEBUG)
+# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+# handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+# logger.addHandler(handler)
 # ------- LOGGER FOR DEBUG PURPOSES
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -111,7 +113,7 @@ async def initial_db_fill():
 
 @tasks.loop(minutes=5.0)
 async def auto_rainbowise():
-    async for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
+    for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
             print('Гильдия "Golden Crown" найдена в списке')
@@ -169,14 +171,19 @@ async def accounting():
                 if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
                     #if member.voice is not None and str(member.channel.name) is not 'AFK':
                     gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
-                    print(member.display_name, gold)
+                    activity = await db.fetchval(f'SELECT Activity FROM discord_users WHERE Id={member.id};')
                     gold = int(gold)+1
-                    print('new gold=', gold)
-                    await db.execute(f'UPDATE discord_users SET Gold={gold} WHERE Id={member.id};')
+                    activity = int(activity)+1
+                    await db.execute(f'UPDATE discord_users SET Gold={gold}, Activity={activity} WHERE Id={member.id};')
         except Exception as ex:
             sys_channel.send(ex)
         await asyncio.sleep(60)  # 1 minute
 
+
+def subtract_time(time_arg):
+    _tmp = time_arg.replace(microsecond=0) - datetime.datetime.now(tz=datetime.timezone.utc).replace(microsecond=0)
+    ret = str(abs(_tmp)).replace('days', 'дней')
+    return ret
 
 # проверка на наличие админ-прав у того, кто запускает команды управления пользователями
 # async def is_admin(ctx):
@@ -189,11 +196,15 @@ async def accounting():
 
 # -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 @bot.group()
+@commands.has_permissions(administrator=True)
 async def user(ctx):
-    # кратко - "user" - меню-функция для пользователя/админа - аргументы "add" "del" "show"?? "update"
+    # кратко - "user" - меню-функция для админа - аргументы "add" "del" "show"?? "update"
     # проверить как работает            <<<<<-----------------------------------------------------------работаю сейчас
-    if ctx.invoked_subcommand is None:
-        await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
+#    if ctx.message.author.Permissions(administrator=True):
+        if ctx.invoked_subcommand is None:
+            await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
+#    else:
+#        user.show(ctx, ctx.message.author)
 
 
 @user.command()
@@ -206,40 +217,43 @@ async def add(ctx, member:discord.Member):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def show(ctx, member: discord.Member):                                   # Не работает. Пофиксить
+async def show(ctx, member: discord.Member):
     """Shows the info about user/ показываем данные пользователя"""
-    money = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
-    ctx.send(money)
-    data = await db.fetchval(f'SELECT * FROM discord_users WHERE Id={member.id};')
-    print(data)
-    # for element in data.split(','):
-    #     ctx.send(element+' ')
+    data = await db.fetchrow(f'SELECT * FROM discord_users WHERE Id={member.id};')
+    time_in_clan = subtract_time(data['join_date'])
+    output = f"Пользователь {data['nickname']}\nID:{data['id']}\nСостоит в клане уже {time_in_clan}\nОчки активности: {data['activity']}\nЗолото: {data['gold']}"
+    await ctx.send(output)
+    # for key,val in data.items():
+    #     await ctx.send(f'{key} : {val}')
 
 
+#----------------------------------------------------------------------------------------- Протестировать команду ниже.
+#@commands.has_permissions(administrator=True)
 @user.command()
-@commands.has_permissions(administrator=True)
 async def give(ctx, member: discord.Member, gold):
-    """Give user some gold / Даём пользователю деньги"""
-    gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
-    newgold = int(gold_was) + int(gold)
-    await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
+    gold = abs(gold)
+    if 'administrator' in ctx.message.author.guild_permissions:
+        """Give user some gold / Даём пользователю деньги"""
+        gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+        newgold = int(gold_was) + int(gold)
+        await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
+    else:
+        author = ctx.message.author
+        user_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={author.id};')
+        if int(gold) > int(user_gold):
+            ctx.channel.send('У вас нет столько денег.')
+            return
+        else:
+            newgold = int(user_gold) - int(gold)
+            await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={author.id};')
+            target_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+            newtargetgold = int(target_gold) + int(gold)
+            await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE Id={member.id};')
 
-#----------------------------------------------------------------------------------------- НЕ ЗАБЫТЬ
+#-----------------------------------------------------------------------------------------
 # Чтобы работало и для пользователей, нужно либо переделать мою кастомную проверку, либо переделать в соответствии с
 # указанным здесь https://discordpy.readthedocs.io/en/latest/ext/commands/api.html?highlight=commands%20check#help-commands
-
-    # if ctx.message.author.has_permissions(administrator=True):
-    #     gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
-    #     newgold = int(gold_was) + int(gold)
-    #     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
-    # else:
-    #     user_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={ctx.message.author.id};')
-    #     newgold = int(gold_was) - int(gold)
-    #     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={ctx.message.author.id};')
-    #     target_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
-    #     newtargetgold = target_gold + int(gold)
-    #     await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE Id={member.id};')
-
+#-----------------------------------------------------------------------------------------
 
 @user.command()
 @commands.has_permissions(administrator=True)
@@ -260,12 +274,13 @@ async def echo(ctx, msg: str):  # Название функции = назван
 @bot.command(pass_context=True)
 async def me(ctx):
     usr = ctx.message.author
-    me_data = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={usr.id};') #переписать под показ всего профиля
-    if me_data is not None:
-        await ctx.send(f'your amount of Gold now is: {me_data}')
-        #print(*iter(ctx.message.author.guild_permissions))
+    data = await db.fetchrow(f'SELECT * FROM discord_users WHERE Id={usr.id};') #переписать под показ всего профиля
+    if data is not None:
+        time_in_clan = subtract_time(data['join_date'])
+        output = f" Ваш ID:{data['id']}\n Вы в клане уже {time_in_clan}\n Очки активности: {data['activity']}\n Золото: {data['gold']}"
+        await ctx.send(output)
     else:
-        await ctx.send('sorry you have no money, or I do not know you')
+        await ctx.send('sorry I do not know who you are')
 
 
 # Ручная команда для радужного ника
