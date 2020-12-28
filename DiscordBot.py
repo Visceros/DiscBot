@@ -22,8 +22,11 @@ import logging
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
-
 token = os.getenv('bot_key')
+if token is None:
+    print('Could not receive token. Please check if your .env file has the correct token')
+    exit(1)
+
 prefix = '>'
 des = 'GoldenBot for discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
@@ -185,7 +188,7 @@ def subtract_time(time_arg):
     ret = str(abs(_tmp)).replace('days', 'дней')
     return ret
 
-# проверка на наличие админ-прав у того, кто запускает команды управления пользователями
+# проверка на наличие админ-прав у того, кто запускает команды управления пользователями    >>БОЛЬШЕ НЕ НУЖНА?<<
 # async def is_admin(ctx):
 #     if 'administrator' in ctx.message.author.guid_permissions:
 #         ctx.send(ctx.message.author.has_permissions(administrator=True))
@@ -227,10 +230,11 @@ async def show(ctx, member: discord.Member):
     #     await ctx.send(f'{key} : {val}')
 
 
-#----------------------------------------------------------------------------------------- Протестировать команду ниже.
-#@commands.has_permissions(administrator=True)
+# ----------------------------------------------------------------------------------------- Протестировать команду ниже.
+# @commands.has_permissions(administrator=True)
 @user.command()
 async def give(ctx, member: discord.Member, gold):
+    """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     gold = abs(gold)
     if 'administrator' in ctx.message.author.guild_permissions:
         """Give user some gold / Даём пользователю деньги"""
@@ -250,37 +254,46 @@ async def give(ctx, member: discord.Member, gold):
             newtargetgold = int(target_gold) + int(gold)
             await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE Id={member.id};')
 
-#-----------------------------------------------------------------------------------------
-# Чтобы работало и для пользователей, нужно либо переделать мою кастомную проверку, либо переделать в соответствии с
-# указанным здесь https://discordpy.readthedocs.io/en/latest/ext/commands/api.html?highlight=commands%20check#help-commands
-#-----------------------------------------------------------------------------------------
+
+@user.command()
+@commands.has_permissions(administrator=True)
+async def de(ctx, member: discord.Member, gold):
+    """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
+    gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
+    newgold = int(gold_was) - int(gold)
+    if newgold < 0:
+        newgold = 0
+    await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE Id={member.id};')
+
 
 @user.command()
 @commands.has_permissions(administrator=True)
 async def clear(ctx, member: discord.Member):
-    """Use this to clear the data about user to default and 0 values"""
+    """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
     await db.execute(f'DELETE FROM discord_users WHERE Id={member.id};')
     await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
 
+# -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
 @bot.command(pass_context=True)
-async def echo(ctx, msg: str):  # Название функции = название команды, в нашем случае это будет ">echo"
-    """ prints your message like a bot said it """
+async def echo(ctx, msg: str):
+    """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
     message = ctx.message
     await message.delete()
     await ctx.send(msg)
 
 
 @bot.command(pass_context=True)
-async def me(ctx):
+async def me(ctx): #                             переписать под красивый вид с Embeds.
+    """Command to see your profile / Этой командой можно увидеть ваш профиль"""
     usr = ctx.message.author
-    data = await db.fetchrow(f'SELECT * FROM discord_users WHERE Id={usr.id};') #переписать под показ всего профиля
+    data = await db.fetchrow(f'SELECT * FROM discord_users WHERE Id={usr.id};')
     if data is not None:
         time_in_clan = subtract_time(data['join_date'])
         output = f" Ваш ID:{data['id']}\n Вы в клане уже {time_in_clan}\n Очки активности: {data['activity']}\n Золото: {data['gold']}"
         await ctx.send(output)
     else:
-        await ctx.send('sorry I do not know who you are')
+        await ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
 
 
 # Ручная команда для радужного ника

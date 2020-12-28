@@ -17,15 +17,13 @@ class Games(commands.Cog):
         reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
         author = ctx.message.author
         channel = ctx.message.channel
-        check_role = discord.utils.get(ctx.message.author.roles, name='АДМИН')
-        me = discord.utils.get(ctx.message.author.roles, name='КЛАНОВЫЙ ПРОГРАММИСТ')
         # Check if it's the right channel to write to and if user have relevant role
         if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
             pass
         else:
             return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
         is_eligible = False
-        if [check_role in author.roles] or [me in author.roles]:
+        if 'administrator' in ctx.message.author.guild_permissions:
             is_eligible = True
         if not is_eligible:
             return await ctx.send(f'```Error! Извините, доступ имеют только пользователи с ролью "{check_role}"```')
