@@ -54,6 +54,14 @@ async def db_connection():
             Activity INT DEFAULT 0,
             Gold INT DEFAULT 0,
             CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
+
+        await db.execute('''CREATE TABLE IF NOT EXISTS LogTable (
+                    user_id BIGINT PRIMARY KEY NOT NULL UNIQUE,
+                    login Date,
+                    logoff Date,
+                    Gold INT DEFAULT 0,
+                    CONSTRAINT users_unique UNIQUE (Id, Nickname))
+                    FOREIGN KEY (user_id) REFERENCES discord_users (Id);''')
         print('connection to users base established.')
     except Exception as e:
         print(e.args, e.__cause__, e.__context__)
@@ -89,7 +97,7 @@ async def initial_db_fill():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
-            sys_channel = discord.utils.get(crown.channels, name='system')       # Работают над автосозданием системного канала.
+            sys_channel = discord.utils.get(crown.channels, name='system')       # Работаю над автосозданием системного канала.
             if type(sys_channel) == 'NoneType':
                 try:
                     await crown.create_text_channel('system',
@@ -153,7 +161,10 @@ async def on_ready():
 #    bot.add_cog(Utils(bot))
 
 
-# -------------------- Функция ежедневного начисления клановой валюты  --------------------
+
+# =======>>>ДОБАВИТЬ СЮДА 2 функции на запись времени входа и выхода пользователя в сеть (online, offline)<<===========
+
+# -------------------- Функция ежедневного начисления клановой валюты  -------------------- ПЕРЕДЕЛАТЬ НА discord.tasks
 async def accounting():
     """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
     try:
@@ -187,14 +198,6 @@ def subtract_time(time_arg):
     _tmp = time_arg.replace(microsecond=0) - datetime.datetime.now(tz=datetime.timezone.utc).replace(microsecond=0)
     ret = str(abs(_tmp)).replace('days', 'дней')
     return ret
-
-# проверка на наличие админ-прав у того, кто запускает команды управления пользователями    >>БОЛЬШЕ НЕ НУЖНА?<<
-# async def is_admin(ctx):
-#     if 'administrator' in ctx.message.author.guid_permissions:
-#         ctx.send(ctx.message.author.has_permissions(administrator=True))
-#         return ctx.message.author.has_permissions(administrator=True)
-#     else:
-#         return ctx.send('you don\'t have the rights to perform this command')
 
 
 # -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
