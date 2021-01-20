@@ -52,6 +52,7 @@ async def db_connection():
             Nickname varchar(255) NOT NULL UNIQUE,
             Join_date timestamptz,
             Activity INT DEFAULT 0,
+            Total_Activity INT DEFAULT 0,
             Gold INT DEFAULT 0,
             CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
 
@@ -98,14 +99,14 @@ async def initial_db_fill():
             crown = bot.get_guild(guild.id)
             global sys_channel
             sys_channel = discord.utils.get(crown.channels, name='system')       # Работаю над автосозданием системного канала.
-            if type(sys_channel) == 'NoneType':
+            if 'system' not in guild.channels:
                 try:
                     await crown.create_text_channel('system',
                                                 overwrites={guild.default_role:[discord.PermissionOverwrite(read_messages=False),
                                                                                 discord.PermissionOverwrite(send_messages=False)]}
                                                 )
                 except discord.Forbidden:
-                    print(f'No permissions to create system channel in {crown} guild server')
+                    print(f'No permissions to create system channel in {crown} server')
                 except Exception as ex:
                     print(ex)
             for member in crown.members:
@@ -114,7 +115,7 @@ async def initial_db_fill():
             if users_count < len(current_members_list):
                 for member in crown.members:
                     if not member.bot and member.id not in users_ids:
-                        await db.execute('INSERT INTO discord_users (id, nickname, join_date, activity, gold) VALUES($1, $2, $3, 0, 0) ON CONFLICT (Id) DO NOTHING;', member.id, member.display_name, member.joined_at)
+                        await db.execute('INSERT INTO discord_users (id, nickname, join_date, activity, total_activity, gold) VALUES($1, $2, $3, 0, 0, 0) ON CONFLICT (Id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                 print('Данные пользователей в базе обновлены')
                 #break
             else:
@@ -162,7 +163,17 @@ async def on_ready():
 
 
 
-# =======>>>ДОБАВИТЬ СЮДА 2 функции на запись времени входа и выхода пользователя в сеть (online, offline)<<===========
+@commands.Cog.listener()
+async def on_voice_state_update(member, before, after):
+    if not member.bot:
+        if before.voice.voice_channel is None and after.voice.voice_channel is not None:
+
+
+
+@bot.event()
+async def on_member_update():
+
+# =======>>>ДОБАВИТЬ СЮДА функцию на запись времени входа и выхода пользователя в сеть (online, offline)<<===========
 
 # -------------------- Функция ежедневного начисления клановой валюты  -------------------- ПЕРЕДЕЛАТЬ НА discord.tasks
 async def accounting():
@@ -183,12 +194,14 @@ async def accounting():
         try:
             for member in crown.members:
                 if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
-                    #if member.voice is not None and str(member.channel.name) is not 'AFK':
+                    #if member.voice is not None and member.channel is not crown.afk_channel:
                     gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE Id={member.id};')
                     activity = await db.fetchval(f'SELECT Activity FROM discord_users WHERE Id={member.id};')
+                    total_activity = await db.fetchval(f'SELECT Total_Activity FROM discord_users WHERE Id={member.id};')
                     gold = int(gold)+1
                     activity = int(activity)+1
-                    await db.execute(f'UPDATE discord_users SET Gold={gold}, Activity={activity} WHERE Id={member.id};')
+                    total_activity = int(activity) + 1
+                    await db.execute(f'UPDATE discord_users SET Gold={gold}, Activity={activity}, Total_Activity={total_activity} WHERE Id={member.id};')
         except Exception as ex:
             sys_channel.send(ex)
         await asyncio.sleep(60)  # 1 minute
@@ -217,7 +230,7 @@ async def user(ctx):
 @commands.has_permissions(administrator=True)
 async def add(ctx, member:discord.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)"""
-    await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+    await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0, 0);', member.id, member.display_name, member.joined_at)
     ctx.send('user added to database')
 
 
@@ -227,7 +240,7 @@ async def show(ctx, member: discord.Member):
     """Shows the info about user/ показываем данные пользователя"""
     data = await db.fetchrow(f'SELECT * FROM discord_users WHERE Id={member.id};')
     time_in_clan = subtract_time(data['join_date'])
-    output = f"Пользователь {data['nickname']}\nID:{data['id']}\nСостоит в клане уже {time_in_clan}\nОчки активности: {data['activity']}\nЗолото: {data['gold']}"
+    output = f"Пользователь {data['nickname']}\nID:{data['id']}\nСостоит в клане уже {time_in_clan}\nАктивность за месяц: {data['activity']}\n Общая активность: {data['total_activity']}\n Золото: {data['gold']}"
     await ctx.send(output)
     # for key,val in data.items():
     #     await ctx.send(f'{key} : {val}')
@@ -274,7 +287,7 @@ async def de(ctx, member: discord.Member, gold):
 async def clear(ctx, member: discord.Member):
     """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
     await db.execute(f'DELETE FROM discord_users WHERE Id={member.id};')
-    await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+    await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0, 0);', member.id, member.display_name, member.joined_at)
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
@@ -293,7 +306,7 @@ async def me(ctx): #                             переписать под к�
     data = await db.fetchrow(f'SELECT * FROM discord_users WHERE Id={usr.id};')
     if data is not None:
         time_in_clan = subtract_time(data['join_date'])
-        output = f" Ваш ID:{data['id']}\n Вы в клане уже {time_in_clan}\n Очки активности: {data['activity']}\n Золото: {data['gold']}"
+        output = f" Ваш ID:{data['id']}\n Вы в клане уже {time_in_clan}\n Активность в этом месяце: {data['activity']}\n На счету: {data['gold']}"
         await ctx.send(output)
     else:
         await ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
