@@ -9,7 +9,6 @@ import os
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import datetime
-import time
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
@@ -30,7 +29,6 @@ if token is None:
 prefix = '>'
 des = 'GoldenBot for discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
-Client = discord.Client()
 bot = commands.Bot(description=des, command_prefix=prefix)
 
 
@@ -43,7 +41,7 @@ async def db_connection():
     try:
         print('connecting to database server...')
         db = await asyncpg.connect(f'postgresql://{db_user}:{db_pwd}@localhost:5000/{db_name}')
-#        db = await asyncpg.connect(host='localhost', port=5000, user=db_user, password=db_pwd, database=db_name)
+        #db = await asyncpg.connect(host='localhost', port=5000, user=db_user, password=db_pwd, database=db_name)
         print('connection successful!')
     except Exception as e:
         print('Could not connect to database:\n', e.args)
@@ -55,14 +53,14 @@ async def db_connection():
             Id BIGINT PRIMARY KEY NOT NULL UNIQUE,
             Nickname varchar(255) NOT NULL UNIQUE,
             Join_date Date,
-            Gold INT DEFAULT 0,
+            gold INT DEFAULT 0,
             CONSTRAINT users_unique UNIQUE (id, Nickname));''')
 
         await db.execute('''CREATE TABLE IF NOT EXISTS LogTable (
         user_id BIGINT PRIMARY KEY NOT NULL,
         login timestamp with time zone,
         logoff timestamp with time zone,              
-        Gold INT DEFAULT 0,
+        gold INT DEFAULT 0,
         CONSTRAINT users_unique FOREIGN KEY (user_id) REFERENCES discord_users (id));''')
         print('connection to users base established.')
     except Exception as e:
@@ -79,8 +77,8 @@ async def initial_db_read():
         users_idlist = []
         records_count = len(records_in_db)
         for i in range(1, records_count+1):
-            id = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i-1};')
-            users_idlist.append(id)
+            ids = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i-1};')
+            users_idlist.append(ids)
         print(records_count, ' пользователей в базе')
         print(users_idlist)
         return records_count, users_idlist
@@ -142,9 +140,9 @@ async def auto_rainbowise():
     try:
         role = await discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
     except Exception as e:
-        print(f'something gone wrong when changing {role} role color')
+        print(f'no role for ranbow nick found. See if you have the role with "радужный ник" in its name')
         print(e.__traceback__)
-    while not Client.is_closed():
+    while True:
         async for color in rgb_colors:
             clr = random.choice(rgb_colors)
             try:
@@ -169,18 +167,18 @@ async def on_ready():
 #    bot.add_cog(Utils(bot))
 
 
-
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
+
 
 @tasks.loop(minutes=1)
 async def _increment_money(server: discord.Guild):
     try:
         for member in server.members:
             if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
-                #if member.voice is not None and member.channel is not crown.afk_channel:
-                gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
-                gold = int(gold)+1
-                await db.execute(f'UPDATE discord_users SET Gold={gold} WHERE id={member.id};')
+                if member.voice is not None and member.channel is not server.afk_channel:
+                    gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
+                    gold = int(gold)+1
+                    await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
     except Exception as ex:
         sys_channel.send(content=ex)
 #        await asyncio.sleep(60)  # 1 minute
@@ -200,7 +198,6 @@ async def accounting():
         if not isinstance(crown, discord.Guild):
             print('Error. No guild named "Golden Crown" found.')
     _increment_money.start(crown)
-
 
 
 def subtract_time(time_arg):
@@ -249,19 +246,19 @@ async def give(ctx, member: discord.Member, gold):
     gold = abs(gold)
     if 'administrator' in ctx.message.author.guild_permissions:
         """Give user some gold / Даём пользователю деньги"""
-        gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
+        gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
         newgold = int(gold_was) + int(gold)
         await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
     else:
         author = ctx.message.author
-        user_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={author.id};')
+        user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
         if int(gold) > int(user_gold):
             ctx.channel.send('У вас нет столько денег.')
             return
         else:
             newgold = int(user_gold) - int(gold)
             await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={author.id};')
-            target_gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
+            target_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
             newtargetgold = int(target_gold) + int(gold)
             await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
 
@@ -270,7 +267,7 @@ async def give(ctx, member: discord.Member, gold):
 @commands.has_permissions(administrator=True)
 async def de(ctx, member: discord.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
-    gold_was = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
+    gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
     newgold = int(gold_was) - int(gold)
     if newgold < 0:
         newgold = 0
@@ -315,7 +312,7 @@ async def rainbowise(ctx):
     name = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), ctx.guild.roles)
     role = discord.utils.get(ctx.guild.roles, name=str(name))
     await ctx.send(f'starting rainbow for {role}')
-    while not Client.is_closed():
+    while True:
         for clr in rgb_colors:
             clr = random.choice(rgb_colors)
             try:
