@@ -57,10 +57,11 @@ async def db_connection():
             CONSTRAINT users_unique UNIQUE (id, Nickname));''')
 
         await db.execute('''CREATE TABLE IF NOT EXISTS LogTable (
-        user_id BIGINT PRIMARY KEY NOT NULL,
+        user_id BIGINT NOT NULL,
         login timestamp with time zone,
         logoff timestamp with time zone,              
         gold INT DEFAULT 0,
+        record_id INT PRIMARY KEY NOT NULL,
         CONSTRAINT users_unique FOREIGN KEY (user_id) REFERENCES discord_users (id));''')
         print('connection to users base established.')
     except Exception as e:
