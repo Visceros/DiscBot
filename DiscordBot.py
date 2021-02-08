@@ -2,7 +2,7 @@
 
 import discord
 import asyncio   # check if installed / проверьте, установлен ли модуль
-from Cog_utils import Games, Utils
+from Cog_utils import Games, Listeners, Utils
 import random
 import asyncpg  # check if installed / проверьте, установлен ли модуль
 import os
@@ -54,14 +54,14 @@ async def db_connection():
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
             Id BIGINT PRIMARY KEY NOT NULL UNIQUE,
             Nickname varchar(255) NOT NULL UNIQUE,
-            Join_date timestamptz,
+            Join_date Date,
             Gold INT DEFAULT 0,
             CONSTRAINT users_unique UNIQUE (id, Nickname));''')
 
         await db.execute('''CREATE TABLE IF NOT EXISTS LogTable (
-        user_id BIGINT PRIMARY KEY NOT NULL UNIQUE,
-        login Date,
-        logoff Date,              
+        user_id BIGINT PRIMARY KEY NOT NULL,
+        login timestamp with time zone,
+        logoff timestamp with time zone,              
         Gold INT DEFAULT 0,
         CONSTRAINT users_unique FOREIGN KEY (user_id) REFERENCES discord_users (id));''')
         print('connection to users base established.')
@@ -99,7 +99,7 @@ async def initial_db_fill():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
-            sys_channel = discord.utils.get(crown.channels, name='system')       # Работаю над автосозданием системного канала.
+            sys_channel = discord.utils.get(crown.channels, name='system')
             if not sys_channel:
                 try:
                     admin_roles = [role for role in guild.roles if role.permissions.administrator]
@@ -123,10 +123,11 @@ async def initial_db_fill():
                     if not member.bot and member.id not in users_ids:
                         await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold) VALUES($1, $2, $3, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                 print('Данные пользователей в базе обновлены')
-                #break
             else:
                 pass
     print('database fill cycle ended')
+    test = await db.fetchval('SELECT login from LogTable ORDER BY ID LIMIT 1')
+    print(test)
 
 
 @tasks.loop(minutes=5.0)
@@ -164,24 +165,27 @@ async def on_ready():
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot))
+    bot.add_cog(Listeners(bot, db=db))
 #    bot.add_cog(Utils(bot))
 
 
-#--------------------------- Регистрация начала и конца времени Активности пользователей ----------------------------
-@commands.Cog.listener()
-async def on_voice_state_update(member, before, after):
-    if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
-        if before.voice.voice_channel is None and after.voice.voice_channel is not None:
-            if after.voice.voice_channel is not member.guild.afk_channel:
-                gold = db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
-                await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ({member.id},{datetime.datetime.now()}, {gold} )')
-        elif before.voice.voice_channel is not None and after.voice.voice_channel is None:
-            gold = db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
-            await db.execute(
-                f'UPDATE LogTable SET logoff={datetime.datetime.now()}, Gold={gold} WHERE user_id={member.id} AND logoff IS NULL)')
-
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
+
+@tasks.loop(minutes=1)
+async def _increment_money(server: discord.Guild):
+    try:
+        for member in server.members:
+            if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
+                #if member.voice is not None and member.channel is not crown.afk_channel:
+                gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
+                gold = int(gold)+1
+                await db.execute(f'UPDATE discord_users SET Gold={gold} WHERE id={member.id};')
+    except Exception as ex:
+        sys_channel.send(content=ex)
+#        await asyncio.sleep(60)  # 1 minute
+
+
 async def accounting():
     """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
     try:
@@ -195,18 +199,8 @@ async def accounting():
     else:
         if not isinstance(crown, discord.Guild):
             print('Error. No guild named "Golden Crown" found.')
+    _increment_money.start(crown)
 
-    while True:
-        try:
-            for member in crown.members:
-                if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
-                    #if member.voice is not None and member.channel is not crown.afk_channel:
-                    gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
-                    gold = int(gold)+1
-                    await db.execute(f'UPDATE discord_users SET Gold={gold} WHERE id={member.id};')
-        except Exception as ex:
-            sys_channel.send(content=ex)
-        await asyncio.sleep(60)  # 1 minute
 
 
 def subtract_time(time_arg):

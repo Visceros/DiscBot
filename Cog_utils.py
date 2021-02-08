@@ -5,6 +5,31 @@ import asyncio
 import aiohttp
 import io
 import random
+import datetime
+
+
+class Listeners(commands.Cog):
+    def __init__(self, bot: commands.Bot, db):
+        self.bot = bot
+        self.db = db
+
+# --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before, after):
+        db = self.db
+        if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
+            if before.channel is None and after.channel is not None and not after.afk:
+                print('user joined voice channel', member.display_name)
+                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
+                await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0), gold)
+                test = await db.fetchval('SELECT login from LogTable ORDER BY login DESC LIMIT 1')
+                print('added value Login:', test)
+            elif before.channel is not None and after.channel is None:
+                print('user left voice channel', member.display_name)
+                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
+                await db.execute(f'UPDATE LogTable SET logoff={datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)}, Gold={gold} WHERE logoff IS NULL AND user_id={member.id})')
+                test = await db.fetchval('SELECT logoff from LogTable ORDER BY logoff DESC LIMIT 1')
+                print('added value Logoff:', test)
 
 
 class Games(commands.Cog):
@@ -26,7 +51,7 @@ class Games(commands.Cog):
         if 'administrator' in ctx.message.author.guild_permissions:
             is_eligible = True
         if not is_eligible:
-            return await ctx.send(f'```Error! Извините, доступ имеют только пользователи с ролью "{check_role}"```')
+            return await ctx.send(f'```Error! Извините, доступ имеют только администраторы```')
         else:
             # IF all correct we head further
             await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
