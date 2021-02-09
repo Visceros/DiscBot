@@ -61,7 +61,7 @@ async def db_connection():
         login timestamp with time zone,
         logoff timestamp with time zone,              
         gold INT DEFAULT 0,
-        record_id INT PRIMARY KEY NOT NULL,
+        record_id SERIAL PRIMARY KEY NOT NULL,
         CONSTRAINT users_unique FOREIGN KEY (user_id) REFERENCES discord_users (id));''')
         print('connection to users base established.')
     except Exception as e:
