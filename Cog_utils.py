@@ -22,13 +22,13 @@ class Listeners(commands.Cog):
                 #print('user joined voice channel', member.display_name)
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                 await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
-                test = await db.fetchval("SELECT login::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY login DESC LIMIT 1")
+                #test = await db.fetchval("SELECT login::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY login DESC LIMIT 1")
                 #print('added value Login:', test)
             elif before.channel is not None and after.channel is None:
                 #print('user left voice channel', member.display_name)
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                 await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE logoff IS NULL AND user_id={member.id}")
-                test = await db.fetchval("SELECT logoff::timestamptz ::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY logoff DESC LIMIT 1")
+                #test = await db.fetchval("SELECT logoff::timestamptz ::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY logoff DESC LIMIT 1")
                 #print('added value Logoff:', test)
 
 

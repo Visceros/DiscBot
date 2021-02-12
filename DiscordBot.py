@@ -98,7 +98,7 @@ async def initial_db_fill():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
-            sys_channel = discord.utils.get(crown.channels, name='system')
+            sys_channel = discord.utils.get(guild.channels, name='system')
             if not sys_channel:
                 try:
                     admin_roles = [role for role in guild.roles if role.permissions.administrator]
@@ -131,28 +131,27 @@ async def initial_db_fill():
 
 @tasks.loop(minutes=5.0)
 async def auto_rainbowise():
-    for guild in bot.fetch_guilds(limit=150):  # Проверить - нужно ли вообще это условие?
+    for guild in bot.guilds:  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
-            print('Гильдия "Golden Crown" найдена в списке')
+            #print('Гильдия "Golden Crown" найдена в списке')
             break
         else:
             print('Не найден сервер "Golden Crown"')
-    try:
-        role = await discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
-    except Exception as e:
-        print(f'no role for ranbow nick found. See if you have the role with "радужный ник" in its name')
-        print(e.__traceback__)
-    while True:
-        async for color in rgb_colors:
-            clr = random.choice(rgb_colors)
-            try:
-                await role.edit(color=discord.Colour(int(clr, 16)))
-            except Exception as e:
-                print(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
-                await sys_channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
-                print(e.__cause__, e, sep='\n')
-                break
+        try:
+            role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
+        except discord.NotFound:
+            sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
+        except Exception as e:
+            print(e)
+        clr = random.choice(rgb_colors)
+        try:
+            await role.edit(color=discord.Colour(int(clr, 16)))
+            print(f'changed color for {role}')
+        except Exception as e:
+            print(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
+            await sys_channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
+            print(e.__cause__, e, sep='\n')
 
 
 @bot.event
@@ -176,12 +175,12 @@ async def _increment_money(server: discord.Guild):
     try:
         for member in server.members:
             if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
-                if member.voice is not None and member.channel is not server.afk_channel:
+                if member.voice is not None and member.voice.channel is not server.afk_channel:
                     gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
                     gold = int(gold)+1
                     await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
     except Exception as ex:
-        sys_channel.send(content=ex)
+        await sys_channel.send(content=(ex, ex.__traceback__, ex.__cause__, ex.__context__))
 #        await asyncio.sleep(60)  # 1 minute
 
 
@@ -233,10 +232,26 @@ async def add(ctx, member:discord.Member):
 async def show(ctx, member: discord.Member):
     """Shows the info about user/ показываем данные пользователя"""
     data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={member.id};')
-    time_in_clan = subtract_time(data['join_date'])
-    output = f"Пользователь {data['nickname']}\nID:{data['id']}\nСостоит в клане уже {time_in_clan}" \
-             f"\nАктивность за месяц: {data['activity']}\n Общая активность: {data['total_activity']}\n Золото: {data['gold']}"
-    await ctx.send(output)
+    if data is not None:
+        time_in_clan = subtract_time(data['join_date'])
+        activity_records = await db.fetch(f'SELECT login, logoff from LogTable WHERE user_id={member.id} ORDER BY login ASC')
+        activity = datetime.datetime(1,1,1, hour=0, minute=0, second=0)
+        for item in activity_records:
+            if item[1] is None:
+                activity = activity+(datetime.datetime.now(tz=datetime.timezone.utc) - item[0])
+            else:
+                activity = (activity + (item[1] - item[0]))
+        result_activity = activity - datetime.datetime(1,1,1)
+        result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
+        embed = discord.Embed(title='Ваш профиль', colour=discord.Colour(int(random.choice(rgb_colors), 16)))
+        embed.set_image(url=member.avatar_url)
+        embed.add_field(name='Пользователь:', value=f"{data['nickname']}", inline=False)
+        embed.add_field(name='Вы в клане уже:', value=f"{time_in_clan}", inline=False)
+        embed.add_field(name='У вас на счету:', value=f"{data['gold']}", inline=False)
+        embed.add_field(name='Активность:', value=f"{result_activity}", inline=False)
+        await ctx.send(embed=embed)
+    else:
+        ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
 
 
 # ----------------------------------------------------------------------------------------- Протестировать команду ниже.
@@ -293,18 +308,19 @@ async def echo(ctx, msg: str):
 
 
 @bot.command(pass_context=True)
-async def me(ctx): #                             переписать под красивый вид с Embeds.
+async def me(ctx):
     """Command to see your profile / Этой командой можно увидеть ваш профиль"""
     usr = ctx.message.author
-    data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={usr.id};')
-    activity = await db.fetchrow(f'SELECT * FROM LogTable WHERE id={usr.id};')
-    if data is not None:
-        time_in_clan = subtract_time(data['join_date'])
-        output = f" Ваш ID:{data['id']}\n Вы с нами уже {time_in_clan}\n Активность в этом месяце: {data['activity']}\n"\
-                 f"Банковский счёт: {data['gold']}"
-        await ctx.send(output)
-    else:
-        await ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
+    await show(ctx, usr)
+    # data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={usr.id};')
+    # activity = await db.fetchrow(f'SELECT * FROM LogTable WHERE id={usr.id};')
+    # if data is not None:
+    #     time_in_clan = subtract_time(data['join_date'])
+    #     output = f" Ваш ID:{data['id']}\n Вы с нами уже {time_in_clan}\n Активность в этом месяце: {data['activity']}\n"\
+    #              f"Банковский счёт: {data['gold']}"
+    #     await ctx.send(output)
+    # else:
+    #     await ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
 
 
 # Ручная команда для радужного ника
