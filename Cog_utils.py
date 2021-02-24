@@ -31,6 +31,23 @@ class Listeners(commands.Cog):
                 #test = await db.fetchval("SELECT logoff::timestamptz ::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY logoff DESC LIMIT 1")
                 #print('added value Logoff:', test)
 
+    @commands.Cog.listener()
+    async def if_one_in_voice(self, member: discord.Member, before, after):
+        if not member.voice.self_mute:
+            if len(before.channel.members) >=2 and len(after.channel.members) == 1:
+                await asyncio.sleep(60)
+                if len(after.channel.members) <2:
+                    await member.move_to(member.guild.afk_channel)
+                else:
+                    pass
+            else:
+                if len(before.channel.members) ==0 and len(after.channel.members) == 1:
+                    await asyncio.sleep(60)
+                    if len(after.channel.members) < 2:
+                        await member.move_to(member.guild.afk_channel)
+                    else:
+                        pass
+
 
 class Games(commands.Cog):
     def __init__(self, bot):

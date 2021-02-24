@@ -212,11 +212,11 @@ def subtract_time(time_arg):
 async def user(ctx):
     # кратко - "user" - меню-функция для админа - аргументы "add" "del" "show"?? "update"
     # проверить как работает            <<<<<-----------------------------------------------------------работаю сейчас
-#    if ctx.message.author.Permissions(administrator=True):
+    if ctx.message.author.Permissions(administrator=True):
         if ctx.invoked_subcommand is None:
             await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
-#    else:
-#        user.show(ctx, ctx.message.author)
+    else:
+        user.show(ctx, ctx.message.author)
 
 
 @user.command()
@@ -234,21 +234,40 @@ async def show(ctx, member: discord.Member):
     data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={member.id};')
     if data is not None:
         time_in_clan = subtract_time(data['join_date'])
-        activity_records = await db.fetch(f'SELECT login, logoff from LogTable WHERE user_id={member.id} ORDER BY login ASC')
-        activity = datetime.datetime(1,1,1, hour=0, minute=0, second=0)
-        for item in activity_records:
-            if item[1] is None:
-                activity = activity+(datetime.datetime.now(tz=datetime.timezone.utc) - item[0])
-            else:
-                activity = (activity + (item[1] - item[0]))
-        result_activity = activity - datetime.datetime(1,1,1)
-        result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
-        embed = discord.Embed(title='Ваш профиль', colour=discord.Colour(int(random.choice(rgb_colors), 16)))
+        achievments = 0
+        negative_achievements = 0
+        for role in member.roles:
+            if 'ачивка' in role.name.lower():
+                achievments += 1
+                if role.color == discord.Colour(int('ff4f4f', 16)):
+                    negative_achievements += 1
+
+#        activity_records = await db.fetch(f'SELECT login, logoff from LogTable WHERE user_id={member.id} ORDER BY login ASC')
+        seven_days_activity_records = await db.fetch(
+            f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
+        thirty_days_activity_records = await db.fetch(
+            f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
+
+        async def count_result_activity(activity_records_list):
+            activity = datetime.datetime(1,1,1, hour=0, minute=0, second=0)
+            for item in activity_records_list:
+                if item[1] is None:
+                    activity = activity+(datetime.datetime.now(tz=datetime.timezone.utc) - item[0])
+                else:
+                    activity = (activity + (item[1] - item[0]))
+            result_activity = activity - datetime.datetime(1,1,1)
+            result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
+            return result_activity
+
+        embed = discord.Embed(title='Ваш профиль')
         embed.set_image(url=member.avatar_url)
-        embed.add_field(name='Пользователь:', value=f"{data['nickname']}", inline=False)
-        embed.add_field(name='Вы в клане уже:', value=f"{time_in_clan}", inline=False)
-        embed.add_field(name='У вас на счету:', value=f"{data['gold']}", inline=False)
-        embed.add_field(name='Активность:', value=f"{result_activity}", inline=False)
+        #embed.add_field(name='Пользователь:', value=f"17*{data['nickname']}")
+        embed.add_field(name='Пользователь:', value=f"{data['nickname']}", inline=True)
+        embed.add_field(name='Ачивки сервера:', value=f"{achievments}", inline=True)
+        embed.add_field(name='У вас на счету:', value=f"{data['gold']} :coin:", inline=True)
+        embed.add_field(name='Активность за 7 дней:', value=f"{await count_result_activity(seven_days_activity_records)}", inline=True)
+        embed.add_field(name='Активность за 30 дней:', value=f"{await count_result_activity(thirty_days_activity_records)}", inline=True)
+        embed.add_field(name='Вы в клане уже:', value=f"{time_in_clan}", inline=True)
         await ctx.send(embed=embed)
     else:
         ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
@@ -312,15 +331,6 @@ async def me(ctx):
     """Command to see your profile / Этой командой можно увидеть ваш профиль"""
     usr = ctx.message.author
     await show(ctx, usr)
-    # data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={usr.id};')
-    # activity = await db.fetchrow(f'SELECT * FROM LogTable WHERE id={usr.id};')
-    # if data is not None:
-    #     time_in_clan = subtract_time(data['join_date'])
-    #     output = f" Ваш ID:{data['id']}\n Вы с нами уже {time_in_clan}\n Активность в этом месяце: {data['activity']}\n"\
-    #              f"Банковский счёт: {data['gold']}"
-    #     await ctx.send(output)
-    # else:
-    #     await ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
 
 
 # Ручная команда для радужного ника
