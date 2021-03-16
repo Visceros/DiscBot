@@ -32,20 +32,34 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def if_one_in_voice(self, member: discord.Member, before, after):
         db = self.db
-        if not member.voice.self_mute and not member.voice.mute:
+        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain):
+            if not member.voice.self_mute and not member.voice.mute:
+                if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
+                    await asyncio.sleep(180)
+                    if len(after.channel.members) < 2:
+                        await member.move_to(member.guild.afk_channel)
+                        user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                        user_warns += 1
+                        await db.execute(f"UPDATE LogTable SET Warns='{user_warns}' WHERE Id={member.id}")
+                        await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                                     'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                        print('sent warn message to ', member.display_name)
+                    else:
+                        pass
+                elif len(before.channel.members) ==0 and len(after.channel.members) == 1:
+                    await asyncio.sleep(180)
+                    if len(after.channel.members) < 2:
+                        await member.move_to(member.guild.afk_channel)
+                        user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                        user_warns += 1
+                        await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                        await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                                     'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                        print('sent warn message to ', member.display_name)
+                    else:
+                        pass
             if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
-                await asyncio.sleep(180)
-                if len(after.channel.members) < 2:
-                    await member.move_to(member.guild.afk_channel)
-                    user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                    user_warns += 1
-                    await db.execute(f"UPDATE LogTable SET Warns='{user_warns}' WHERE Id={member.id}")
-                    await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                                                 'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                    print('sent warn message to ', member.display_name)
-                else:
-                    pass
-            elif len(before.channel.members) ==0 and len(after.channel.members) == 1:
                 await asyncio.sleep(180)
                 if len(after.channel.members) < 2:
                     await member.move_to(member.guild.afk_channel)
@@ -57,30 +71,18 @@ class Listeners(commands.Cog):
                     print('sent warn message to ', member.display_name)
                 else:
                     pass
-        if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
-            await asyncio.sleep(180)
-            if len(after.channel.members) < 2:
-                await member.move_to(member.guild.afk_channel)
-                user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                user_warns += 1
-                await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
-                await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                print('sent warn message to ', member.display_name)
-            else:
-                pass
-        elif len(before.channel.members) == 0 and len(after.channel.members) == 1:
-            await asyncio.sleep(180)
-            if len(after.channel.members) < 2:
-                await member.move_to(member.guild.afk_channel)
-                user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                user_warns += 1
-                await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
-                await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                print('sent warn message to ', member.display_name)
-            else:
-                pass
+            elif len(before.channel.members) == 0 and len(after.channel.members) == 1:
+                await asyncio.sleep(180)
+                if len(after.channel.members) < 2:
+                    await member.move_to(member.guild.afk_channel)
+                    user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    user_warns += 1
+                    await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                    await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                                 'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                    print('sent warn message to ', member.display_name)
+                else:
+                    pass
 
 
 class Games(commands.Cog):

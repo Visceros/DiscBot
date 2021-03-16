@@ -357,5 +357,21 @@ async def rainbowise(ctx):
                 print(e.args, e.__cause__)
                 pass
 
+@bot.command()
+async def poll(ctx, polltime):
+    start_time = datetime.datetime.now().replace(microsecond=0)
+    msg = ctx.message.reference
+    await ctx.message.delete()
+    msg = ctx.send(f'Стартовал опрос:\n\n{msg}')
+    await msg.add_reaction('👍')
+    await msg.add_reaction('👎')
+    end_time = start_time + datetime.timedelta(hours=polltime)
+    if datetime.datetime.now() > end_time:
+        for reaction in msg.reactions:
+            if reaction == '👍':
+                yes = reaction.count
+            elif reaction == '👎':
+                no = reaction.count
+        await msg.reply(content='Опрос завершён, большинство проголосовало "За"')
 
 bot.run(token, reconnect=True)
