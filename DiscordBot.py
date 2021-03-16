@@ -27,7 +27,7 @@ if token is None:
     exit(1)
 
 prefix = '>'
-des = 'GoldenBot for discord.'
+des = 'GoldenBot for Golden Crown discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 bot = commands.Bot(description=des, command_prefix=prefix)
 
@@ -40,8 +40,7 @@ async def db_connection():
     # db_address = os.getenv('db_address')  # reserved variable for database http address
     try:
         print('connecting to database server...')
-        db = await asyncpg.connect(f'postgresql://{db_user}:{db_pwd}@localhost:5000/{db_name}')
-        #db = await asyncpg.connect(host='localhost', port=5000, user=db_user, password=db_pwd, database=db_name)
+        db = await asyncpg.connect(host='localhost', port=5000, user=db_user, password=db_pwd, database=db_name)
         print('connection successful!')
     except Exception as e:
         print('Could not connect to database:\n', e.args)
@@ -53,8 +52,10 @@ async def db_connection():
             Id BIGINT PRIMARY KEY NOT NULL UNIQUE,
             Nickname varchar(255) NOT NULL UNIQUE,
             Join_date Date,
-            gold INT DEFAULT 0,
-            CONSTRAINT users_unique UNIQUE (id, Nickname));''')
+            Gold INT DEFAULT 0,
+            Warns INT DEFAULT 0,
+            CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
+        print('Table of users created or connection established')
 
         await db.execute('''CREATE TABLE IF NOT EXISTS LogTable (
         user_id BIGINT NOT NULL,
@@ -62,10 +63,11 @@ async def db_connection():
         logoff timestamp with time zone,              
         gold INT DEFAULT 0,
         record_id SERIAL PRIMARY KEY NOT NULL,
-        CONSTRAINT users_unique FOREIGN KEY (user_id) REFERENCES discord_users (id));''')
-        print('connection to users base established.')
+        CONSTRAINT users_unique FOREIGN KEY (User_id) REFERENCES discord_users (Id));''')
+        print('Log Table online')
     except Exception as e:
-        print(e.args, e.__cause__, e.__context__)
+        print('Attempt to create tables database failed')
+        print(e, e.args, e.__cause__, e.__context__)
     return db
 
 
@@ -73,7 +75,6 @@ async def db_connection():
 async def initial_db_read():
     records_in_db = 0
     records_in_db = await db.fetch('SELECT * FROM discord_users')
-    # print('records in db are:\n', records_in_db)   # debug print
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
@@ -81,7 +82,7 @@ async def initial_db_read():
             ids = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i-1};')
             users_idlist.append(ids)
         print(records_count, ' пользователей в базе')
-        print(users_idlist)
+        #print(users_idlist)
         return records_count, users_idlist
     else:
         return 0, []
@@ -93,8 +94,8 @@ async def initial_db_fill():
     """проверяет, все ли пользователи занесены в ДБ, если нет - дозаписывает недостающих"""
     users_count, users_ids = await initial_db_read()
     for guild in bot.guilds:
-        #if 'golden crown' in guild.name.lower():
-        if 'free zone' in guild.name.lower():
+        if 'golden crown' in guild.name.lower():
+        #if 'free zone' in guild.name.lower():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
@@ -120,7 +121,7 @@ async def initial_db_fill():
             if users_count < len(current_members_list):
                 for member in crown.members:
                     if not member.bot and member.id not in users_ids:
-                        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold) VALUES($1, $2, $3, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
+                        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                 print('Данные пользователей в базе обновлены')
             else:
                 pass
@@ -134,7 +135,6 @@ async def auto_rainbowise():
     for guild in bot.guilds:  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
-            #print('Гильдия "Golden Crown" найдена в списке')
             break
         else:
             print('Не найден сервер "Golden Crown"')
@@ -181,17 +181,16 @@ async def _increment_money(server: discord.Guild):
                     await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
     except Exception as ex:
         await sys_channel.send(content=(ex, ex.__traceback__, ex.__cause__, ex.__context__))
-#        await asyncio.sleep(60)  # 1 minute
 
 
 async def accounting():
     """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
     try:
         async for guild in bot.fetch_guilds():
-            # if 'golden crown' in guild.name.lower():
-            #     crown = bot.get_guild(guild.id)
-            if 'free zone' in guild.name.lower():
+            if 'golden crown' in guild.name.lower():
                 crown = bot.get_guild(guild.id)
+            # if 'free zone' in guild.name.lower():
+            #     crown = bot.get_guild(guild.id)
     except Exception as e:
         print(e)
     else:
@@ -210,11 +209,11 @@ def subtract_time(time_arg):
 @bot.group()
 @commands.has_permissions(administrator=True)
 async def user(ctx):
-    # кратко - "user" - меню-функция для админа - аргументы "add" "del" "show"?? "update"
-    # проверить как работает            <<<<<-----------------------------------------------------------работаю сейчас
-    if ctx.message.author.Permissions(administrator=True):
+    """ "user" - меню-функция для админа - аргументы "add" "del" "show" "update" """
+    if ctx.message.author.guild_permissions.administrator:
         if ctx.invoked_subcommand is None:
             await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
+            await ctx.message.delete()
     else:
         user.show(ctx, ctx.message.author)
 
@@ -223,7 +222,8 @@ async def user(ctx):
 @commands.has_permissions(administrator=True)
 async def add(ctx, member:discord.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)"""
-    await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0);', member.id, member.display_name, member.joined_at)
+    await ctx.message.delete()
+    await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
     ctx.send('user added to database')
 
 
@@ -233,22 +233,21 @@ async def show(ctx, member: discord.Member):
     """Shows the info about user/ показываем данные пользователя"""
     data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={member.id};')
     if data is not None:
-        time_in_clan = subtract_time(data['join_date'])
         achievments = 0
         negative_achievements = 0
+        warns = int(data['Warns'])
         for role in member.roles:
             if 'ачивка' in role.name.lower():
                 achievments += 1
                 if role.color == discord.Colour(int('ff4f4f', 16)):
                     negative_achievements += 1
 
-#        activity_records = await db.fetch(f'SELECT login, logoff from LogTable WHERE user_id={member.id} ORDER BY login ASC')
         seven_days_activity_records = await db.fetch(
             f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
         thirty_days_activity_records = await db.fetch(
             f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
 
-        async def count_result_activity(activity_records_list):
+        async def count_result_activity(activity_records_list, warns:int):
             activity = datetime.datetime(1,1,1, hour=0, minute=0, second=0)
             for item in activity_records_list:
                 if item[1] is None:
@@ -256,21 +255,25 @@ async def show(ctx, member: discord.Member):
                 else:
                     activity = (activity + (item[1] - item[0]))
             result_activity = activity - datetime.datetime(1,1,1)
+            if warns > 0:
+                result_activity = result_activity - datetime.timedelta(minutes=(10*warns))
             result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
             return result_activity
 
-        embed = discord.Embed(title='Ваш профиль')
-        embed.set_image(url=member.avatar_url)
-        #embed.add_field(name='Пользователь:', value=f"17*{data['nickname']}")
-        embed.add_field(name='Пользователь:', value=f"{data['nickname']}", inline=True)
-        embed.add_field(name='Ачивки сервера:', value=f"{achievments}", inline=True)
-        embed.add_field(name='У вас на счету:', value=f"{data['gold']} :coin:", inline=True)
-        embed.add_field(name='Активность за 7 дней:', value=f"{await count_result_activity(seven_days_activity_records)}", inline=True)
-        embed.add_field(name='Активность за 30 дней:', value=f"{await count_result_activity(thirty_days_activity_records)}", inline=True)
-        embed.add_field(name='Вы в клане уже:', value=f"{time_in_clan}", inline=True)
+        part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
+        part_2 = f"\nВсего ачивок: `{achievments}`\nНегативных: `{negative_achievements}`"
+        part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}`\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}`"
+        part_4 = f"\nДата присоединения к серверу: `{data['join_date'].date()}`\nID пользователя: `{member.id}`"
+        embed = discord.Embed(color='#efff00')
+        #embed.add_field(name='', value=f"17*{data['symbol']}")
+        embed.add_field(name='Пользователь:', value=part_1, inline=False)
+        embed.add_field(name='Ачивки:', value=part_2, inline=False)
+        embed.add_field(name='Активность:', value=part_3, inline=False)
+        embed.add_field(name='Прочее:', value=part_4, inline=False)
         await ctx.send(embed=embed)
     else:
         ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
+    await ctx.message.delete()
 
 
 # ----------------------------------------------------------------------------------------- Протестировать команду ниже.
@@ -278,6 +281,8 @@ async def show(ctx, member: discord.Member):
 @user.command()
 async def give(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
+    author = ctx.message.author
+    await ctx.message.delete()
     gold = abs(gold)
     if 'administrator' in ctx.message.author.guild_permissions:
         """Give user some gold / Даём пользователю деньги"""
@@ -285,7 +290,6 @@ async def give(ctx, member: discord.Member, gold):
         newgold = int(gold_was) + int(gold)
         await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
     else:
-        author = ctx.message.author
         user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
         if int(gold) > int(user_gold):
             ctx.channel.send('У вас нет столько денег.')
@@ -302,6 +306,7 @@ async def give(ctx, member: discord.Member, gold):
 @commands.has_permissions(administrator=True)
 async def de(ctx, member: discord.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
+    await ctx.message.delete()
     gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
     newgold = int(gold_was) - int(gold)
     if newgold < 0:
@@ -313,8 +318,9 @@ async def de(ctx, member: discord.Member, gold):
 @commands.has_permissions(administrator=True)
 async def clear(ctx, member: discord.Member):
     """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
+    await ctx.message.delete()
     await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-    await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0);', member.id, member.display_name, member.joined_at)
+    await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
@@ -336,6 +342,7 @@ async def me(ctx):
 # Ручная команда для радужного ника
 @bot.command(pass_context=True)
 async def rainbowise(ctx):
+    await ctx.message.delete()
     name = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), ctx.guild.roles)
     role = discord.utils.get(ctx.guild.roles, name=str(name))
     await ctx.send(f'starting rainbow for {role}')

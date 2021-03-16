@@ -19,34 +19,68 @@ class Listeners(commands.Cog):
         db = self.db
         if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
             if before.channel is None and after.channel is not None and not after.afk:
-                #print('user joined voice channel', member.display_name)
-                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE Id={member.id}')
                 await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
                 #test = await db.fetchval("SELECT login::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY login DESC LIMIT 1")
                 #print('added value Login:', test)
             elif before.channel is not None and after.channel is None:
-                #print('user left voice channel', member.display_name)
-                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE logoff IS NULL AND user_id={member.id}")
+                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
+                await db.execute(f"UPDATE LogTable SET Logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, Gold={gold} WHERE Logoff IS NULL AND User_id={member.id}")
                 #test = await db.fetchval("SELECT logoff::timestamptz ::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY logoff DESC LIMIT 1")
                 #print('added value Logoff:', test)
 
     @commands.Cog.listener()
     async def if_one_in_voice(self, member: discord.Member, before, after):
-        if not member.voice.self_mute:
-            if len(before.channel.members) >=2 and len(after.channel.members) == 1:
-                await asyncio.sleep(60)
-                if len(after.channel.members) <2:
+        db = self.db
+        if not member.voice.self_mute and not member.voice.mute:
+            if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
+                await asyncio.sleep(180)
+                if len(after.channel.members) < 2:
                     await member.move_to(member.guild.afk_channel)
+                    user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    user_warns += 1
+                    await db.execute(f"UPDATE LogTable SET Warns='{user_warns}' WHERE Id={member.id}")
+                    await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                                 'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                    print('sent warn message to ', member.display_name)
                 else:
                     pass
+            elif len(before.channel.members) ==0 and len(after.channel.members) == 1:
+                await asyncio.sleep(180)
+                if len(after.channel.members) < 2:
+                    await member.move_to(member.guild.afk_channel)
+                    user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    user_warns += 1
+                    await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                    await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                                 'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                    print('sent warn message to ', member.display_name)
+                else:
+                    pass
+        if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
+            await asyncio.sleep(180)
+            if len(after.channel.members) < 2:
+                await member.move_to(member.guild.afk_channel)
+                user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                user_warns += 1
+                await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                print('sent warn message to ', member.display_name)
             else:
-                if len(before.channel.members) ==0 and len(after.channel.members) == 1:
-                    await asyncio.sleep(60)
-                    if len(after.channel.members) < 2:
-                        await member.move_to(member.guild.afk_channel)
-                    else:
-                        pass
+                pass
+        elif len(before.channel.members) == 0 and len(after.channel.members) == 1:
+            await asyncio.sleep(180)
+            if len(after.channel.members) < 2:
+                await member.move_to(member.guild.afk_channel)
+                user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                user_warns += 1
+                await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                print('sent warn message to ', member.display_name)
+            else:
+                pass
 
 
 class Games(commands.Cog):
@@ -54,11 +88,12 @@ class Games(commands.Cog):
         self.bot = bot
 
     # ------------- ИГРА СУНДУЧКИ -----------
-    @commands.command(pass_context=True)
+    @commands.command()
     async def chest(self, ctx):
         reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
         author = ctx.message.author
         channel = ctx.message.channel
+        await ctx.message.delete()
         # Check if it's the right channel to write to and if user have relevant role
         if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
             pass
@@ -73,7 +108,7 @@ class Games(commands.Cog):
             # IF all correct we head further
             await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
                            'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-            # Начало вставки картинки с простыми сундуками
+            # begin pasting the picture with usual chests
             async with aiohttp.ClientSession() as session:
                 async with session.get(
                         'https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
@@ -82,7 +117,7 @@ class Games(commands.Cog):
                     data = io.BytesIO(await resp.read())
                     start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
                     await session.close()
-            # Конец вставки картинки с простыми сундуками
+            # end of pasting the picture with usual chests
             for react in reactions:
                 await start_message.add_reaction(react)
 
@@ -108,7 +143,7 @@ class Games(commands.Cog):
                 if 'золотой ключ' in reward.lower():
                     await ctx.send(
                         '```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
-                    # Начало вставки картинки с золотыми сундуками
+                    # Begin pasting the picture with Gold chests
                     async with aiohttp.ClientSession() as session:
                         async with session.get(
                                 'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
@@ -117,7 +152,7 @@ class Games(commands.Cog):
                             data = io.BytesIO(await resp.read())
                             start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
                             await session.close()
-                    # Конец вставки картинки с золотыми сундуками
+                    # End of pasting the picture with Gold chests
                     for react in reactions[0:3]:
                         await start_message.add_reaction(react)
                     try:
@@ -140,18 +175,21 @@ class Games(commands.Cog):
     # ------------- ИГРА БИНГО -----------
     @commands.command(pass_context=True)
     async def fortuna(self, ctx):
+        await ctx.message.delete()
         bingo_numbers = ['🟦1️⃣', '🟦2️⃣', '🟦3️⃣', '🟦4️⃣', '🟦5️⃣', '🟦6️⃣', '🟦7️⃣', '🟦8️⃣', '🟦9️⃣', '1️⃣0️⃣',
                          '1️⃣1️⃣', '1️⃣2️⃣',
                          '1️⃣3️⃣', '1️⃣4️⃣', '1️⃣5️⃣', '1️⃣6️⃣', '1️⃣7️⃣', '1️⃣8️⃣', '1️⃣9️⃣', '2️⃣0️⃣', '2️⃣1️⃣',
                          '2️⃣2️⃣', '2️⃣3️⃣', '2️⃣4️⃣', '2️⃣5️⃣', '2️⃣6️⃣']
+        edit_msg = await ctx.send(random.choice(bingo_numbers))
         for i in range(3):
-            ctx.send(random.choice(bingo_numbers))
+            await edit_msg.edit(content=random.choice(bingo_numbers))
             await asyncio.sleep(0.2)
 
     # ------------- КОНЕЦ ИГРЫ БИНГО -----------
 
     @commands.command(pass_context=True)
     async def bingo(self, ctx):
+        await ctx.message.delete()
         prize = 0
 
         def makenums():
