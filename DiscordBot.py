@@ -357,21 +357,28 @@ async def rainbowise(ctx):
                 print(e.args, e.__cause__)
                 pass
 
+
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def poll(ctx, polltime):
     start_time = datetime.datetime.now().replace(microsecond=0)
     msg = ctx.message.reference
     await ctx.message.delete()
-    msg = ctx.send(f'Стартовал опрос:\n\n{msg}')
+    msg = await ctx.send(f'Стартовал опрос:\n\n{msg}')
     await msg.add_reaction('👍')
     await msg.add_reaction('👎')
-    end_time = start_time + datetime.timedelta(hours=polltime)
-    if datetime.datetime.now() > end_time:
-        for reaction in msg.reactions:
-            if reaction == '👍':
-                yes = reaction.count
-            elif reaction == '👎':
-                no = reaction.count
+    end_time = start_time + datetime.timedelta(minutes=polltime)
+    await asyncio.sleep(polltime)
+    for reaction in msg.reactions:
+        if reaction == '👍':
+            yes = reaction.count
+        elif reaction == '👎':
+            no = reaction.count
+        elif '👍' not in msg.reactions or '👎' not in msg.reactions:
+            await sys_channel.send(f'{ctx.guild.owner.mention} Опрос на сообщении {msg} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+    if yes > no:
         await msg.reply(content='Опрос завершён, большинство проголосовало "За"')
+    elif no > yes:
+        await msg.reply(content='Опрос завершён, большинство проголосовало "Против"')
 
 bot.run(token, reconnect=True)
