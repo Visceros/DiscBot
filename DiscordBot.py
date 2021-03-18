@@ -361,6 +361,9 @@ async def rainbowise(ctx):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def poll(ctx, polltime):
+    """resends the replied message and adds 👍 and 👎 emoji reactions to it - making it look like a poll
+    and after provided number of minutes counts the result and sends a message about it mentioning you
+    """
     start_time = datetime.datetime.now().replace(microsecond=0)
     msg = ctx.message.reference
     await ctx.message.delete()
@@ -375,10 +378,11 @@ async def poll(ctx, polltime):
         elif reaction == '👎':
             no = reaction.count
         elif '👍' not in msg.reactions or '👎' not in msg.reactions:
-            await sys_channel.send(f'{ctx.guild.owner.mention} Опрос на сообщении {msg} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+            await sys_channel.send(f'{ctx.message.author.mention} Опрос на сообщении {msg} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
     if yes > no:
-        await msg.reply(content='Опрос завершён, большинство проголосовало "За"')
+        await msg.reply(content=f'{ctx.message.author.mention} Опрос завершён, большинство проголосовало "За"')
     elif no > yes:
-        await msg.reply(content='Опрос завершён, большинство проголосовало "Против"')
+        await msg.reply(content=f'{ctx.message.author.mention} Опрос завершён, большинство проголосовало "Против"')
+
 
 bot.run(token, reconnect=True)
