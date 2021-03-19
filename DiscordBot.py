@@ -41,12 +41,12 @@ async def db_connection():
     try:
         print('connecting to database server...')
         db = await asyncpg.connect(host='localhost', port=5000, user=db_user, password=db_pwd, database=db_name)
-        print('connection successful!')
     except Exception as e:
         print('Could not connect to database:\n', e.args)
         print(e)
         print('exiting...')
         exit(1)
+    print('connection successful!')
     try:
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (
             Id BIGINT PRIMARY KEY NOT NULL UNIQUE,
@@ -66,7 +66,7 @@ async def db_connection():
         CONSTRAINT users_unique FOREIGN KEY (User_id) REFERENCES discord_users (Id));''')
         print('Log Table online')
     except Exception as e:
-        print('Attempt to create tables database failed')
+        print('Attempt to create database tables failed')
         print(e, e.args, e.__cause__, e.__context__)
     return db
 
@@ -121,12 +121,12 @@ async def initial_db_fill():
             if users_count < len(current_members_list):
                 for member in crown.members:
                     if not member.bot and member.id not in users_ids:
-                        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
+                        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                 print('Данные пользователей в базе обновлены')
             else:
                 pass
     print('database fill cycle ended')
-    test = await db.fetchval('SELECT login from LogTable ORDER BY ID LIMIT 1')
+    test = await db.fetchval('SELECT login from LogTable ORDER BY user_id LIMIT 1')
     print(test)
 
 
@@ -176,11 +176,12 @@ async def _increment_money(server: discord.Guild):
         for member in server.members:
             if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
                 if member.voice is not None and member.voice.channel is not server.afk_channel:
-                    gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
+                    gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
                     gold = int(gold)+1
                     await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
     except Exception as ex:
-        await sys_channel.send(content=(ex, ex.__traceback__, ex.__cause__, ex.__context__))
+        await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
+        await sys_channel.send(content=(ex, ex.__cause__, ex.__context__))
 
 
 async def accounting():
@@ -360,29 +361,40 @@ async def rainbowise(ctx):
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def poll(ctx, polltime):
+async def poll(ctx, polltime=60):
     """resends the replied message and adds 👍 and 👎 emoji reactions to it - making it look like a poll
     and after provided number of minutes counts the result and sends a message about it mentioning you
     """
     start_time = datetime.datetime.now().replace(microsecond=0)
-    msg = ctx.message.reference
+    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
     await ctx.message.delete()
-    msg = await ctx.send(f'Стартовал опрос:\n\n{msg}')
-    await msg.add_reaction('👍')
-    await msg.add_reaction('👎')
+    poll_msg = await ctx.send(f'Стартовал опрос:\n\n{msg.content}')
+    await poll_msg.add_reaction('👍')
+    await poll_msg.add_reaction('👎')
     end_time = start_time + datetime.timedelta(minutes=polltime)
-    await asyncio.sleep(polltime)
-    for reaction in msg.reactions:
-        if reaction == '👍':
+    # while True:
+    #     if datetime.datetime.now() > end_time:
+    #         break
+    #     else:
+    #         await asyncio.sleep(5)
+    await asyncio.sleep(8)
+    print(poll_msg.reactions)
+    for reaction in poll_msg.reactions:
+        if reaction.emoji == '👍':
             yes = reaction.count
-        elif reaction == '👎':
+            print('yes count = ', yes)
+        elif reaction.emoji == '👎':
             no = reaction.count
-        elif '👍' not in msg.reactions or '👎' not in msg.reactions:
-            await sys_channel.send(f'{ctx.message.author.mention} Опрос на сообщении {msg} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+            print('no count = ', no)
+        elif not yes or not no:
+            await sys_channel.send(f'{ctx.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+        else:
+            pass
     if yes > no:
-        await msg.reply(content=f'{ctx.message.author.mention} Опрос завершён, большинство проголосовало "За"')
+        await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "За"')
     elif no > yes:
-        await msg.reply(content=f'{ctx.message.author.mention} Опрос завершён, большинство проголосовало "Против"')
-
+        await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+    elif yes == no:
+        await poll_msg.reply(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
 
 bot.run(token, reconnect=True)
