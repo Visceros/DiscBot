@@ -163,7 +163,7 @@ async def on_ready():
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot))
-    bot.add_cog(Listeners(bot, db=db))
+    bot.add_cog(Listeners(bot, db=db, sys_channel=sys_channel))
 #    bot.add_cog(Utils(bot))
 
 

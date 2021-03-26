@@ -9,9 +9,10 @@ import datetime
 
 
 class Listeners(commands.Cog):
-    def __init__(self, bot: commands.Bot, db):
+    def __init__(self, bot: commands.Bot, db, sys_channel):
         self.bot = bot
         self.db = db
+        self.sys_channel = sys_channel
 
 # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
@@ -32,12 +33,13 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def if_one_in_voice(self, member: discord.Member, before, after):
         db = self.db
+        sys_channel = self.sys_channel
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain):
             if not member.voice.self_mute and not member.voice.mute:
                 if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
                     await asyncio.sleep(180)
-                    if len(after.channel.members) < 2:
+                    if len(after.channel.members) == 1 and after.channel.members[0] == member:
                         await member.move_to(member.guild.afk_channel)
                         user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
                         user_warns += 1
@@ -45,42 +47,47 @@ class Listeners(commands.Cog):
                         await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
                                                      'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
                         print('sent warn message to ', member.display_name)
+                        await sys_channel.send(
+                            f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности')
                     else:
                         pass
-                elif len(before.channel.members) ==0 and len(after.channel.members) == 1:
+                elif len(before.channel.members) == 0 and len(after.channel.members) == 1:
                     await asyncio.sleep(180)
-                    if len(after.channel.members) < 2:
+                    if len(after.channel.members) == 1 and after.channel.members[0] == member:
                         await member.move_to(member.guild.afk_channel)
                         user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
                         user_warns += 1
                         await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
                         await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
                                                      'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                        print('sent warn message to ', member.display_name)
+                        await sys_channel.send(
+                            f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности')
                     else:
                         pass
             if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
                 await asyncio.sleep(180)
-                if len(after.channel.members) < 2:
+                if len(after.channel.members) == 1 and after.channel.members[0] == member:
                     await member.move_to(member.guild.afk_channel)
-                    user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                    user_warns += 1
-                    await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
-                    await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                                                 'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                    print('sent warn message to ', member.display_name)
+                    #user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    #user_warns += 1
+                    #await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                    #await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                    #                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                    #await sys_channel.send(
+                    #    f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности')
                 else:
                     pass
             elif len(before.channel.members) == 0 and len(after.channel.members) == 1:
                 await asyncio.sleep(180)
-                if len(after.channel.members) < 2:
+                if len(after.channel.members) == 1 and after.channel.members[0] == member:
                     await member.move_to(member.guild.afk_channel)
-                    user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                    user_warns += 1
-                    await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
-                    await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                                                 'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                    print('sent warn message to ', member.display_name)
+                    #user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    #user_warns += 1
+                    #await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                    #await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                    #                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                    #await sys_channel.send(
+                    #    f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности')
                 else:
                     pass
 
