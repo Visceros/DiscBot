@@ -372,29 +372,34 @@ async def poll(ctx, polltime=60):
     await poll_msg.add_reaction('👍')
     await poll_msg.add_reaction('👎')
     end_time = start_time + datetime.timedelta(minutes=polltime)
-    # while True:
-    #     if datetime.datetime.now() > end_time:
-    #         break
-    #     else:
-    #         await asyncio.sleep(5)
-    await asyncio.sleep(8)
+    while True:
+        if datetime.datetime.now() > end_time:
+            break
+        else:
+            await asyncio.sleep(5)
+    poll_msg = await ctx.channel.fetch_message(poll_msg.id)
     print(poll_msg.reactions)
+    #yes = 0
+    #no = 0
     for reaction in poll_msg.reactions:
-        if reaction.emoji == '👍':
+        if str(reaction.emoji) == '👍':
             yes = reaction.count
             print('yes count = ', yes)
-        elif reaction.emoji == '👎':
+        elif str(reaction.emoji) == '👎':
             no = reaction.count
             print('no count = ', no)
-        elif not yes or not no:
+        elif not yes or not no or yes==0 or no==0:
             await sys_channel.send(f'{ctx.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
         else:
             pass
     if yes > no:
         await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "За"')
+        await sys_channel.send(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "За"')
     elif no > yes:
         await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+        await sys_channel.send(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
     elif yes == no:
         await poll_msg.reply(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
+        await sys_channel.send(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
 
 bot.run(token, reconnect=True)
