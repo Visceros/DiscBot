@@ -32,7 +32,7 @@ intents.members = True
 intents.presences = True
 des = 'GoldenBot for Golden Crown discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
-bot = commands.Bot(description=des, command_prefix=prefix)
+bot = commands.Bot(description=des, command_prefix=prefix, intents=intents)
 
 
 async def db_connection():
@@ -78,7 +78,7 @@ async def db_connection():
 async def initial_db_read():
     records_in_db = 0
     records_in_db = await db.fetch('SELECT * FROM discord_users;')
-    print('records in db: ', records_in_db)
+    #print('records in db: ', records_in_db)
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
@@ -103,7 +103,6 @@ async def initial_db_fill():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
-            print(crown.members)
             for member in crown.members:
                 if not member.bot:
                     current_members_list.append(member.id)
@@ -166,8 +165,9 @@ async def on_ready():
     await db_connection()
     print('initial database fill starting...')
     initial_db_fill.start()
-    await asyncio.sleep(0.5)
+    await asyncio.sleep(1)
     auto_rainbowise.start()
+    await asyncio.sleep(1)
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot))
