@@ -27,6 +27,9 @@ if token is None:
     exit(1)
 
 prefix = '>'
+intents = discord.Intents.default()
+intents.members = True
+intents.presences = True
 des = 'GoldenBot for Golden Crown discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 bot = commands.Bot(description=des, command_prefix=prefix)
@@ -74,7 +77,8 @@ async def db_connection():
 # считываем количество записей в базе данных  - обновлена логика. получаем не только кол-во записей, но и айдишники! ПРОВЕРИТЬ!
 async def initial_db_read():
     records_in_db = 0
-    records_in_db = await db.fetch('SELECT * FROM discord_users')
+    records_in_db = await db.fetch('SELECT * FROM discord_users;')
+    print('records in db: ', records_in_db)
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
@@ -94,27 +98,12 @@ async def initial_db_fill():
     """проверяет, все ли пользователи занесены в ДБ, если нет - дозаписывает недостающих"""
     users_count, users_ids = await initial_db_read()
     for guild in bot.guilds:
-        if 'golden crown' in guild.name.lower():
         #if 'free zone' in guild.name.lower():
+        if 'golden crown' in guild.name.lower():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
-            sys_channel = discord.utils.get(guild.channels, name='system')
-            if not sys_channel:
-                try:
-                    admin_roles = [role for role in guild.roles if role.permissions.administrator]
-                    sys_channel_overwrites = {}
-                    for role in admin_roles:
-                        sys_channel_overwrites[role] = discord.PermissionOverwrite(read_messages=True, send_messages=False)
-                    sys_channel_overwrites[guild.default_role] = discord.PermissionOverwrite(read_messages=False,
-                                                                                             send_messages=False,
-                                                                                             view_channel=False)
-                    sys_channel = await crown.create_text_channel('system', overwrites=sys_channel_overwrites,
-                                                                  reason='creating a channel for system messages')
-                except discord.Forbidden:
-                    print(f'No permissions to create system channel in {guild} server')
-                except Exception as ex:
-                    print(ex)
+            print(crown.members)
             for member in crown.members:
                 if not member.bot:
                     current_members_list.append(member.id)
@@ -123,10 +112,28 @@ async def initial_db_fill():
                     if not member.bot and member.id not in users_ids:
                         await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
                 print('Данные пользователей в базе обновлены')
+        sys_channel = discord.utils.get(guild.channels, name='system')
+        if not sys_channel:
+            print('creating system channel')
+            try:
+                admin_roles = [role for role in guild.roles if role.permissions.administrator]
+                sys_channel_overwrites = {}
+                for role in admin_roles:
+                    sys_channel_overwrites[role] = discord.PermissionOverwrite(read_messages=True, send_messages=False)
+                sys_channel_overwrites[guild.default_role] = discord.PermissionOverwrite(read_messages=False,
+                                                                                         send_messages=False,
+                                                                                         view_channel=False)
+                sys_channel = await crown.create_text_channel('system', overwrites=sys_channel_overwrites,
+                                                              reason='creating a channel for system messages')
+            except discord.Forbidden:
+                print(f'No permissions to create system channel in {guild} server')
+            except Exception as ex:
+                print(ex)
             else:
+                print('system channel found')
                 pass
     print('database fill cycle ended')
-    test = await db.fetchval('SELECT login from LogTable ORDER BY user_id LIMIT 1')
+    test = await db.fetchval('SELECT login from LogTable ORDER BY user_id LIMIT 1;')
     print(test)
 
 
@@ -159,6 +166,7 @@ async def on_ready():
     await db_connection()
     print('initial database fill starting...')
     initial_db_fill.start()
+    await asyncio.sleep(0.5)
     auto_rainbowise.start()
     await accounting()
     print('I\'m ready to serve.')
