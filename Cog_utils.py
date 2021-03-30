@@ -14,28 +14,12 @@ class Listeners(commands.Cog):
         self.db = db
         self.sys_channel = sys_channel
 
-# --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
-    @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before, after):
-        db = self.db
-        if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
-            if before.channel is None and after.channel is not None and not after.afk:
-                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE Id={member.id}')
-                await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
-                #test = await db.fetchval("SELECT login::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY login DESC LIMIT 1")
-                #print('added value Login:', test)
-            elif before.channel is not None and after.channel is None:
-                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
-                await db.execute(f"UPDATE LogTable SET Logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, Gold={gold} WHERE Logoff IS NULL AND User_id={member.id}")
-                #test = await db.fetchval("SELECT logoff::timestamptz ::timestamp AT TIME ZONE 'GMT' from LogTable ORDER BY logoff DESC LIMIT 1")
-                #print('added value Logoff:', test)
-
-    @commands.Cog.listener()
     async def if_one_in_voice(self, member: discord.Member, before, after):
+        """Проверяем, остался ли пользователь один в канале, если один - перекидываем в АФК-комнату"""
         db = self.db
         sys_channel = self.sys_channel
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-        if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain):
+        if any(item in before.channel.category.name.lower() for item in channel_groups_to_account_contain):
             if not member.voice.self_mute and not member.voice.mute:
                 if len(before.channel.members) >= 2 and len(after.channel.members) == 1:
                     await asyncio.sleep(180)
@@ -68,12 +52,12 @@ class Listeners(commands.Cog):
                 await asyncio.sleep(180)
                 if len(after.channel.members) == 1 and after.channel.members[0] == member:
                     await member.move_to(member.guild.afk_channel)
-                    #user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                    #user_warns += 1
-                    #await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
-                    #await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                    # user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    # user_warns += 1
+                    # await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                    # await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
                     #                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                    #await sys_channel.send(
+                    # await sys_channel.send(
                     #    f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности')
                 else:
                     pass
@@ -81,15 +65,31 @@ class Listeners(commands.Cog):
                 await asyncio.sleep(180)
                 if len(after.channel.members) == 1 and after.channel.members[0] == member:
                     await member.move_to(member.guild.afk_channel)
-                    #user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                    #user_warns += 1
-                    #await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
-                    #await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
+                    # user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                    # user_warns += 1
+                    # await db.execute(f"UPDATE LogTable SET Warns='{user_warns}'")
+                    # await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
                     #                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                    #await sys_channel.send(
+                    # await sys_channel.send(
                     #    f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности')
                 else:
                     pass
+
+# --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
+    @commands.Cog.listener()
+    async def on_voice_state_update(self, member: discord.Member, before, after):
+        db = self.db
+        if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
+            if before.channel is None and after.channel is not None and not after.afk:
+                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE Id={member.id}')
+                await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
+
+            elif before.channel is not None and after.channel is None:
+                gold = await db.fetchval(f'SELECT Gold from discord_users WHERE id={member.id}')
+                await db.execute(f"UPDATE LogTable SET Logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, Gold={gold} WHERE Logoff IS NULL AND User_id={member.id}")
+
+        await self.if_one_in_voice(member=member, before=before, after=after)
+
 
 
 class Games(commands.Cog):
