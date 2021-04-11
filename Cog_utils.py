@@ -28,7 +28,7 @@ class Listeners(commands.Cog):
                     print(member.display_name, 'is alone in room', before.channel.name, 'voice self mute:',
                           member.voice.self_mute)
                     await asyncio.sleep(180)
-                    if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute:
+                    if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                         await member.move_to(member.guild.afk_channel)
                         user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
                         user_warns += 1
@@ -56,7 +56,7 @@ class Listeners(commands.Cog):
         elif after.channel is not None:
             if any(item in member.voice.channel.category.name.lower() for item in
                        channel_groups_to_account_contain):
-                if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute:
+                if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                     print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
                     await asyncio.sleep(180)
                     if len(after.channel.members) == 1 and after.channel.members[0] == member:
@@ -85,24 +85,27 @@ class Listeners(commands.Cog):
                     muted_member_count = 0
                     unmuted_member_count = 0
                     for member in member.voice.channel.members:
-                        if member.voice.self_mute:
-                            muted_member_count+=1
-                        else:
-                            unmuted_member_count+=1
-                            unmuted_member_id = member.id
+                        if not member.bot:
+                            if member.voice.self_mute:
+                                muted_member_count+=1
+                            else:
+                                unmuted_member_count+=1
+                                unmuted_member_id = member.id
                     if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
                         await asyncio.sleep(60)
-                        muted_member_count = 0
-                        unmuted_member_count = 0
-                        for member in member.voice.channel.members:
-                            if member.voice.self_mute:
-                                muted_member_count += 1
-                            else:
-                                unmuted_member_count += 1
-                                new_unmuted_member_id = member.id
-                        if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
-                            await messaging_channel.send('{} у вас у единственного в комнате включен микрофон, '
-                                                         'пожалуйста выключите микрофон для более корректного начисления активности'.format(discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
+                        if member.voice.channel:
+                            muted_member_count = 0
+                            unmuted_member_count = 0
+                            for member in member.voice.channel.members:
+                                if not member.bot:
+                                    if member.voice.self_mute:
+                                        muted_member_count += 1
+                                    else:
+                                        unmuted_member_count += 1
+                                        new_unmuted_member_id = member.id
+                            if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
+                                await messaging_channel.send('{} у вас у единственного в комнате включен микрофон, '
+                                                             'пожалуйста выключите микрофон для более корректного начисления активности.'.format(discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
         else:
             pass
 
