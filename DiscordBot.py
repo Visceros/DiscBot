@@ -9,6 +9,7 @@ import os
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
 import datetime
+from operator import itemgetter
 import logging
 
 # ------- LOGGER FOR DEBUG PURPOSES
@@ -26,7 +27,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '>'
+prefix = '!'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -40,10 +41,10 @@ async def db_connection():
     db_user = os.getenv('db_user')
     db_pwd = os.getenv('db_pwd')
     db_name = os.getenv('db_name')
-    # db_address = os.getenv('db_address')  # reserved variable for database http address
+    db_address = os.getenv('db_address')  # reserved variable for database http address
     try:
         print('connecting to database server...')
-        db = await asyncpg.connect(host='localhost', port=5000, user=db_user, password=db_pwd, database=db_name)
+        db = await asyncpg.connect(host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
     except Exception as e:
         print('Could not connect to database:\n', e.args)
         print(e)
@@ -232,9 +233,27 @@ async def user(ctx):
 async def add(ctx, member:discord.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)"""
     await ctx.message.delete()
-    await db.execute('INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
-    ctx.send('user added to database')
+    try:
+        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+        await ctx.send('user added to database')
+    except asyncpg.exceptions.UniqueViolationError:
+        await ctx.send('user is already added')
 
+
+async def count_result_activity(activity_records_list, warns: int):
+    activity = datetime.datetime(1, 1, 1, hour=0, minute=0, second=0)
+    for item in activity_records_list:
+        if item[1] is None:
+            activity = activity + (datetime.datetime.now(tz=datetime.timezone.utc) - item[0])
+        else:
+            activity = (activity + (item[1] - item[0]))
+    result_activity = activity - datetime.datetime(1, 1, 1)
+    if warns > 0:
+        result_activity = result_activity - datetime.timedelta(minutes=(10 * warns))
+    result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
+    #result_hours = result_activity.days*24+result_activity.hour
+    result_hours = int(result_activity.total_seconds())/3600
+    return round(result_hours, 1)
 
 @user.command()
 @commands.has_permissions(administrator=True)
@@ -244,7 +263,7 @@ async def show(ctx, member: discord.Member):
     if data is not None:
         achievments = 0
         negative_achievements = 0
-        warns = int(data['Warns'])
+        warns = int(data['warns'])
         for role in member.roles:
             if 'ачивка' in role.name.lower():
                 achievments += 1
@@ -256,24 +275,11 @@ async def show(ctx, member: discord.Member):
         thirty_days_activity_records = await db.fetch(
             f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
 
-        async def count_result_activity(activity_records_list, warns:int):
-            activity = datetime.datetime(1,1,1, hour=0, minute=0, second=0)
-            for item in activity_records_list:
-                if item[1] is None:
-                    activity = activity+(datetime.datetime.now(tz=datetime.timezone.utc) - item[0])
-                else:
-                    activity = (activity + (item[1] - item[0]))
-            result_activity = activity - datetime.datetime(1,1,1)
-            if warns > 0:
-                result_activity = result_activity - datetime.timedelta(minutes=(10*warns))
-            result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
-            return result_activity
-
         part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
         part_2 = f"\nВсего ачивок: `{achievments}`\nНегативных: `{negative_achievements}`"
-        part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}`\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}`"
-        part_4 = f"\nДата присоединения к серверу: `{data['join_date'].date()}`\nID пользователя: `{member.id}`"
-        embed = discord.Embed(color='#efff00')
+        part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+        part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
+        embed = discord.Embed(color=discord.Colour(int('efff00',16)))
         #embed.add_field(name='', value=f"17*{data['symbol']}")
         embed.add_field(name='Пользователь:', value=part_1, inline=False)
         embed.add_field(name='Ачивки:', value=part_2, inline=False)
@@ -282,13 +288,13 @@ async def show(ctx, member: discord.Member):
         await ctx.send(embed=embed)
     else:
         ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
-    await ctx.message.delete()
+
 
 
 # ----------------------------------------------------------------------------------------- Протестировать команду ниже.
 # @commands.has_permissions(administrator=True)
 @user.command()
-async def give(ctx, member: discord.Member, gold):
+async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
     await ctx.message.delete()
@@ -313,7 +319,7 @@ async def give(ctx, member: discord.Member, gold):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def de(ctx, member: discord.Member, gold):
+async def mmoney(ctx, member: discord.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
     await ctx.message.delete()
     gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
@@ -329,7 +335,7 @@ async def clear(ctx, member: discord.Member):
     """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
     await ctx.message.delete()
     await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-    await db.execute(f'INSERT INTO discord_users VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+    await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
@@ -346,6 +352,10 @@ async def me(ctx):
     """Command to see your profile / Этой командой можно увидеть ваш профиль"""
     usr = ctx.message.author
     await show(ctx, usr)
+
+async def u(ctx, member: discord.Member):
+    await show(ctx, member)
+    await ctx.message.delete()
 
 
 # Ручная команда для радужного ника
@@ -369,7 +379,7 @@ async def rainbowise(ctx):
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def poll(ctx, polltime=60):
+async def danet(ctx, polltime=60):
     """resends the replied message and adds 👍 and 👎 emoji reactions to it - making it look like a poll
     and after provided number of minutes counts the result and sends a message about it mentioning you
     """
@@ -386,17 +396,14 @@ async def poll(ctx, polltime=60):
         else:
             await asyncio.sleep(5)
     poll_msg = await ctx.channel.fetch_message(poll_msg.id)
-    print(poll_msg.reactions)
     #yes = 0
     #no = 0
     for reaction in poll_msg.reactions:
         if str(reaction.emoji) == '👍':
             yes = reaction.count
-            print('yes count = ', yes)
         elif str(reaction.emoji) == '👎':
             no = reaction.count
-            print('no count = ', no)
-        elif not yes or not no or yes==0 or no==0:
+        elif not yes or not no or yes == 0 or no == 0:
             await sys_channel.send(f'{ctx.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
         else:
             pass
@@ -409,5 +416,55 @@ async def poll(ctx, polltime=60):
     elif yes == no:
         await poll_msg.reply(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
         await sys_channel.send(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
+
+
+@bot.command()
+async def poll(ctx, options:int, time=60):
+    if options > 9:
+        await ctx.send(content=f"{ctx.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
+    await ctx.message.delete()
+    messages = await ctx.channel.history(limit=2).flatten()
+    reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
+    #message = await ctx.channel.fetch_message(message_id)
+    message = await ctx.channel.fetch_message(messages[0].id)
+    for num in range(options):
+        await message.add_reaction(reactions[num])
+    start_time = datetime.datetime.now()
+    end_time = start_time + datetime.timedelta(minutes=time)
+    while True:
+        if datetime.datetime.now() > end_time:
+            break
+        else:
+            await asyncio.sleep(20)
+    message = await ctx.channel.fetch_message(messages[0].id)
+    reactions_count_list = []
+    for reaction in message.reactions:
+        reactions_count_list.append((str(reaction.emoji), reaction.count))
+    sort_reactions = sorted(reactions_count_list, key=itemgetter(1), reverse=True)
+    await ctx.channel.send(
+        content=f"{ctx.message.author.mention}, опрос завершён:\n ```{message.content}```\n Победил вариант № {sort_reactions[0][0]}")
+
+
+@bot.command()
+async def top(ctx, count: int = 10):
+    result_list = []
+    await ctx.message.delete()
+    users_count, users_ids = await initial_db_read()
+    for member in ctx.guild.members:
+        if member.id in users_ids:
+            gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
+            if int(gold) > 0:
+                warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
+                thirty_days_activity_records = await db.fetch(
+                f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
+                activity = await count_result_activity(thirty_days_activity_records, warns)
+                result_list.append((member.display_name, activity))
+    res = sorted(result_list, key=itemgetter(1), reverse=True)
+    if count > len(res):
+        count = len(res)
+    output = ""
+    for i in range(count):
+        output += f"{i+1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
+    await ctx.channel.send(output)
 
 bot.run(token, reconnect=True)
