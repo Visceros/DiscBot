@@ -72,6 +72,7 @@ async def db_connection():
     except Exception as e:
         print('Attempt to create database tables failed')
         print(e, e.args, e.__cause__, e.__context__)
+        exit(1)
     return db
 
 
@@ -128,12 +129,12 @@ async def initial_db_fill():
             except discord.Forbidden:
                 print(f'No permissions to create system channel in {guild} server')
             except Exception as ex:
+                print('Couldn\'t create #system channel, something is wrong:\n')
                 print(ex)
-            else:
-                print('system channel found')
-                pass
+        else:
+            print('system channel found')
+            pass
     print('database fill cycle ended')
-    test = await db.fetchval('SELECT login from LogTable ORDER BY user_id LIMIT 1;')
     print(test)
 
 
