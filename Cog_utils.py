@@ -56,11 +56,11 @@ class Listeners(commands.Cog):
         elif after.channel is not None:
             if any(item in member.voice.channel.category.name.lower() for item in
                        channel_groups_to_account_contain):
-                if len(after.channel.members) == 1 and not member.voice.self_mute and not member.bot:
+                if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                     print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
                     await asyncio.sleep(180)
                     if after.channel:
-                        if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.mute and not member.bot:
+                        if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
                             await member.move_to(member.guild.afk_channel)
                             #user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
