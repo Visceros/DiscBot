@@ -135,7 +135,6 @@ async def initial_db_fill():
             print('system channel found')
             pass
     print('database fill cycle ended')
-    print(test)
 
 
 @tasks.loop(minutes=5.0)
