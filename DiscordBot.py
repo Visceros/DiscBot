@@ -160,6 +160,18 @@ async def auto_rainbowise():
             await sys_channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
             print(e.__cause__, e, sep='\n')
 
+#checking if the connection to database is alive. If not - reconnect.
+@tasks.loop(minutes=1)
+async def connection_checker():
+    try:
+        await db.execute('SELECT 1 FROM discord_users ORDER BY id DESC;')
+    except NameError:
+        await db_connection()
+    except asyncpg.exceptions._base.InterfaceError:
+        await db_connection()
+
+
+
 
 @bot.event
 async def on_ready():
@@ -339,7 +351,7 @@ async def clear(ctx, member: discord.Member):
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
-@bot.command(pass_context=True)
+@bot.command()
 async def echo(ctx, msg: str):
     """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
     message = ctx.message
@@ -347,19 +359,21 @@ async def echo(ctx, msg: str):
     await ctx.send(msg)
 
 
-@bot.command(pass_context=True)
+@bot.command()
 async def me(ctx):
     """Command to see your profile / Этой командой можно увидеть ваш профиль"""
     usr = ctx.message.author
     await show(ctx, usr)
 
+@bot.command()
 async def u(ctx, member: discord.Member):
     await show(ctx, member)
     await ctx.message.delete()
 
 
 # Ручная команда для радужного ника
-@bot.command(pass_context=True)
+@bot.command()
+@tasks.loop(minutes=5)
 async def rainbowise(ctx):
     await ctx.message.delete()
     name = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), ctx.guild.roles)
@@ -370,11 +384,10 @@ async def rainbowise(ctx):
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                await asyncio.sleep(300)
             except Exception as e:
                 await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
-                pass
+                break
 
 
 @bot.command()

@@ -131,7 +131,6 @@ class Listeners(commands.Cog):
         await self.if_one_in_voice(member=member, before=before, after=after)
 
 
-
 class Games(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
