@@ -305,6 +305,7 @@ async def show(ctx, member: discord.Member):
 
 # ----------------------------------------------------------------------------------------- Протестировать команду ниже.
 # @commands.has_permissions(administrator=True)
+@bot.command()
 async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
@@ -328,8 +329,8 @@ async def gmoney(ctx, member: discord.Member, gold):
             await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
             await ctx.send(f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
 
-
 @commands.has_permissions(administrator=True)
+@bot.command()
 async def mmoney(ctx, member: discord.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
     await ctx.message.delete()
