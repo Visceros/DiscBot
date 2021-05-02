@@ -305,33 +305,30 @@ async def show(ctx, member: discord.Member):
 
 # ----------------------------------------------------------------------------------------- Протестировать команду ниже.
 # @commands.has_permissions(administrator=True)
-@user.command()
 async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
     await ctx.message.delete()
-    gold = abs(gold)
+    gold = abs(int(gold))
     if 'administrator' in ctx.message.author.guild_permissions:
-        """Give user some gold / Даём пользователю деньги"""
         gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
-        newgold = int(gold_was) + int(gold)
+        newgold = int(gold_was) + gold
         await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
         await ctx.send(f'User {member.display_name} got +{gold} gold.')
     else:
         user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
-        if int(gold) > int(user_gold):
+        if gold > int(user_gold):
             ctx.channel.send('У вас нет столько денег.')
             return
         else:
-            newgold = int(user_gold) - int(gold)
+            newgold = int(user_gold) - gold
             await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={author.id};')
             target_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
-            newtargetgold = int(target_gold) + int(gold)
+            newtargetgold = int(target_gold) + gold
             await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
             await ctx.send(f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
 
 
-@user.command()
 @commands.has_permissions(administrator=True)
 async def mmoney(ctx, member: discord.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
@@ -341,6 +338,7 @@ async def mmoney(ctx, member: discord.Member, gold):
     if newgold < 0:
         newgold = 0
     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
+    await ctx.send(f'У Пользователя {member.display_name.mention} было отнято {gold} валюты.')
 
 
 @user.command()
