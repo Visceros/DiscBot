@@ -237,7 +237,7 @@ async def user(ctx):
             await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
             await ctx.message.delete()
     else:
-        user.show(ctx, ctx.message.author)
+        await user.show(ctx, ctx.message.author)
 
 
 @user.command()
@@ -316,6 +316,7 @@ async def gmoney(ctx, member: discord.Member, gold):
         gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
         newgold = int(gold_was) + int(gold)
         await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
+        await ctx.send(f'User {member.display_name} got +{gold} gold.')
     else:
         user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
         if int(gold) > int(user_gold):
@@ -327,6 +328,7 @@ async def gmoney(ctx, member: discord.Member, gold):
             target_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
             newtargetgold = int(target_gold) + int(gold)
             await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
+            await ctx.send(f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
 
 
 @user.command()
