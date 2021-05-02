@@ -372,8 +372,8 @@ async def u(ctx, member: discord.Member):
 
 
 # Ручная команда для радужного ника
-@bot.command()
 @tasks.loop(minutes=5)
+@bot.command()
 async def rainbowise(ctx):
     await ctx.message.delete()
     name = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), ctx.guild.roles)
