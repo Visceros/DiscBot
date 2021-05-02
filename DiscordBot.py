@@ -303,15 +303,13 @@ async def show(ctx, member: discord.Member):
 
 
 
-# ----------------------------------------------------------------------------------------- Протестировать команду ниже.
-# @commands.has_permissions(administrator=True)
 @bot.command()
 async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
     await ctx.message.delete()
     gold = abs(int(gold))
-    if 'administrator' in ctx.message.author.guild_permissions:
+    if ctx.message.author.guild_permissions.administrator:
         gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
         newgold = int(gold_was) + gold
         await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
@@ -319,7 +317,7 @@ async def gmoney(ctx, member: discord.Member, gold):
     else:
         user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
         if gold > int(user_gold):
-            ctx.channel.send('У вас нет столько денег.')
+            await ctx.channel.send('У вас нет столько денег.')
             return
         else:
             newgold = int(user_gold) - gold
@@ -339,7 +337,7 @@ async def mmoney(ctx, member: discord.Member, gold):
     if newgold < 0:
         newgold = 0
     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
-    await ctx.send(f'У Пользователя {member.display_name.mention} было отнято {gold} валюты.')
+    await ctx.send(f'У Пользователя {member.mention} было отнято {gold} валюты.')
 
 
 @user.command()
@@ -384,7 +382,7 @@ async def rainbowise(ctx):
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
-                asyncio.sleep(300)
+                await asyncio.sleep(300)
             except Exception as e:
                 await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
@@ -439,7 +437,6 @@ async def poll(ctx, options:int, time=60):
     await ctx.message.delete()
     messages = await ctx.channel.history(limit=2).flatten()
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
-    #message = await ctx.channel.fetch_message(message_id)
     message = await ctx.channel.fetch_message(messages[0].id)
     for num in range(options):
         await message.add_reaction(reactions[num])
