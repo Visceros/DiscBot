@@ -372,7 +372,6 @@ async def u(ctx, member: discord.Member):
 
 
 # Ручная команда для радужного ника
-@tasks.loop(minutes=5)
 @bot.command()
 async def rainbowise(ctx):
     await ctx.message.delete()
@@ -384,6 +383,7 @@ async def rainbowise(ctx):
             clr = random.choice(rgb_colors)
             try:
                 await role.edit(color=discord.Colour(int(clr, 16)))
+                asyncio.sleep(300)
             except Exception as e:
                 await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
                 print(e.args, e.__cause__)
