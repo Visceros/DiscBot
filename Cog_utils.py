@@ -1,6 +1,5 @@
 from discord.ext import commands, tasks
 from chests_rewards import usual_reward, gold_reward
-from DiscordBot import add
 import discord
 import asyncio
 import asyncpg
