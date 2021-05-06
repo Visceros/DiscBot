@@ -7,6 +7,7 @@ import aiohttp
 import io
 import random
 import datetime
+from db_connector import db_connection
 
 
 class Listeners(commands.Cog):
@@ -96,7 +97,7 @@ class Listeners(commands.Cog):
                                 unmuted_member_id = member.id
                     if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
                         await asyncio.sleep(180)
-                        if member.voice.channel:
+                        if member.voice:
                             muted_member_count = 0
                             unmuted_member_count = 0
                             for member in member.voice.channel.members:
@@ -135,6 +136,9 @@ class Listeners(commands.Cog):
                             await sys_channel.send('user added to database')
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
+                        except asyncpg.exceptions._base.InterfaceError:
+                            await db_connection()
+
 
 
             elif before.channel is not None and after.channel is None:
