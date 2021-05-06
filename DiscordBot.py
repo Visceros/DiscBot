@@ -137,7 +137,9 @@ async def connection_checker():
 
 @bot.event
 async def on_ready():
-    await db_connection()
+    global db
+    db = await db_connection()
+    await asyncio.sleep(2)
     print('initial database fill starting...')
     initial_db_fill.start()
     await asyncio.sleep(1)
