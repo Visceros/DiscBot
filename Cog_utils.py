@@ -129,6 +129,8 @@ class Listeners(commands.Cog):
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
                         await sys_channel.send(f'Caught error: {e}.')
+                    except asyncpg.exceptions._base.InterfaceError:
+                        await db_connection()
                         try:
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
@@ -136,8 +138,6 @@ class Listeners(commands.Cog):
                             await sys_channel.send('user added to database')
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
-                        except asyncpg.exceptions._base.InterfaceError:
-                            await db_connection()
 
 
 
