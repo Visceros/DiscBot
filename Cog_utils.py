@@ -136,10 +136,13 @@ class Listeners(commands.Cog):
                             await sys_channel.send('user added to database')
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
-                    except asyncpg.exceptions._base.InterfaceError or asyncpg.exceptions.InterfaceError:
-                        await db_connection()
+                    except ConnectionResetError:
+                        db = await db_connection()
                         await asyncio.sleep(2)
-                        pass
+                    except asyncpg.exceptions._base.InterfaceError or asyncpg.exceptions.InterfaceError:
+                        db = await db_connection()
+                        await asyncio.sleep(2)
+
 
 
 
