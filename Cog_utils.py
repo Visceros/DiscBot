@@ -11,14 +11,15 @@ from db_connector import db_connection
 
 
 class Listeners(commands.Cog):
-    def __init__(self, bot: commands.Bot, db, sys_channel):
+    def __init__(self, bot: commands.Bot, sys_channel):
+        pool = await db_connection()
         self.bot = bot
-        self.db = db
+        self.pool = pool
         self.sys_channel = sys_channel
 
     async def if_one_in_voice(self, member: discord.Member, before, after):
         """Проверяем, остался ли пользователь один в канале, если один - перекидываем в АФК-комнату"""
-        db = self.db
+        db = self.pool.acquire()
         sys_channel = self.sys_channel
         messaging_channel = self.bot.get_channel(442565510178013184)
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
@@ -38,16 +39,6 @@ class Listeners(commands.Cog):
                         await messaging_channel.send(f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
                                                      'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
                         print('sent warn message to ', member.display_name)
-                        # if member.dm_channel:
-                        #     await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                        #                                  'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                        #     print('sent warn message to ', member.display_name)
-                        # else:
-                        #     await member.create_dm()
-                        #     await member.dm_channel.send(
-                        #         'Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                        #         'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                        #     print('sent warn message to ', member.display_name)
                         await sys_channel.send(
                             f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности).')
                     else:
@@ -65,24 +56,7 @@ class Listeners(commands.Cog):
                         if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
                             await member.move_to(member.guild.afk_channel)
-                            #user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
-                            #user_warns += 1
-                            #await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE Id='{member.id}'")
-                            #await messaging_channel.send(f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                            #                             'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
                             print('sent warn message to ', member.display_name)
-                            # if member.dm_channel:
-                            #     await member.dm_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                            #                              'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                            #     await messaging_channel.send('Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                            #                              'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                            #     print('sent warn message to ', member.display_name)
-                            # else:
-                            #     await member.create_dm()
-                            #     await member.dm_channel.send(
-                            #         'Вы были перемещены в AFK комнату, т.к. сидели в общих комнатах с '
-                            #         'включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
-                            #     print('sent warn message to ', member.display_name)
                             await sys_channel.send(
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности).')
                 elif member.voice.channel is not None and len(member.voice.channel.members) >1:
@@ -117,7 +91,7 @@ class Listeners(commands.Cog):
 # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before, after):
-        db = self.db
+        db = self.pool.acquire()
         sys_channel = self.sys_channel
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
@@ -144,8 +118,6 @@ class Listeners(commands.Cog):
                         await asyncio.sleep(2)
 
 
-
-
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                 await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
@@ -165,9 +137,7 @@ class Games(commands.Cog):
         channel = ctx.message.channel
         await ctx.message.delete()
         # Check if it's the right channel to write to and if user have relevant role
-        if 'сундучки' in channel.name.lower() or 'казино' in channel.name.lower():
-            pass
-        else:
+        if not 'сундучки' in channel.name.lower() or not 'казино' in channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
         is_eligible = False
         if 'administrator' in ctx.message.author.guild_permissions:
