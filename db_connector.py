@@ -3,22 +3,22 @@ import asyncpg
 
 
 async def db_connection():
-    global db
+    """Returns an instance of database connection and a connectinon pool"""
+    global pool
     db_user = os.getenv('db_user')
     db_pwd = os.getenv('db_pwd')
     db_name = os.getenv('db_name')
-    db_address = os.getenv('db_address')
+    db_address = os.getenv('db_address')  # reserved variable for database http address
     try:
         print('connecting to database server...')
         pool = await asyncpg.create_pool(host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
+        db = await pool.acquire()
         #db = await asyncpg.connect(host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
-        db = pool.acquire()
     except Exception as e:
         print('Could not connect to database:\n', e.args)
         print(e)
         print('exiting...')
         exit(1)
-        return
     print('connection successful!')
     try:
         await db.execute('''CREATE TABLE IF NOT EXISTS discord_users (

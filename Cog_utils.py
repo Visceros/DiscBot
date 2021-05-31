@@ -11,10 +11,9 @@ from db_connector import db_connection
 
 
 class Listeners(commands.Cog):
-    def __init__(self, bot: commands.Bot, sys_channel):
-        pool = await db_connection()
+    def __init__(self, bot: commands.Bot, sys_channel, connection):
+        self.pool = connection
         self.bot = bot
-        self.pool = pool
         self.sys_channel = sys_channel
 
     async def if_one_in_voice(self, member: discord.Member, before, after):

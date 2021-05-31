@@ -51,7 +51,7 @@ async def initial_db_read():
             ids = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i-1};')
             users_idlist.append(ids)
         print(records_count, ' пользователей в базе')
-        #print(users_idlist)
+        await pool.release(db)
         return records_count, users_idlist
     else:
         return 0, []
@@ -102,6 +102,7 @@ async def initial_db_fill():
             print('system channel found')
             pass
     print('database fill cycle ended')
+    await pool.release(db)
 
 
 @tasks.loop(minutes=5.0)
@@ -130,6 +131,7 @@ async def auto_rainbowise():
 
 @bot.event
 async def on_ready():
+    global pool
     pool = await db_connection()
     await asyncio.sleep(2)
     print('initial database fill starting...')
@@ -140,7 +142,7 @@ async def on_ready():
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot))
-    bot.add_cog(Listeners(bot, sys_channel=sys_channel))
+    bot.add_cog(Listeners(bot, sys_channel=sys_channel, connection=pool))
 #    bot.add_cog(Utils(bot))
 
 
@@ -270,7 +272,7 @@ async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
     await ctx.message.delete()
-    db = poll.acquire()
+    db = await pool.acquire()
     gold = abs(int(gold))
     try:
 
@@ -292,7 +294,7 @@ async def gmoney(ctx, member: discord.Member, gold):
                 await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
                 await ctx.send(f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
     finally:
-        await poll.release(db)
+        await pool.release(db)
 
 
 @commands.has_permissions(administrator=True)
@@ -307,6 +309,7 @@ async def mmoney(ctx, member: discord.Member, gold):
         newgold = 0
     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
     await ctx.send(f'У Пользователя {member.mention} было отнято {gold} валюты.')
+    await pool.release(db)
 
 
 @user.command()
@@ -317,6 +320,7 @@ async def clear(ctx, member: discord.Member):
     db = await pool.acquire()
     await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
     await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+    await pool.release(db)
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
@@ -340,25 +344,6 @@ async def me(ctx):
 async def u(ctx, member: discord.Member):
     await show(ctx, member)
     await ctx.message.delete()
-
-
-# Ручная команда для радужного ника
-@bot.command()
-async def rainbowise(ctx):
-    await ctx.message.delete()
-    name = discord.utils.find(lambda r:('РАДУЖНЫЙ НИК' in r.name.upper()), ctx.guild.roles)
-    role = discord.utils.get(ctx.guild.roles, name=str(name))
-    await ctx.send(f'starting rainbow for {role}')
-    while True:
-        for clr in rgb_colors:
-            clr = random.choice(rgb_colors)
-            try:
-                await role.edit(color=discord.Colour(int(clr, 16)))
-                await asyncio.sleep(300)
-            except Exception as e:
-                await ctx.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
-                print(e.args, e.__cause__)
-                break
 
 
 @bot.command()
@@ -448,5 +433,6 @@ async def top(ctx, count: int = 10):
     for i in range(count):
         output += f"{i+1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
     await ctx.channel.send(output)
+    await pool.release(db)
 
 bot.run(token, reconnect=True)
