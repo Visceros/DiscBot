@@ -102,7 +102,7 @@ class Listeners(commands.Cog):
                         member.id, member.display_name, member.joined_at)
                     await sys_channel.send(f'user added to database: {member.display_name}')
                 except asyncpg.exceptions.UniqueViolationError:
-                    await sys_channel.send('user is already added')
+                    await sys_channel.send(f'user {member.display_name}, id: {member.id} is already added')
                 finally:
                     await self.pool.release(db)
 
