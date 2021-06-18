@@ -21,12 +21,12 @@ class Listeners(commands.Cog):
         db = self.pool.acquire()
         sys_channel = self.sys_channel
         messaging_channel = self.bot.get_channel(442565510178013184)
-        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        channel_groups_to_account = ['party', 'пати', 'связь', 'voice']
         if after.channel is None:
             if len(before.channel.members) == 1:
                 member = before.channel.members[0]
                 if any(item in member.voice.channel.category.name.lower() for item in
-                       channel_groups_to_account_contain):
+                       channel_groups_to_account):
                     print(member.display_name, 'is alone in room', before.channel.name, 'voice self mute:',
                           member.voice.self_mute)
                     await asyncio.sleep(180)
@@ -47,7 +47,7 @@ class Listeners(commands.Cog):
 
         elif after.channel is not None:
             if any(item in member.voice.channel.category.name.lower() for item in
-                       channel_groups_to_account_contain):
+                       channel_groups_to_account):
                 if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                     print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
                     await asyncio.sleep(180)
@@ -92,21 +92,29 @@ class Listeners(commands.Cog):
     async def on_voice_state_update(self, member: discord.Member, before, after):
         db = self.pool.acquire()
         sys_channel = self.sys_channel
-        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        channel_groups_to_account = ['party', 'пати', 'связь', 'voice']
         if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
             if before.channel is None and after.channel is not None and not after.afk:
                 if any(item in member.voice.channel.category.name.lower() for item in
-                       channel_groups_to_account_contain):
+                       channel_groups_to_account):
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                        if type(gold) == 'NoneType' or gold is None:
+                            try:
+                                await db.execute(
+                                    'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+                                    member.id, member.display_name, member.joined_at)
+                                await sys_channel.send(f'user {member.display_name}, id: {member.id} added to database')
+                            except asyncpg.exceptions.UniqueViolationError:
+                                await sys_channel.send(f'user {member.display_name} is already added')
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
                         await sys_channel.send(f'Caught error: {e}.')
                         try:
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
                                 member.id, member.display_name, member.joined_at)
-                            await sys_channel.send('user added to database')
+                            await sys_channel.send(f'user {member.display_name}, id: {member.id} added to database')
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
                     except ConnectionResetError:
