@@ -1,7 +1,7 @@
 # coding: utf8
 
 import discord
-import asyncio   # check if installed / проверьте, установлен ли модуль
+import asyncio  # check if installed / проверьте, установлен ли модуль
 from Cog_utils import Games, Listeners, Utils
 import random
 import asyncpg  # check if installed / проверьте, установлен ли модуль
@@ -33,7 +33,8 @@ intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
 des = 'GoldenBot for Golden Crown discord.'
-rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff', '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
+rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff',
+              '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 bot = commands.Bot(description=des, command_prefix=prefix, intents=intents)
 
 
@@ -43,12 +44,12 @@ async def initial_db_read():
     db = await pool.acquire()
     records_in_db = 0
     records_in_db = await db.fetch('SELECT * FROM discord_users;')
-    #print('records in db: ', records_in_db)
+    # print('records in db: ', records_in_db)
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
-        for i in range(1, records_count+1):
-            ids = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i-1};')
+        for i in range(1, records_count + 1):
+            ids = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i - 1};')
             users_idlist.append(ids)
         print(records_count, ' пользователей в базе')
         await pool.release(db)
@@ -64,7 +65,7 @@ async def initial_db_fill():
     db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
     for guild in bot.guilds:
-        #if 'free zone' in guild.name.lower():
+        # if 'free zone' in guild.name.lower():
         if 'golden crown' in guild.name.lower():
             current_members_list = []
             crown = bot.get_guild(guild.id)
@@ -76,7 +77,9 @@ async def initial_db_fill():
                 try:
                     for member in crown.members:
                         if not member.bot and member.id not in users_ids:
-                            await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;', member.id, member.display_name, member.joined_at)
+                            await db.execute(
+                                'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;',
+                                member.id, member.display_name, member.joined_at)
                 finally:
                     await pool.release(db)
                 print('Данные пользователей в базе обновлены')
@@ -124,8 +127,10 @@ async def auto_rainbowise():
             await role.edit(color=discord.Colour(int(clr, 16)))
             print(f'changed color for {role}')
         except Exception as e:
-            print(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
-            await sys_channel.send(f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
+            print(
+                f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
+            await sys_channel.send(
+                f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
             print(e.__cause__, e, sep='\n')
 
 
@@ -143,6 +148,8 @@ async def on_ready():
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot))
     bot.add_cog(Listeners(bot, sys_channel=sys_channel, connection=pool))
+
+
 #    bot.add_cog(Utils(bot))
 
 
@@ -155,7 +162,7 @@ async def _increment_money(server: discord.Guild):
             if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
                 if member.voice is not None and member.voice.channel is not server.afk_channel:
                     gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
-                    gold = int(gold)+1
+                    gold = int(gold) + 1
                     await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
     except Exception as ex:
         await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
@@ -201,12 +208,13 @@ async def user(ctx):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def add(ctx, member:discord.Member):
+async def add(ctx, member: discord.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)"""
     await ctx.message.delete()
     db = await pool.acquire()
     try:
-        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+                         member.id, member.display_name, member.joined_at)
         await ctx.send('user added to database')
     except asyncpg.exceptions.UniqueViolationError:
         await ctx.send('user is already added')
@@ -225,9 +233,10 @@ async def count_result_activity(activity_records_list, warns: int):
     if warns > 0:
         result_activity = result_activity - datetime.timedelta(minutes=(10 * warns))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
-    #result_hours = result_activity.days*24+result_activity.hour
-    result_hours = int(result_activity.total_seconds())/3600
+    # result_hours = result_activity.days*24+result_activity.hour
+    result_hours = int(result_activity.total_seconds()) / 3600
     return round(result_hours, 1)
+
 
 @user.command()
 @commands.has_permissions(administrator=True)
@@ -256,8 +265,8 @@ async def show(ctx, member: discord.Member):
         part_2 = f"\nВсего ачивок: `{achievments}`\nНегативных: `{negative_achievements}`"
         part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
         part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
-        embed = discord.Embed(color=discord.Colour(int('efff00',16)))
-        #embed.add_field(name='', value=f"17*{data['symbol']}")
+        embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+        # embed.add_field(name='', value=f"17*{data['symbol']}")
         embed.add_field(name='Пользователь:', value=part_1, inline=False)
         embed.add_field(name='Ачивки:', value=part_2, inline=False)
         embed.add_field(name='Активность:', value=part_3, inline=False)
@@ -292,7 +301,8 @@ async def gmoney(ctx, member: discord.Member, gold):
                 target_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
                 newtargetgold = int(target_gold) + gold
                 await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
-                await ctx.send(f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
+                await ctx.send(
+                    f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
     finally:
         await pool.release(db)
 
@@ -319,8 +329,10 @@ async def clear(ctx, member: discord.Member):
     await ctx.message.delete()
     db = await pool.acquire()
     await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-    await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);', member.id, member.display_name, member.joined_at)
+    await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+                     member.id, member.display_name, member.joined_at)
     await pool.release(db)
+
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
@@ -371,7 +383,8 @@ async def danet(ctx, polltime=60):
         elif str(reaction.emoji) == '👎':
             no = reaction.count
         elif not yes or not no or yes == 0 or no == 0:
-            await sys_channel.send(f'{ctx.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+            await sys_channel.send(
+                f'{ctx.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
         else:
             pass
     if yes > no:
@@ -379,16 +392,20 @@ async def danet(ctx, polltime=60):
         await sys_channel.send(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "За"')
     elif no > yes:
         await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
-        await sys_channel.send(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+        await sys_channel.send(
+            content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
     elif yes == no:
-        await poll_msg.reply(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
-        await sys_channel.send(content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
+        await poll_msg.reply(
+            content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
+        await sys_channel.send(
+            content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
 
 
 @bot.command()
-async def poll(ctx, options:int, time=60):
+async def poll(ctx, options: int, time=60):
     if options > 9:
-        await ctx.send(content=f"{ctx.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
+        await ctx.send(
+            content=f"{ctx.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
     await ctx.message.delete()
     messages = await ctx.channel.history(limit=2).flatten()
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
@@ -423,7 +440,7 @@ async def top(ctx, count: int = 10):
             if int(gold) > 0:
                 warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
                 thirty_days_activity_records = await db.fetch(
-                f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
+                    f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
                 activity = await count_result_activity(thirty_days_activity_records, warns)
                 result_list.append((member.display_name, activity))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
@@ -431,8 +448,9 @@ async def top(ctx, count: int = 10):
         count = len(res)
     output = ""
     for i in range(count):
-        output += f"{i+1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
+        output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
     await ctx.channel.send(output)
     await pool.release(db)
+
 
 bot.run(token, reconnect=True)

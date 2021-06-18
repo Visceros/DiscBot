@@ -21,12 +21,12 @@ class Listeners(commands.Cog):
         db = self.pool.acquire()
         sys_channel = self.sys_channel
         messaging_channel = self.bot.get_channel(442565510178013184)
-        channel_groups_to_account = ['party', 'пати', 'связь', 'voice']
+        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         if after.channel is None:
             if len(before.channel.members) == 1:
                 member = before.channel.members[0]
                 if any(item in member.voice.channel.category.name.lower() for item in
-                       channel_groups_to_account):
+                       channel_groups_to_account_contain):
                     print(member.display_name, 'is alone in room', before.channel.name, 'voice self mute:',
                           member.voice.self_mute)
                     await asyncio.sleep(180)
@@ -40,14 +40,10 @@ class Listeners(commands.Cog):
                         print('sent warn message to ', member.display_name)
                         await sys_channel.send(
                             f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности).')
-                    else:
-                        pass
-            else:
-                pass
 
         elif after.channel is not None:
             if any(item in member.voice.channel.category.name.lower() for item in
-                       channel_groups_to_account):
+                       channel_groups_to_account_contain):
                 if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                     print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
                     await asyncio.sleep(180)
@@ -55,6 +51,9 @@ class Listeners(commands.Cog):
                         if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
                             await member.move_to(member.guild.afk_channel)
+                            user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                            user_warns += 1
+                            await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE Id='{member.id}'")
                             print('sent warn message to ', member.display_name)
                             await sys_channel.send(
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности).')
@@ -83,51 +82,51 @@ class Listeners(commands.Cog):
                             if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
                                 await messaging_channel.send('{} в данный момент вы единственный активный участник в комнате.'
                                                              ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
-        else:
-            pass
+        self.pool.release(db)
 
 
-# --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
+    # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before, after):
         db = self.pool.acquire()
         sys_channel = self.sys_channel
-        channel_groups_to_account = ['party', 'пати', 'связь', 'voice']
+        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        if any(item in member.voice.channel.category.name.lower() for item in
+               channel_groups_to_account_contain):
+            try:
+                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+            except TypeError:
+                try:
+                    await db.execute(
+                        'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+                        member.id, member.display_name, member.joined_at)
+                    await sys_channel.send(f'user added to database: {member.display_name}')
+                except asyncpg.exceptions.UniqueViolationError:
+                    await sys_channel.send('user is already added')
+                finally:
+                    await self.pool.release(db)
+
         if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
             if before.channel is None and after.channel is not None and not after.afk:
                 if any(item in member.voice.channel.category.name.lower() for item in
-                       channel_groups_to_account):
+                       channel_groups_to_account_contain):
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
-                        if type(gold) == 'NoneType' or gold is None:
-                            try:
-                                await db.execute(
-                                    'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
-                                    member.id, member.display_name, member.joined_at)
-                                await sys_channel.send(f'user {member.display_name}, id: {member.id} added to database')
-                            except asyncpg.exceptions.UniqueViolationError:
-                                await sys_channel.send(f'user {member.display_name} is already added')
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
                         await sys_channel.send(f'Caught error: {e}.')
                         try:
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
                                 member.id, member.display_name, member.joined_at)
-                            await sys_channel.send(f'user {member.display_name}, id: {member.id} added to database')
+                            await sys_channel.send('user added to database')
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
-                    except ConnectionResetError:
-                        db = await db_connection()
-                        await asyncio.sleep(2)
-                    except asyncpg.exceptions._base.InterfaceError or asyncpg.exceptions.InterfaceError:
-                        db = await db_connection()
-                        await asyncio.sleep(2)
-
 
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                 await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
+        self.pool.release(db)
 
         await self.if_one_in_voice(member=member, before=before, after=after)
 
