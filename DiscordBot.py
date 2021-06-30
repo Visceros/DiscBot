@@ -140,9 +140,15 @@ async def on_ready():
     pool = await db_connection()
     await asyncio.sleep(2)
     print('initial database fill starting...')
-    initial_db_fill.start()
+    try:
+        initial_db_fill.start()
+    except RuntimeError:
+        initial_db_fill.restart()
     await asyncio.sleep(1)
-    auto_rainbowise.start()
+    try:
+        auto_rainbowise.start()
+    except RuntimeError:
+        auto_rainbowise.restart()
     await asyncio.sleep(1)
     await accounting()
     print('I\'m ready to serve.')

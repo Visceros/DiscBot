@@ -3,7 +3,7 @@ import asyncpg
 
 
 async def db_connection():
-    """Returns an instance of database connection and a connectinon pool"""
+    """Returns a connection pool object using asyncpg.create_pool() method"""
     global pool
     db_user = os.getenv('db_user')
     db_pwd = os.getenv('db_pwd')
@@ -13,7 +13,6 @@ async def db_connection():
         print('connecting to database server...')
         pool = await asyncpg.create_pool(host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
         db = await pool.acquire()
-        #db = await asyncpg.connect(host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
     except Exception as e:
         print('Could not connect to database:\n', e.args)
         print(e)

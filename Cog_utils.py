@@ -91,21 +91,23 @@ class Listeners(commands.Cog):
         db = await self.pool.acquire()
         sys_channel = self.sys_channel
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-        if any(item in member.voice.channel.category.name.lower() for item in
-               channel_groups_to_account_contain):
-            try:
-                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                if type(gold) == 'NoneType' or gold is None:
-                    try:
-                        await db.execute(
-                            'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
-                            member.id, member.display_name, member.joined_at)
-                        await sys_channel.send(f'user added to database: {member.display_name}')
-                    except asyncpg.exceptions.UniqueViolationError:
-                        await sys_channel.send(f'user {member.display_name}, id: {member.id} is already added')
-            except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError:
-                self.pool = await db_connection()
-                db = await self.pool.acquire()
+        if member.voice is not None:
+            if any(item in member.voice.channel.category.name.lower() for item in
+                   channel_groups_to_account_contain):
+                try:
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    if type(gold) == 'NoneType' or gold is None:
+                        try:
+                            await db.execute(
+                                'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+                                member.id, member.display_name, member.joined_at)
+                            await sys_channel.send(f'user added to database: {member.display_name}')
+                        except asyncpg.exceptions.UniqueViolationError:
+                            await sys_channel.send(f'user {member.display_name}, id: {member.id} is already added')
+                except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
+                    print('Got error:', err, err.__traceback__)
+                    self.pool = await db_connection()
+                    db = await self.pool.acquire()
 
         if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
             if before.channel is None and after.channel is not None and not after.afk:
