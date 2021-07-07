@@ -113,11 +113,11 @@ async def auto_rainbowise():
     for guild in bot.guilds:  # Проверить - нужно ли вообще это условие?
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
-            break
         else:
             print('Не найден сервер "Golden Crown"')
         try:
             role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
+            print(role)
         except discord.NotFound:
             sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
         except Exception as e:
