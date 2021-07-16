@@ -208,6 +208,7 @@ async def shutdown(ctx):
             await db.execute(
                 f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
     await asyncio.sleep(5)
+    await sys_channel.send('Shutdown complete')
     exit(1)
 
 
