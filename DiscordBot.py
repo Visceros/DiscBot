@@ -44,7 +44,6 @@ async def initial_db_read():
     db = await pool.acquire()
     records_in_db = 0
     records_in_db = await db.fetch('SELECT * FROM discord_users;')
-    # print('records in db: ', records_in_db)
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
@@ -55,6 +54,7 @@ async def initial_db_read():
         await pool.release(db)
         return records_count, users_idlist
     else:
+        await pool.release(db)
         return 0, []
 
 
@@ -94,7 +94,7 @@ async def initial_db_fill():
                 sys_channel_overwrites[guild.default_role] = discord.PermissionOverwrite(read_messages=False,
                                                                                          send_messages=False,
                                                                                          view_channel=False)
-                sys_channel = await crown.create_text_channel('system', overwrites=sys_channel_overwrites,
+                sys_channel = await guild.create_text_channel('system', overwrites=sys_channel_overwrites,
                                                               reason='creating a channel for system messages')
             except discord.Forbidden:
                 print(f'No permissions to create system channel in {guild} server')
@@ -152,11 +152,9 @@ async def on_ready():
     await asyncio.sleep(1)
     await accounting()
     print('I\'m ready to serve.')
-    bot.add_cog(Games(bot))
+    bot.add_cog(Games(bot, connection=pool))
     bot.add_cog(Listeners(bot, sys_channel=sys_channel, connection=pool))
-
-
-#    bot.add_cog(Utils(bot))
+#    bot.add_cog(Utils(bot, connection = pool))
 
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
@@ -215,17 +213,27 @@ async def user(ctx):
 @user.command()
 @commands.has_permissions(administrator=True)
 async def add(ctx, member: discord.Member):
-    """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых ты приглашаешь на сервер)"""
+    """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых приглашаешь на сервер)"""
     await ctx.message.delete()
     db = await pool.acquire()
     try:
-        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
                          member.id, member.display_name, member.joined_at)
         await ctx.send('user added to database')
     except asyncpg.exceptions.UniqueViolationError:
         await ctx.send('user is already added')
     finally:
         await pool.release(db)
+
+@user.command()
+@commands.has_permissions(administrator=True)
+async def delete(ctx, member: discord.Member):
+    """Удаляем человека из базы бота. Введите команду и через пробел - ник, айди, или дискорд-тег участника."""
+    await ctx.message.delete()
+    db = await pool.acquire()
+    await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
+    await db.execute(f'DELETE FROM LogTable WHERE user_id={member.id};')
+    await pool.release(db)
 
 
 async def count_result_activity(activity_records_list, warns: int):
@@ -295,7 +303,7 @@ async def gmoney(ctx, member: discord.Member, gold):
             gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
             newgold = int(gold_was) + gold
             await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
-            await ctx.send(f'User {member.display_name} got +{gold} gold.')
+            await ctx.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
         else:
             user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
             if gold > int(user_gold):
@@ -324,7 +332,7 @@ async def mmoney(ctx, member: discord.Member, gold):
     if newgold < 0:
         newgold = 0
     await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
-    await ctx.send(f'У Пользователя {member.mention} было отнято {gold} валюты.')
+    await ctx.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.')
     await pool.release(db)
 
 
@@ -335,8 +343,9 @@ async def clear(ctx, member: discord.Member):
     await ctx.message.delete()
     db = await pool.acquire()
     await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-    await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0);',
+    await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
                      member.id, member.display_name, member.joined_at)
+    await db.execute(f'DELETE FROM LogTable WHERE user_id={member.id};')
     await pool.release(db)
 
 
@@ -412,6 +421,7 @@ async def poll(ctx, options: int, time=60):
     if options > 9:
         await ctx.send(
             content=f"{ctx.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
+        return
     await ctx.message.delete()
     messages = await ctx.channel.history(limit=2).flatten()
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
@@ -440,22 +450,24 @@ async def top(ctx, count: int = 10):
     await ctx.message.delete()
     db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
+    checkrole = discord.utils.find(lambda r: ('СОКЛАН' in r.name.upper()), ctx.guild.roles)
     for member in ctx.guild.members:
-        if member.id in users_ids:
+        if member.id in users_ids and checkrole in member.roles:
             gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
             if int(gold) > 0:
                 warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
                 thirty_days_activity_records = await db.fetch(
                     f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
                 activity = await count_result_activity(thirty_days_activity_records, warns)
-                result_list.append((member.display_name, activity))
+                result_list.append((member.mention, activity))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
-    if count > len(res):
-        count = len(res)
+    count = len(res) if count > len(res) else count
     output = ""
     for i in range(count):
         output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
-    await ctx.channel.send(output)
+    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    embed.add_field(name='Топ активности', value=output)
+    await ctx.channel.send(embed=embed)
     await pool.release(db)
 
 
