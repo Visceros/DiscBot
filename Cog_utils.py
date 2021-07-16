@@ -36,10 +36,10 @@ class Listeners(commands.Cog):
                         user_warns += 1
                         await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE Id='{member.id}'")
                         await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели в'
-                                                     f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                                                     f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №3.')
                         print('sent warn message to ', member.display_name)
                         await sys_channel.send(
-                            f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности).')
+                            f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №3 (накрутка активности).')
 
         elif after.channel is not None:
             if any(item in member.voice.channel.name.lower() for item in
@@ -56,10 +56,10 @@ class Listeners(commands.Cog):
                             await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE Id='{member.id}'")
                             await self.messaging_channel.send(
                                 content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели в'
-                                        f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №2.')
+                                        f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №3.')
                             print('sent warn message to ', member.display_name)
                             await sys_channel.send(
-                                f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №2 (накрутка активности).')
+                                f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №3 (накрутка активности).')
                 elif member.voice.channel is not None and len(member.voice.channel.members) >1:
                     muted_member_count = 0
                     unmuted_member_count = 0
@@ -126,7 +126,7 @@ class Listeners(commands.Cog):
                     self.pool = await db_connection()
                     db = await self.pool.acquire()
 
-        if str(member.status) not in ['invisible', 'dnd'] and not member.bot:
+        if not member.bot:
             if before.channel is None and after.channel is not None and not after.afk:
                 if any(item in member.voice.channel.name.lower() for item in
                        channel_groups_to_account_contain):

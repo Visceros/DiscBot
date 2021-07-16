@@ -131,6 +131,7 @@ async def auto_rainbowise():
                 f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
             await sys_channel.send(
                 f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
+            await sys_channel.send(f'{e.__cause__}\n{e}')
             print(e.__cause__, e, sep='\n')
 
 
@@ -161,10 +162,12 @@ async def on_ready():
 @tasks.loop(minutes=1)
 async def _increment_money(server: discord.Guild):
     db = await pool.acquire()
+    channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
     try:
         for member in server.members:
-            if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot:
-                if member.voice is not None and member.voice.channel is not server.afk_channel:
+            if any(item in member.voice.channel.name.lower() for item in
+                   channel_groups_to_account_contain):
+                if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
                     gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
                     gold = int(gold) + 1
                     await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
@@ -195,6 +198,18 @@ def subtract_time(time_arg):
     _tmp = time_arg.replace(microsecond=0) - datetime.datetime.now(tz=datetime.timezone.utc).replace(microsecond=0)
     ret = str(abs(_tmp)).replace('days', 'дней')
     return ret
+
+
+async def shutdown(ctx):
+    db = await pool.acquire()
+    for member in ctx.guild.members:
+        if member.voice is not None:
+            gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+            await db.execute(
+                f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
+    await asyncio.sleep(5)
+    exit(1)
+
 
 
 # -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
@@ -267,6 +282,7 @@ async def show(ctx, member: discord.Member):
                 achievments += 1
                 if role.color == discord.Colour(int('ff4f4f', 16)):
                     negative_achievements += 1
+        positive_achievements = achievments - negative_achievements
         try:
             seven_days_activity_records = await db.fetch(
                 f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
@@ -276,7 +292,7 @@ async def show(ctx, member: discord.Member):
             await pool.release(db)
 
         part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
-        part_2 = f"\nВсего ачивок: `{achievments}`\nНегативных: `{negative_achievements}`"
+        part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных: `{negative_achievements}`"
         part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
         part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
         embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
@@ -287,7 +303,8 @@ async def show(ctx, member: discord.Member):
         embed.add_field(name='Прочее:', value=part_4, inline=False)
         await ctx.send(embed=embed)
     else:
-        await ctx.send('Sorry I have no data about you / Извините, у меня нет данных о вас.')
+        await ctx.send('Не найдена информация по вашему профилю.\n'
+                       'Функция "Профиль", "Валюта" и "Ачивки" доступна только игрокам с активностью в голосовых каналах.')
 
 
 @bot.command()
