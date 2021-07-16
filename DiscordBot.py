@@ -199,7 +199,7 @@ def subtract_time(time_arg):
     ret = str(abs(_tmp)).replace('days', 'дней')
     return ret
 
-
+@bot.command()
 async def shutdown(ctx):
     db = await pool.acquire()
     for member in ctx.guild.members:
