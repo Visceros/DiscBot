@@ -468,7 +468,7 @@ async def top(ctx, count: int = 10):
     await ctx.message.delete()
     db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
-    checkrole = discord.utils.find(lambda r: ('СОКЛАН' in r.name.upper()), ctx.guild.roles)
+    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
     for member in ctx.guild.members:
         if member.id in users_ids and checkrole in member.roles:
             gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")

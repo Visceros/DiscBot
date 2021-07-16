@@ -159,7 +159,7 @@ class Listeners(commands.Cog):
 
     # Если человек получил роль "Соклан" - сразу присваиваем ему роль "Кин". Если убрали "Соклан" - убираем "Кин".
     async def on_member_update(self, before, after, member:discord.Member):
-        checkrole = discord.utils.find(lambda r: ('СОКЛАН' in r.name.upper()), member.guild.roles)
+        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
         role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
         if not checkrole in before.roles and checkrole in after.roles:
             await member.add_roles(role_to_add)
@@ -190,7 +190,7 @@ class Games(commands.Cog):
         author = ctx.message.author
         channel = ctx.message.channel
         await ctx.message.delete()
-        checkrole = discord.utils.find(lambda r: ('СОКЛАН' in r.name.upper()), author.guild.roles)
+        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), author.guild.roles)
         # Check if it's the right channel to write to and if user have relevant role
         if not 'сундучки' in channel.name.lower() or not 'казино' in channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
