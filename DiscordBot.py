@@ -66,7 +66,7 @@ async def initial_db_fill():
     users_count, users_ids = await initial_db_read()
     for guild in bot.guilds:
         # if 'free zone' in guild.name.lower():
-        if 'golden crown' in guild.name.lower():
+        if 'crown' in guild.name.lower():
             current_members_list = []
             crown = bot.get_guild(guild.id)
             global sys_channel
@@ -84,6 +84,7 @@ async def initial_db_fill():
                     await pool.release(db)
                 print('Данные пользователей в базе обновлены')
         sys_channel = discord.utils.get(guild.channels, name='system')
+        await sys_channel.send(content=f'{crown.name}, {guild.name}')
         if not sys_channel:
             print('creating system channel')
             try:
