@@ -110,7 +110,7 @@ async def initial_db_fill():
 
 @tasks.loop(minutes=5.0)
 async def auto_rainbowise():
-    for guild in bot.guilds:  # Проверить - нужно ли вообще это условие?
+    for guild in bot.guilds:
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
         else:
