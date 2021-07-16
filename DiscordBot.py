@@ -165,9 +165,9 @@ async def _increment_money(server: discord.Guild):
     channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
     try:
         for member in server.members:
-            if any(item in member.voice.channel.name.lower() for item in
-                   channel_groups_to_account_contain):
-                if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
+            if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
+                if any(item in member.voice.channel.name.lower() for item in
+                       channel_groups_to_account_contain):
                     gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
                     gold = int(gold) + 1
                     await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
