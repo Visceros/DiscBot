@@ -281,7 +281,6 @@ async def show(ctx, member: discord.Member):
         embed.add_field(name='Пользователь:', value=part_1, inline=False)
         embed.add_field(name='Ачивки:', value=part_2, inline=False)
         embed.add_field(name='Активность:', value=part_3, inline=False)
-        #embed.add_field(name='Сообщений за 30 дней:', value=str(messages), inline=False)
         embed.add_field(name='Прочее:', value=part_4, inline=False)
         await ctx.send(embed=embed)
     else:
