@@ -78,7 +78,7 @@ async def initial_db_fill():
                     for member in crown.members:
                         if not member.bot and member.id not in users_ids:
                             await db.execute(
-                                'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3, 0, 0) ON CONFLICT (id) DO NOTHING;',
+                                'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3) ON CONFLICT (id) DO NOTHING;',
                                 member.id, member.display_name, member.joined_at)
                 finally:
                     await pool.release(db)
@@ -102,7 +102,7 @@ async def initial_db_fill():
                 print('Couldn\'t create #system channel, something is wrong:\n')
                 print(ex)
         else:
-            print('system channel found')
+            print(guild.name, 'system channel found')
             pass
     print('database fill cycle ended')
     await pool.release(db)
