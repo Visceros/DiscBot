@@ -158,18 +158,19 @@ class Listeners(commands.Cog):
 
     # Если человек получил роль "Соклан" - сразу присваиваем ему роль "Кин". Если убрали "Соклан" - убираем "Кин".
     @commands.Cog.listener()
-    async def on_member_update(self, before, after, member:discord.Member):
-        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
-        role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
+    async def on_member_update(self, before, after):
+        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), before.guild.roles)
+        role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), before.guild.roles)
         if not checkrole in before.roles and checkrole in after.roles:
-            await member.add_roles(role_to_add)
+            await after.add_roles(role_to_add)
         elif checkrole in before.roles and not checkrole in after.roles:
             if role_to_add in after.roles:
-                await member.remove_roles(role_to_add)
+                await after.remove_roles(role_to_add)
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     @commands.Cog.listener()
-    async def on_message(self, message:discord.Message, guild:discord.Guild):
+    async def on_message(self, message:discord.Message):
+        #guild = message.author.guild
         if not message.content.startswith('!'):
             db = await self.pool.acquire()
             print('message counted')
