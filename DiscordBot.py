@@ -115,7 +115,6 @@ async def auto_rainbowise():
             crown = bot.get_guild(guild.id)
         try:
             role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
-            print(role)
         except discord.NotFound:
             sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
         except Exception as e:
@@ -123,7 +122,6 @@ async def auto_rainbowise():
         clr = random.choice(rgb_colors)
         try:
             await role.edit(color=discord.Colour(int(clr, 16)))
-            print(f'changed color for {role}')
         except Exception as e:
             print(
                 f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
