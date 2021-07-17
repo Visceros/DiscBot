@@ -149,6 +149,7 @@ class Listeners(commands.Cog):
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
 
+    @commands.Cog.listener()
     async def on_member_remove(self, member:discord.Member):
         db = await self.pool.acquire()
         await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
@@ -156,6 +157,7 @@ class Listeners(commands.Cog):
         await self.pool.release(db)
 
     # Если человек получил роль "Соклан" - сразу присваиваем ему роль "Кин". Если убрали "Соклан" - убираем "Кин".
+    @commands.Cog.listener()
     async def on_member_update(self, before, after, member:discord.Member):
         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
         role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
@@ -166,6 +168,7 @@ class Listeners(commands.Cog):
                 await member.remove_roles(role_to_add)
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
+    @commands.Cog.listener()
     async def on_message(self, message:discord.Message, guild:discord.Guild):
         if not message.content.startswith('!'):
             db = await self.pool.acquire()
