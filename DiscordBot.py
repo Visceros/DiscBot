@@ -287,8 +287,11 @@ async def show(ctx, member: discord.Member):
                 f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
             thirty_days_activity_records = await db.fetch(
                 f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
-            messages = db.fetchval(
+            db_messages = await db.fetch(
                 f"SELECT messages FROM LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
+            messages = 0
+            for msg_count in range(len(db_messages)):
+                messages += int(msg_count)
         finally:
             await pool.release(db)
 
