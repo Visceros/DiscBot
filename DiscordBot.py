@@ -203,7 +203,9 @@ async def shutdown(ctx):
         if member.voice is not None:
             gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
             await db.execute(
-                f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
+                f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={int(gold)} WHERE user_id={member.id} AND logoff IS NULL;")
+        else:
+            pass
     await asyncio.sleep(5)
     await pool.release(db)
     await sys_channel.send('Shutdown complete')

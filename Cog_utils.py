@@ -171,8 +171,8 @@ class Listeners(commands.Cog):
     async def on_message(self, message:discord.Message):
         db = await self.pool.acquire()
         if not message.startswith('!'):
-            messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE id={message.author.id}')
-            await db.execute(f'UPDATE LogTable SET messages={messages+1} WHERE id={message.author.id}')
+            messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id}')
+            await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id}')
         await self.pool.release(db)
 
 
