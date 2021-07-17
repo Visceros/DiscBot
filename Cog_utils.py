@@ -172,9 +172,9 @@ class Listeners(commands.Cog):
             print('message counted')
             messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id}')
             await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id} ORDER BY login DESC')
+            await self.pool.release(db)
         else:
             print('It is a command')
-        await self.pool.release(db)
 
 
 class Games(commands.Cog):
