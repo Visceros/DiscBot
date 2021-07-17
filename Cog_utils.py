@@ -11,10 +11,10 @@ from db_connector import db_connection
 
 
 class Listeners(commands.Cog):
-    def __init__(self, bot: commands.Bot, sys_channel, connection):
+    def __init__(self, bot: commands.Bot, connection):
         self.pool = connection
         self.bot = bot
-        self.sys_channel = sys_channel
+        self.sys_channel = self.bot.get_channel(749551019553325076)
         self.messaging_channel = self.bot.get_channel(442565510178013184)
 
     async def if_one_in_voice(self, member: discord.Member, before, after):
@@ -27,8 +27,6 @@ class Listeners(commands.Cog):
                 member = before.channel.members[0]
                 if any(item in member.voice.channel.name.lower() for item in
                        channel_groups_to_account_contain):
-                    print(member.display_name, 'is alone in room', before.channel.name, 'voice self mute:',
-                          member.voice.self_mute)
                     await asyncio.sleep(180)
                     if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                         await member.move_to(member.guild.afk_channel)
@@ -168,11 +166,14 @@ class Listeners(commands.Cog):
                 await member.remove_roles(role_to_add)
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
-    async def on_message(self, message:discord.Message):
-        db = await self.pool.acquire()
-        if not message.startswith('!'):
+    async def on_message(self, message:discord.Message, guild:discord.Guild):
+        if not message.content.startswith('!'):
+            db = await self.pool.acquire()
+            print('message counted')
             messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id}')
-            await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id}')
+            await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id} ORDER BY login DESC')
+        else:
+            print('It is a command')
         await self.pool.release(db)
 
 

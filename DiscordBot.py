@@ -8,18 +8,9 @@ import asyncpg  # check if installed / проверьте, установлен 
 import os
 from discord.ext import commands, tasks
 from dotenv import load_dotenv
-import datetime
+import datetime, time
 from operator import itemgetter
 from db_connector import db_connection
-import logging
-
-# ------- LOGGER FOR DEBUG PURPOSES
-# logger = logging.getLogger('discord')
-# logger.setLevel(logging.DEBUG)
-# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-# handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
-# logger.addHandler(handler)
-# ------- LOGGER FOR DEBUG PURPOSES
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -32,6 +23,9 @@ prefix = '!'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
+intents.guild_messages = True
+intents.voice_states = True
+intents.reactions = True
 des = 'GoldenBot for Golden Crown discord.'
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff',
               '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
@@ -64,46 +58,27 @@ async def initial_db_fill():
     """проверяет, все ли пользователи занесены в ДБ, если нет - дозаписывает недостающих"""
     db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
+    print('Database reading done.')
     for guild in bot.guilds:
-        # if 'free zone' in guild.name.lower():
-        if 'crown' in guild.name.lower():
+        if 'crown' in guild.name.lower() and 'golden' in guild.name.lower():
             current_members_list = []
-            crown = bot.get_guild(guild.id)
-            global sys_channel
+            crown = guild
             for member in crown.members:
                 if not member.bot:
                     current_members_list.append(member.id)
             if users_count < len(current_members_list):
+                print('There are new users to add to database')
                 try:
                     for member in crown.members:
                         if not member.bot and member.id not in users_ids:
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3) ON CONFLICT (id) DO NOTHING;',
                                 member.id, member.display_name, member.joined_at)
-                finally:
-                    await pool.release(db)
+                except Exception as e:
+                    print('Got error while trying to add missing users to database', e)
                 print('Данные пользователей в базе обновлены')
-        sys_channel = discord.utils.get(guild.channels, name='system')
-        if not sys_channel:
-            print('creating system channel')
-            try:
-                admin_roles = [role for role in guild.roles if role.permissions.administrator]
-                sys_channel_overwrites = {}
-                for role in admin_roles:
-                    sys_channel_overwrites[role] = discord.PermissionOverwrite(read_messages=True, send_messages=False)
-                sys_channel_overwrites[guild.default_role] = discord.PermissionOverwrite(read_messages=False,
-                                                                                         send_messages=False,
-                                                                                         view_channel=False)
-                sys_channel = await guild.create_text_channel('system', overwrites=sys_channel_overwrites,
-                                                              reason='creating a channel for system messages')
-            except discord.Forbidden:
-                print(f'No permissions to create system channel in {guild} server')
-            except Exception as ex:
-                print('Couldn\'t create #system channel, something is wrong:\n')
-                print(ex)
         else:
-            print(guild.name, 'system channel found')
-            pass
+            print('Golden Crown guild not found')
     print('database fill cycle ended')
     await pool.release(db)
 
@@ -134,23 +109,24 @@ async def auto_rainbowise():
 @bot.event
 async def on_ready():
     global pool
+    global sys_channel
     pool = await db_connection()
-    await asyncio.sleep(2)
+    time.sleep(1)
     print('initial database fill starting...')
     try:
         initial_db_fill.start()
     except RuntimeError:
         initial_db_fill.restart()
-    await asyncio.sleep(1)
+    time.sleep(1)
     try:
         auto_rainbowise.start()
     except RuntimeError:
         auto_rainbowise.restart()
-    await asyncio.sleep(1)
+    time.sleep(1)
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
-    bot.add_cog(Listeners(bot, sys_channel=sys_channel, connection=pool))
+    bot.add_cog(Listeners(bot, connection=pool))
 #    bot.add_cog(Utils(bot, connection = pool))
 
 
@@ -159,20 +135,19 @@ async def on_ready():
 async def _increment_money(server: discord.Guild):
     db = await pool.acquire()
     channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-    try:
-        for member in server.members:
-            if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
-                if any(item in member.voice.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
-                    gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
+    for member in server.members:
+        if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice.channel is not None:
+            if any(
+                    item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                try:
+                    gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
                     if gold is not None:
                         gold = int(gold) + 1
                         await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
-    except Exception as ex:
-        await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
-        await sys_channel.send(content=ex)
-    finally:
-        await pool.release(db)
+                except Exception as ex:
+                    await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
+                    await sys_channel.send(content=ex)
+    await pool.release(db)
 
 
 async def accounting():
@@ -306,7 +281,7 @@ async def show(ctx, member: discord.Member):
         embed.add_field(name='Пользователь:', value=part_1, inline=False)
         embed.add_field(name='Ачивки:', value=part_2, inline=False)
         embed.add_field(name='Активность:', value=part_3, inline=False)
-        embed.add_field(name='Сообщений за 30 дней:', value=messages, inline=False)
+        embed.add_field(name='Сообщений за 30 дней:', value=str(messages), inline=False)
         embed.add_field(name='Прочее:', value=part_4, inline=False)
         await ctx.send(embed=embed)
     else:
