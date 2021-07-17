@@ -136,7 +136,7 @@ async def _increment_money(server: discord.Guild):
     db = await pool.acquire()
     channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
     for member in server.members:
-        if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice.channel is not None:
+        if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
             if any(
                     item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
                 try:
@@ -264,11 +264,11 @@ async def show(ctx, member: discord.Member):
                 f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
             thirty_days_activity_records = await db.fetch(
                 f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
-            db_messages = await db.fetch(
-                f"SELECT messages FROM LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
-            messages = 0
-            for msg_count in range(len(db_messages)):
-                messages += int(msg_count)
+            # db_messages = await db.fetch(
+            #     f"SELECT messages FROM LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
+            # messages = 0
+            # for msg_count in range(len(db_messages)):
+            #     messages += int(msg_count)
         finally:
             await pool.release(db)
 
@@ -281,7 +281,7 @@ async def show(ctx, member: discord.Member):
         embed.add_field(name='Пользователь:', value=part_1, inline=False)
         embed.add_field(name='Ачивки:', value=part_2, inline=False)
         embed.add_field(name='Активность:', value=part_3, inline=False)
-        embed.add_field(name='Сообщений за 30 дней:', value=str(messages), inline=False)
+        #embed.add_field(name='Сообщений за 30 дней:', value=str(messages), inline=False)
         embed.add_field(name='Прочее:', value=part_4, inline=False)
         await ctx.send(embed=embed)
     else:
