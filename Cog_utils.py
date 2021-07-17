@@ -116,7 +116,7 @@ class Listeners(commands.Cog):
                     if type(gold) == 'NoneType' or gold is None:
                         try:
                             await db.execute(
-                                'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
+                                'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
                             await sys_channel.send(f'user added to database: {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:
@@ -137,7 +137,7 @@ class Listeners(commands.Cog):
                         await sys_channel.send(f'Caught error: {e}.')
                         try:
                             await db.execute(
-                                'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
+                                'INSERT INTO discord_users (id, nickname, join_date, gold) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
                             await sys_channel.send(f'user added to database {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:

@@ -84,7 +84,6 @@ async def initial_db_fill():
                     await pool.release(db)
                 print('Данные пользователей в базе обновлены')
         sys_channel = discord.utils.get(guild.channels, name='system')
-        await sys_channel.send(content=f'{crown.name}, {guild.name}')
         if not sys_channel:
             print('creating system channel')
             try:
@@ -114,8 +113,6 @@ async def auto_rainbowise():
     for guild in bot.guilds:
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
-        else:
-            print('Не найден сервер "Golden Crown"')
         try:
             role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
             print(role)
@@ -297,11 +294,13 @@ async def show(ctx, member: discord.Member):
         part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных: `{negative_achievements}`"
         part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
         part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
+        messages = db.execute(f"SELECT messages FROM LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
         embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
         # embed.add_field(name='', value=f"17*{data['symbol']}")
         embed.add_field(name='Пользователь:', value=part_1, inline=False)
         embed.add_field(name='Ачивки:', value=part_2, inline=False)
         embed.add_field(name='Активность:', value=part_3, inline=False)
+        embed.add_field(name='Сообщений за 30 дней:', value=messages, inline=False)
         embed.add_field(name='Прочее:', value=part_4, inline=False)
         await ctx.send(embed=embed)
     else:
