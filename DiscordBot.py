@@ -286,13 +286,13 @@ async def show(ctx, member: discord.Member):
                 f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
             thirty_days_activity_records = await db.fetch(
                 f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
-            messages = db.execute(
+            messages = db.fetchval(
                 f"SELECT messages FROM LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
         finally:
             await pool.release(db)
 
         part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
-        part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных: `{negative_achievements}`"
+        part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
         part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
         part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
         embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
