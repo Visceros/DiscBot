@@ -165,11 +165,12 @@ async def _increment_money(server: discord.Guild):
                 if any(item in member.voice.channel.name.lower() for item in
                        channel_groups_to_account_contain):
                     gold = await db.fetchval(f'SELECT Gold FROM discord_users WHERE id={member.id};')
-                    gold = int(gold) + 1
-                    await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
+                    if gold is not None:
+                        gold = int(gold) + 1
+                        await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
     except Exception as ex:
         await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
-        await sys_channel.send(content=(ex, ex.__cause__, ex.__context__))
+        await sys_channel.send(content=ex)
     finally:
         await pool.release(db)
 
