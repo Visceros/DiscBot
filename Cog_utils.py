@@ -117,6 +117,9 @@ class Listeners(commands.Cog):
                                 'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
                             await sys_channel.send(f'user added to database: {member.display_name}')
+                            role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), before.guild.roles)
+                            if not role_to_add in member.roles:
+                                await member.add_roles(role_to_add)
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name}, id: {member.id} is already added')
                 except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
