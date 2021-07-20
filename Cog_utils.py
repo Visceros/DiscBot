@@ -176,9 +176,10 @@ class Listeners(commands.Cog):
         #guild = message.author.guild
         if not message.content.startswith('!'):
             async with self.pool.acquire() as db:
-                print('message counted')
-                messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id}')
-                await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id} ORDER BY login DESC')
+                gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={message.author.id}')
+                if not type(gold) == 'NoneType' or gold is not None:
+                    messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id}')
+                    await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id} ORDER BY login DESC')
         else:
             print('It is a command')
 
