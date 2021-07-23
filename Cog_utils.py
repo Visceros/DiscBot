@@ -27,13 +27,13 @@ class Listeners(commands.Cog):
                 member = before.channel.members[0]
                 if any(item in member.voice.channel.name.lower() for item in
                        channel_groups_to_account_contain):
-                    await asyncio.sleep(180)
+                    await asyncio.sleep(120)
                     if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                         await member.move_to(member.guild.afk_channel)
-                        user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                        user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id};')
                         user_warns += 1
-                        await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE Id='{member.id}'")
-                        await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели в'
+                        await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE id={member.id};")
+                        await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
                                                      f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №3.')
                         print('sent warn message to ', member.display_name)
                         await sys_channel.send(
@@ -44,16 +44,16 @@ class Listeners(commands.Cog):
                        channel_groups_to_account_contain):
                 if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                     print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
-                    await asyncio.sleep(180)
+                    await asyncio.sleep(120)
                     if after.channel:
                         if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
                             await member.move_to(member.guild.afk_channel)
-                            user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id}')
+                            user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE id={member.id};')
                             user_warns += 1
-                            await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE Id='{member.id}'")
+                            await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE id={member.id};")
                             await self.messaging_channel.send(
-                                content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели в'
+                                content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
                                         f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №3.')
                             print('sent warn message to ', member.display_name)
                             await sys_channel.send(
@@ -69,7 +69,7 @@ class Listeners(commands.Cog):
                                 unmuted_member_count+=1
                                 unmuted_member_id = member.id
                     if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
-                        await asyncio.sleep(180)
+                        await asyncio.sleep(90)
                         if member.voice:
                             muted_member_count = 0
                             unmuted_member_count = 0
@@ -96,7 +96,6 @@ class Listeners(commands.Cog):
                                                 new_unmuted_member_id = member.id
                                     if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
                                         await member.move_to(member.guild.afk_channel)
-
         await self.pool.release(db)
 
 
@@ -109,6 +108,14 @@ class Listeners(commands.Cog):
         if member.voice is not None:
             if any(item in member.voice.channel.name.lower() for item in
                    channel_groups_to_account_contain) and not member.bot:
+                if before.self_mute is False and after.self_mute is True:
+                    muted_minutes_counter = 0
+                    while member.voice.self_mute is True:
+                        await asyncio.sleep(60)
+                        muted_minutes_counter +=1
+                        if muted_minutes_counter >=15:
+                            await member.move_to(member.guild.afk_channel)
+                            await self.messaging_channel.send(f'{member.mention} Вы слишком долго сидели в канале с учётом активности с выключенным микрофоном, поэтому вас перебросило в АФК-комнату.')
                 try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     if type(gold) == 'NoneType' or gold is None:
@@ -116,24 +123,21 @@ class Listeners(commands.Cog):
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
-                            await sys_channel.send(f'user added to database: {member.display_name}')
+                            await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
                             role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), before.guild.roles)
                             if not role_to_add in member.roles:
                                 await member.add_roles(role_to_add)
                         except asyncpg.exceptions.UniqueViolationError:
-                            await sys_channel.send(f'user {member.display_name}, id: {member.id} is already added')
+                            await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
                 except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
                     print('Got error:', err, err.__traceback__)
                     self.pool = await db_connection()
                     db = await self.pool.acquire()
 
-        if not member.bot:
-            if before.channel is None and after.channel is not None and not after.afk:
-                if any(item in member.voice.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
+                if before.channel is None and after.channel is not None and not after.afk:
                     try:
-                        gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3)', member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                        gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
+                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
                         await sys_channel.send(f'Caught error: {e}.')
                         try:
@@ -144,9 +148,9 @@ class Listeners(commands.Cog):
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
 
-            elif before.channel is not None and after.channel is None:
-                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
+                elif before.channel is not None and after.channel is None:
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
+                    await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
         await self.pool.release(db)
 
         #launching a check for one in a voice channel
@@ -175,13 +179,12 @@ class Listeners(commands.Cog):
     async def on_message(self, message:discord.Message):
         #guild = message.author.guild
         if not message.content.startswith('!'):
-            async with self.pool.acquire() as db:
-                gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={message.author.id}')
-                if not type(gold) == 'NoneType' or gold is not None:
-                    messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id}')
-                    await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id} ORDER BY login DESC')
-        else:
-            print('It is a command')
+            db = await self.pool.acquire()
+            gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={message.author.id};')
+            if not type(gold) == 'NoneType' or gold is not None:
+                messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id};')
+                await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={message.author.id} ORDER BY login DESC;')
+            await self.pool.release(db)
 
 
 class Games(commands.Cog):
@@ -209,7 +212,7 @@ class Games(commands.Cog):
             return await ctx.send(f'```Error! Извините, доступ имеют только Сокланы.```')
         else:
             # IF all correct we head further
-            user_gold = db.fetchval(f'SELECT gold from discord_users WHERE id={author.id}')
+            user_gold = db.fetchval(f'SELECT gold from discord_users WHERE id={author.id};')
             if int(user_gold) < 6000:
                 return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
             else:

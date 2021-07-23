@@ -138,7 +138,7 @@ async def _increment_money(server: discord.Guild):
     for member in server.members:
         if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
             if any(
-                    item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                    item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
                 try:
                     gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
                     if gold is not None:
@@ -238,9 +238,8 @@ async def count_result_activity(activity_records_list, warns: int):
     if warns > 0:
         result_activity = result_activity - datetime.timedelta(minutes=(10 * warns))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
-    # result_hours = result_activity.days*24+result_activity.hour
     result_hours = int(result_activity.total_seconds()) / 3600
-    return round(result_hours, 1)
+    return round(result_hours, 0)
 
 
 @user.command()
