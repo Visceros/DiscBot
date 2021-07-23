@@ -113,9 +113,8 @@ class Listeners(commands.Cog):
                     while member.voice.self_mute is True:
                         await asyncio.sleep(60)
                         muted_minutes_counter +=1
-                        if muted_minutes_counter >=15:
+                        if muted_minutes_counter >=20:
                             await member.move_to(member.guild.afk_channel)
-                            await self.messaging_channel.send(f'{member.mention} Вы слишком долго сидели в канале с учётом активности с выключенным микрофоном, поэтому вас перебросило в АФК-комнату.')
                             break
                 try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
