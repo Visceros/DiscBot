@@ -124,7 +124,7 @@ class Listeners(commands.Cog):
                                 'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
                             await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
-                            role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), before.guild.roles)
+                            role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
                             if not role_to_add in member.roles:
                                 await member.add_roles(role_to_add)
                         except asyncpg.exceptions.UniqueViolationError:
