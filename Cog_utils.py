@@ -131,7 +131,7 @@ class Listeners(commands.Cog):
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
                     role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
-                    await sys_channel.send(f'Роль {role_to_add} выдана пользователю ')
+                    await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                     if not role_to_add in member.roles:
                         await member.add_roles(role_to_add)
                 except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
