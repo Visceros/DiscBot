@@ -444,12 +444,12 @@ async def poll(ctx, options: int, time=60):
 @bot.command()
 async def top(ctx, count: int = 10):
     result_list = []
-    await ctx.message.delete()
+    #await ctx.message.delete()
     db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
     checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
     for member in ctx.guild.members:
-        if member.id in users_ids and checkrole in member.roles:
+        if member.id in users_ids and checkrole in member.roles and not member.guild.owner:
             gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
             if int(gold) > 0:
                 warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")

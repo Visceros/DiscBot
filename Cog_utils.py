@@ -126,11 +126,19 @@ class Listeners(commands.Cog):
                             await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
                             role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
                             await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
-                            if not role_to_add in member.roles:
+                            checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
+                            if not role_to_add in member.roles and checkrole in member.roles:
                                 await member.add_roles(role_to_add)
+                            elif role_to_add in member.roles and not checkrole in member.roles:
+                                await member.remove_roles(role_to_add)
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
                     role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
+                    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
+                    if not role_to_add in member.roles and checkrole in member.roles:
+                        await member.add_roles(role_to_add)
+                    elif role_to_add in member.roles and not checkrole in member.roles:
+                        await member.remove_roles(role_to_add)
                     await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                     if not role_to_add in member.roles:
                         await member.add_roles(role_to_add)
