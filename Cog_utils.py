@@ -169,16 +169,16 @@ class Listeners(commands.Cog):
         await self.pool.release(db)
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
-    @commands.Cog.listener()
-    async def on_message(self, message:discord.Message):
-        #guild = message.author.guild
-        if not message.content.startswith('!'):
-            db = await self.pool.acquire()
-            gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={message.author.id};')
-            if not type(gold) == 'NoneType' or gold is not None:
-                messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id};')
-                await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id=(SELECT user_id FROM LogTable WHERE user_id={message.author.id} ORDER BY login DESC LIMIT 1;')
-            await self.pool.release(db)
+    # @commands.Cog.listener()
+    # async def on_message(self, message:discord.Message):
+    #     #guild = message.author.guild
+    #     if not message.content.startswith('!'):
+    #         db = await self.pool.acquire()
+    #         gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={message.author.id};')
+    #         if not type(gold) == 'NoneType' or gold is not None:
+    #             messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id};')
+    #             await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id=(SELECT user_id FROM LogTable WHERE user_id={message.author.id} ORDER BY login DESC LIMIT 1;')
+    #         await self.pool.release(db)
 
 class Games(commands.Cog):
     def __init__(self, bot, connection):
