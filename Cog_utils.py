@@ -139,9 +139,6 @@ class Listeners(commands.Cog):
                         await member.add_roles(role_to_add)
                     elif role_to_add in member.roles and not checkrole in member.roles:
                         await member.remove_roles(role_to_add)
-                    await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
-                    if not role_to_add in member.roles:
-                        await member.add_roles(role_to_add)
                 except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
                     print('Got error:', err, err.__traceback__)
                     self.pool = await db_connection()
