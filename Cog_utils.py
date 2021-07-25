@@ -204,7 +204,7 @@ class Games(commands.Cog):
         await ctx.message.delete()
         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), author.guild.roles)
         # Check if it's the right channel to write to and if user have relevant role
-        if not 'сундучки' in channel.name.lower() or not 'казино' in channel.name.lower():
+        if not 'сундучки' in channel.name.lower() and not 'казино' in channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
         is_eligible = False
         if checkrole in ctx.message.author.roles:
