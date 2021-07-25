@@ -449,12 +449,12 @@ async def top(ctx, count: int = 10):
     users_count, users_ids = await initial_db_read()
     checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
     for member in ctx.guild.members:
-        if member.id in users_ids and checkrole in member.roles and not member.guild.owner:
+        if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
             gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
             if int(gold) > 0:
                 warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
                 thirty_days_activity_records = await db.fetch(
-                    f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
+                    f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login DESC;")
                 activity = await count_result_activity(thirty_days_activity_records, warns)
                 result_list.append((member.mention, activity))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
