@@ -174,6 +174,7 @@ def subtract_time(time_arg):
 @bot.command()
 async def shutdown(ctx):
     db = await pool.acquire()
+    sys_channel = discord.utils.find(lambda r: (r.name.lower()=='system'), ctx.guild.channels)
     for member in ctx.guild.members:
         if member.voice is not None:
             gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
