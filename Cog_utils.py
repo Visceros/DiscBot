@@ -110,12 +110,13 @@ class Listeners(commands.Cog):
                    channel_groups_to_account_contain) and not member.bot:
                 if before.self_mute is False and after.self_mute is True:
                     muted_minutes_counter = 0
-                    while member.voice.self_mute is True:
+                    while hasattr(member, 'voice') and member.voice.self_mute is True:
                         await asyncio.sleep(60)
                         muted_minutes_counter +=1
                         if muted_minutes_counter >=20:
                             await member.move_to(member.guild.afk_channel)
                             break
+
                 try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     if type(gold) == 'NoneType' or gold is None:
@@ -169,8 +170,8 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_member_remove(self, member:discord.Member):
         db = await self.pool.acquire()
-        await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
         await db.execute(f'DELETE FROM LogTable WHERE user_id={member.id};')
+        await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
         await self.pool.release(db)
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
