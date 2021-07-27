@@ -119,8 +119,7 @@ class Listeners(commands.Cog):
 
                 try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    roles_list = [role for role in member.guild.roles if role.id in (
-                    869594182103232572, 869594182103232572, 869594182103232572, 869601564107603998)]
+                    roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
                     if type(gold) == 'NoneType' or gold is None:
                         try:
                             await db.execute(
@@ -139,6 +138,7 @@ class Listeners(commands.Cog):
                     role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
                     checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                     if checkrole in member.roles and not any(role in roles_list for role in member.roles):
+                        print(any(role in roles_list for role in member.roles))
                         await member.add_roles(role_to_add)
                     elif role_to_add in member.roles and not checkrole in member.roles:
                         await member.remove_roles(role_to_add)
