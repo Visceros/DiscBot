@@ -217,6 +217,7 @@ class Games(commands.Cog):
             if int(user_gold) < 6000:
                 return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
             else:
+                db.execute(f'UPDATE discord_users set gold={user_gold-6000} WHERE id={author.id};')
                 await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
                                'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
                 # begin pasting the picture with usual chests
@@ -280,6 +281,7 @@ class Games(commands.Cog):
                                         return await channel.send('Error! Could not get the file...')
                                     data = io.BytesIO(await resp.read())
                                     await channel.send(file=discord.File(data, 'gold-reward.png'))
+        await self.pool.release(db)
 
     # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
 

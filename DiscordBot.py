@@ -459,14 +459,50 @@ async def top(ctx, count: int = 10):
                 activity = await count_result_activity(thirty_days_activity_records, warns)
                 result_list.append((member.mention, activity))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
+    await ctx.send(res) #no reaction
+    await ctx.send(result_list) #no reaction
     count = len(res) if count > len(res) else count
     output = ""
     for i in range(count):
         output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
     #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     #embed.add_field(name='Топ активности', value=output)
+    #await ctx.send(embed=embed)
     await ctx.send(output)
     await pool.release(db)
 
+@bot.command()
+async def antitop(ctx, count: int = 10):
+    """Одна неделя = 10 часам. Выводить в анти-топ тех людей, у кого меньше положенных часов по боту исходя из даты подключения на сервер
+    Считать активность за 30 дней и делить на 4. Если меньше 10 часов - то добавляем в анти-топ.
+    Не выводить в анти-топ тех, кто
+    """
+    result_list = []
+    #await ctx.message.delete()
+    db = await pool.acquire()
+    users_count, users_ids = await initial_db_read()
+    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
+    for member in ctx.guild.members:
+        if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+            gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
+            if int(gold) > 0:
+                warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
+                thirty_days_activity_records = await db.fetch(
+                    f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login DESC;")
+                activity = await count_result_activity(thirty_days_activity_records, warns)
+                if activity < 40:
+                    result_list.append((member.mention, activity))
+    res = sorted(result_list, key=itemgetter(1), reverse=True)
+    count = len(res) if count > len(res) else count
+    output = "".join(
+        f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
+        for i in range(10)
+    )
+    for i in range(count):
+        output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
+    #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    #embed.add_field(name='Топ активности', value=output)
+    await ctx.send(output)
+    await pool.release(db)
 
 bot.run(token, reconnect=True)
