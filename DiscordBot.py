@@ -463,9 +463,9 @@ async def top(ctx, count: int = 10):
     output = ""
     for i in range(count):
         output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
-    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    embed.add_field(name='Топ активности', value=output)
-    await ctx.send(embed=embed)
+    #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    #embed.add_field(name='Топ активности', value=output)
+    await ctx.send(f"{output}")
     await pool.release(db)
 
 
