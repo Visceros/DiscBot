@@ -11,7 +11,7 @@ async def db_connection():
     db_address = os.getenv('db_address')  # reserved variable for database http address
     try:
         print('connecting to database server...')
-        pool = await asyncpg.create_pool(host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
+        pool = await asyncpg.create_pool(min_size=30, host=db_address, port=5000, user=db_user, password=db_pwd, database=db_name)
         db = await pool.acquire()
     except Exception as e:
         print('Could not connect to database:\n', e.args)
@@ -42,4 +42,5 @@ async def db_connection():
         print('Attempt to create database tables failed')
         print(e, e.args, e.__cause__, e.__context__)
         exit(1)
+    await pool.release(db)
     return pool
