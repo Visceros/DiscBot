@@ -444,19 +444,13 @@ async def poll(ctx, options: int, time=60):
 
 @bot.command()
 async def top(ctx, count: int = 10):
-    print('printing top')
     result_list = []
     #await ctx.message.delete()
     db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
     checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
-    counter = 0
-    member_counter = 0
-    print(f'starting:{counter}, {member_counter}')
     for member in ctx.guild.members:
         if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-            counter += 1
-            print(counter)
             gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
             if int(gold) > 0:
                 warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
@@ -464,20 +458,16 @@ async def top(ctx, count: int = 10):
                     f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login DESC;")
                 activity = await count_result_activity(thirty_days_activity_records, warns)
                 result_list.append((member.mention, activity))
-                member_counter+=1
-    print(member_counter)
-    print('1')
     res = sorted(result_list, key=itemgetter(1), reverse=True)
     count = len(res) if count > len(res) else count
-    output = ""
-    for i in range(count):
-        output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
-    #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    #embed.add_field(name='Топ активности', value=output)
-    await ctx.send(output)
+    # output = ""
+    # for i in range(count):
+    #     output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    embed.add_field(name='Топ активности', value=output)
+    await ctx.send(embed=embed)
     await pool.release(db)
-    print(res)
-    print(result_list)
 
 
 bot.run(token, reconnect=True)

@@ -217,9 +217,9 @@ class Games(commands.Cog):
             if int(user_gold) < 6000:
                 return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
             else:
-                db.execute(f'UPDATE discord_users set gold={user_gold-6000} WHERE id={author.id};')
                 await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
                                'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
+                db.execute(f'UPDATE discord_users set gold={user_gold - 6000} WHERE id={author.id};')
                 # begin pasting the picture with usual chests
                 async with aiohttp.ClientSession() as session:
                     async with session.get(
