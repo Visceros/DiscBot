@@ -108,15 +108,6 @@ class Listeners(commands.Cog):
         if member.voice is not None:
             if any(item in member.voice.channel.name.lower() for item in
                    channel_groups_to_account_contain) and not member.bot:
-                if after.self_mute is True:
-                    muted_minutes_counter = 0
-                    while hasattr(member, 'voice') and member.voice.self_mute is True:
-                        await asyncio.sleep(60)
-                        muted_minutes_counter +=1
-                        if muted_minutes_counter >=20:
-                            await member.move_to(member.guild.afk_channel)
-                            break
-
                 try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
@@ -147,23 +138,35 @@ class Listeners(commands.Cog):
                     self.pool = await db_connection()
                     db = await self.pool.acquire()
 
-                if before.channel is None and after.channel is not None and not after.afk:
-                    try:
-                        gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
-                    except asyncpg.exceptions.ForeignKeyViolationError as e:
-                        await sys_channel.send(f'Caught error: {e}.')
-                        try:
-                            await db.execute(
-                                'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
-                                member.id, member.display_name, member.joined_at)
-                            await sys_channel.send(f'user added to database {member.display_name}')
-                        except asyncpg.exceptions.UniqueViolationError:
-                            await sys_channel.send(f'user {member.display_name} is already added')
-
-                elif before.channel is not None and after.channel is None:
+        if before.channel is None and after.channel is not None and not after.afk and not after.self_mute:
+            if any(item in after.channel.name.lower() for item in
+                   channel_groups_to_account_contain) and not member.bot:
+                try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-                    await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IsNULL;")
+                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                    print(f'insterted login for {member.id}')
+                except asyncpg.exceptions.ForeignKeyViolationError as e:
+                    await sys_channel.send(f'Caught error: {e}.')
+                    try:
+                        await db.execute(
+                            'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
+                            member.id, member.display_name, member.joined_at)
+                        await sys_channel.send(f'user added to database {member.display_name}')
+                    except asyncpg.exceptions.UniqueViolationError:
+                        await sys_channel.send(f'user {member.display_name} is already added')
+
+        elif before.channel is not None and after.channel is None:
+            gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
+            await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IsNULL;")
+
+        if after.self_mute is True:
+            muted_minutes_counter = 0
+            while hasattr(member, 'voice') and member.voice.self_mute is True:
+                await asyncio.sleep(60)
+                muted_minutes_counter +=1
+                if muted_minutes_counter >=20:
+                    await member.move_to(member.guild.afk_channel)
+                    break
         await self.pool.release(db)
 
         #launching a check for one in a voice channel
