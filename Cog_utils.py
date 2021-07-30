@@ -34,10 +34,10 @@ class Listeners(commands.Cog):
                         user_warns += 1
                         await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE id={member.id};")
                         await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
-                                                     f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №3.')
+                                                     f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
                         print('sent warn message to ', member.display_name)
                         await sys_channel.send(
-                            f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №3 (накрутка активности).')
+                            f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
         elif after.channel is not None:
             if any(item in member.voice.channel.name.lower() for item in
@@ -54,10 +54,10 @@ class Listeners(commands.Cog):
                             await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE id={member.id};")
                             await self.messaging_channel.send(
                                 content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
-                                        f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера под №3.')
+                                        f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
                             print('sent warn message to ', member.display_name)
                             await sys_channel.send(
-                                f'Пользователь {member.display_name} получил предупреждение за нарушение пункта правил сервера №3 (накрутка активности).')
+                                f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
                 elif member.voice.channel is not None and len(member.voice.channel.members) >1:
                     muted_member_count = 0
                     unmuted_member_count = 0
@@ -108,7 +108,7 @@ class Listeners(commands.Cog):
         if member.voice is not None:
             if any(item in member.voice.channel.name.lower() for item in
                    channel_groups_to_account_contain) and not member.bot:
-                if before.self_mute is False and after.self_mute is True:
+                if after.self_mute is True:
                     muted_minutes_counter = 0
                     while hasattr(member, 'voice') and member.voice.self_mute is True:
                         await asyncio.sleep(60)
@@ -207,19 +207,19 @@ class Games(commands.Cog):
         if not 'сундучки' in channel.name.lower() and not 'казино' in channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
         is_eligible = False
-        if checkrole in ctx.message.author.roles:
+        if checkrole in author.roles:
             is_eligible = True
         if not is_eligible:
             return await ctx.send(f'```Error! Извините, доступ имеют только Сокланы.```')
         else:
             # IF all correct we head further
-            user_gold = db.fetchval(f'SELECT gold from discord_users WHERE id={author.id};')
+            user_gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={author.id};')
             if int(user_gold) < 6000:
                 return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
             else:
                 await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
                                'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-                db.execute(f'UPDATE discord_users set gold={user_gold - 6000} WHERE id={author.id};')
+                await db.execute(f'UPDATE discord_users set gold={user_gold - 6000} WHERE id={author.id};')
                 # begin pasting the picture with usual chests
                 async with aiohttp.ClientSession() as session:
                     async with session.get(
@@ -330,7 +330,6 @@ class Shop(commands.Cog):
             #Тут писать тело функции
             self.pool.release(db)
 
-
     async def shop(self):
         pass
 
@@ -341,4 +340,3 @@ class Shop(commands.Cog):
 
 class Utils(commands.Cog):
     pass
-
