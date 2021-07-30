@@ -32,7 +32,7 @@ async def db_connection():
         await db.execute('''CREATE TABLE IF NOT EXISTS LogTable (
         user_id BIGINT NOT NULL,
         login timestamp with time zone,
-        logoff timestamp with time zone,              
+        logoff timestamp with time zone,
         gold INT DEFAULT 0,
         record_id SERIAL PRIMARY KEY NOT NULL,
         Messages INT DEFAULT 0,

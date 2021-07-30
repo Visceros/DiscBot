@@ -163,7 +163,7 @@ class Listeners(commands.Cog):
 
                 elif before.channel is not None and after.channel is None:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-                    await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
+                    await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IsNULL;")
         await self.pool.release(db)
 
         #launching a check for one in a voice channel
