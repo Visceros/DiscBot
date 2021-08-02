@@ -11,6 +11,12 @@ from dotenv import load_dotenv
 import datetime, time
 from operator import itemgetter
 from db_connector import db_connection
+import logging
+
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+#logging.basicConfig(filename='discordlog.log', filemode='w', level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -351,11 +357,12 @@ async def clear(ctx, member: discord.Member):
 
 
 @bot.command()
-async def echo(ctx, msg: str):
+async def echo(ctx, *args):  #msg: str
     """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
-    message = ctx.message
+    message = ctx.message.content.split(' ')[1:]
     await message.delete()
-    await ctx.send(msg)
+    #await ctx.send(msg)
+    await ctx.send(message)
 
 
 @bot.command()
@@ -488,14 +495,14 @@ async def antitop(ctx, count: int = 10):
                 # возможно сюда нужно будет добавить условие, что активность > 0 чтобы не загромождать анти-топ "нулями"
                 time_in_clan = datetime.datetime.now() - member.joined_at
                 if time_in_clan.days//7 > 0:
-                    if time_in_clan.days//7 < 4:
+                    if time_in_clan.days//7 <= 4:
                         if activity/(time_in_clan.days//7) < 10:
-                            result_list.append((member.mention, activity))
-                    elif activity < 40:
-                        result_list.append((member.mention, activity))
+                            result_list.append((member.mention, activity, time_in_clan.days//7))
+                    elif time_in_clan.days//7 < 4 and activity < 40:
+                        result_list.append((member.mention, activity, '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
-    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов), В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
     await ctx.send(embed=embed)
