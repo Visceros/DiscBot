@@ -41,9 +41,8 @@ async def initial_db_read():
     if len(records_in_db) >= 1:
         users_idlist = []
         records_count = len(records_in_db)
-        # Операция ниже занимает слишком много времени (~4-5 минут сейчас) - переделать на обработку запроса выше.
-        for i in range(1, records_count + 1):
-            ids = await db.fetchval(f'SELECT id FROM discord_users ORDER BY id LIMIT 1 OFFSET {i - 1};')
+        for i in range(len(records_in_db)):
+            ids = records_in_db[i][0]
             users_idlist.append(ids)
         print(records_count, ' пользователей в базе')
         await pool.release(db)
