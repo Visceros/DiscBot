@@ -144,7 +144,6 @@ class Listeners(commands.Cog):
                 try:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
                     await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
-                    print(f'insterted login for {member.id}')
                 except asyncpg.exceptions.ForeignKeyViolationError as e:
                     await sys_channel.send(f'Caught error: {e}.')
                     try:
@@ -161,12 +160,13 @@ class Listeners(commands.Cog):
 
         if after.self_mute is True:
             muted_minutes_counter = 0
-            while hasattr(member, 'voice') and member.voice.self_mute is True:
-                await asyncio.sleep(60)
-                muted_minutes_counter +=1
-                if muted_minutes_counter >=20:
-                    await member.move_to(member.guild.afk_channel)
-                    break
+            while hasattr(member, 'voice'):
+                if member.voice.self_mute is True:
+                    await asyncio.sleep(60)
+                    muted_minutes_counter +=1
+                    if muted_minutes_counter >=20:
+                        await member.move_to(member.guild.afk_channel)
+                        break
         await self.pool.release(db)
 
         #launching a check for one in a voice channel
