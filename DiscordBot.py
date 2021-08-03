@@ -456,12 +456,12 @@ async def top(ctx, count: int = 10):
                         "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
                     activity = await count_result_activity(thirty_days_activity_records, warns)
                     result_list.append((member.mention, activity))
-        res = sorted(result_list, key=itemgetter(1), reverse=True)
-        count = len(res) if count > len(res) else count
-        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
-        embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-        embed.add_field(name='Топ активности', value=output)
-        await ctx.send(embed=embed)
+    res = sorted(result_list, key=itemgetter(1), reverse=True)
+    count = len(res) if count > len(res) else count
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    embed.add_field(name='Топ активности', value=output)
+    await ctx.send(embed=embed)
 
 
 @bot.command()
