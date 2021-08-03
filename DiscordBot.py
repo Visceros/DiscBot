@@ -15,7 +15,6 @@ import logging
 
 ds_logger = logging.getLogger('discord')
 ds_logger.setLevel(logging.DEBUG)
-#handler = logging.FileHandler(filename='discordlog.log', mode='w')
 handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
 ds_logger.addHandler(handler)
 
