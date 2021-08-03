@@ -166,6 +166,8 @@ class Listeners(commands.Cog):
                         if muted_minutes_counter >=20:
                             await member.move_to(member.guild.afk_channel)
                             break
+                    else:
+                        break
 
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
