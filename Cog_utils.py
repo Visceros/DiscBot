@@ -303,7 +303,7 @@ class Games(commands.Cog):
     # ------------- КОНЕЦ ИГРЫ БИНГО -----------
 
     @commands.command(pass_context=True)
-    async def bingo(self, ctx, count):
+    async def bingo(self, ctx, count=3):
         await ctx.message.delete()
         prize = 0
         count = 5 if count > 5 else count
