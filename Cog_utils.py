@@ -19,135 +19,127 @@ class Listeners(commands.Cog):
 
     async def if_one_in_voice(self, member: discord.Member, before, after):
         """Проверяем, остался ли пользователь один в канале, если один - перекидываем в АФК-комнату"""
-        db = await self.pool.acquire()
         sys_channel = self.sys_channel
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-        if after.channel is None:
-            if len(before.channel.members) == 1:
-                member = before.channel.members[0]
-                if any(item in member.voice.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
-                    await asyncio.sleep(120)
-                    if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
-                        await member.move_to(member.guild.afk_channel)
-                        user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE Id={member.id};')
-                        user_warns += 1
-                        await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE id={member.id};")
-                        await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
-                                                     f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
-                        print('sent warn message to ', member.display_name)
-                        await sys_channel.send(
-                            f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
-
-        elif after.channel is not None:
-            if any(item in member.voice.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
-                if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
-                    print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
-                    await asyncio.sleep(120)
-                    if after.channel:
-                        if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
-                            print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
+        async with self.pool.acquire() as db:
+            if after.channel is None:
+                if len(before.channel.members) == 1:
+                    member = before.channel.members[0]
+                    if any(item in member.voice.channel.name.lower() for item in
+                           channel_groups_to_account_contain):
+                        await asyncio.sleep(120)
+                        if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             await member.move_to(member.guild.afk_channel)
-                            user_warns = await db.fetchval(f'SELECT Warns from discord_users WHERE id={member.id};')
+                            user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                             user_warns += 1
-                            await db.execute(f"UPDATE discord_users SET Warns='{user_warns}' WHERE id={member.id};")
-                            await self.messaging_channel.send(
-                                content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
-                                        f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
+                            await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
+                            await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
+                                                         f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
                             print('sent warn message to ', member.display_name)
                             await sys_channel.send(
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
-                elif member.voice.channel is not None and len(member.voice.channel.members) >1:
-                    muted_member_count = 0
-                    unmuted_member_count = 0
-                    for member in member.voice.channel.members:
-                        if not member.bot:
-                            if member.voice.self_mute:
-                                muted_member_count+=1
-                            else:
-                                unmuted_member_count+=1
-                                unmuted_member_id = member.id
-                    if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
-                        await asyncio.sleep(90)
-                        if member.voice:
-                            muted_member_count = 0
-                            unmuted_member_count = 0
-                            for member in member.voice.channel.members:
-                                if not member.bot:
-                                    if member.voice.self_mute:
-                                        muted_member_count += 1
-                                    else:
-                                        unmuted_member_count += 1
-                                        new_unmuted_member_id = member.id
-                            if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
-                                await self.messaging_channel.send('{} в данный момент вы единственный активный участник в комнате.'
-                                                             ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
-                                await asyncio.sleep(60)
-                                if member.voice:
-                                    muted_member_count = 0
-                                    unmuted_member_count = 0
-                                    for member in member.voice.channel.members:
-                                        if not member.bot:
-                                            if member.voice.self_mute:
-                                                muted_member_count += 1
-                                            else:
-                                                unmuted_member_count += 1
-                                                new_unmuted_member_id = member.id
-                                    if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
-                                        await member.move_to(member.guild.afk_channel)
-        await self.pool.release(db)
+
+            elif after.channel is not None:
+                if any(item in member.voice.channel.name.lower() for item in
+                           channel_groups_to_account_contain):
+                    if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
+                        print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
+                        await asyncio.sleep(120)
+                        if after.channel:
+                            if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
+                                print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
+                                await member.move_to(member.guild.afk_channel)
+                                user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
+                                user_warns += 1
+                                await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
+                                await self.messaging_channel.send(
+                                    content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
+                                            f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
+                                print('sent warn message to ', member.display_name)
+                                await sys_channel.send(
+                                    f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
+                    elif member.voice.channel is not None and len(member.voice.channel.members) >1:
+                        muted_member_count = 0
+                        unmuted_member_count = 0
+                        for member in member.voice.channel.members:
+                            if not member.bot:
+                                if member.voice.self_mute:
+                                    muted_member_count+=1
+                                else:
+                                    unmuted_member_count+=1
+                                    unmuted_member_id = member.id
+                        if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
+                            await asyncio.sleep(90)
+                            if member.voice:
+                                muted_member_count = 0
+                                unmuted_member_count = 0
+                                for member in member.voice.channel.members:
+                                    if not member.bot:
+                                        if member.voice.self_mute:
+                                            muted_member_count += 1
+                                        else:
+                                            unmuted_member_count += 1
+                                            new_unmuted_member_id = member.id
+                                if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
+                                    await self.messaging_channel.send('{} в данный момент вы единственный активный участник в комнате.'
+                                                                 ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
+                                    await asyncio.sleep(60)
+                                    if member.voice:
+                                        muted_member_count = 0
+                                        unmuted_member_count = 0
+                                        for member in member.voice.channel.members:
+                                            if not member.bot:
+                                                if member.voice.self_mute:
+                                                    muted_member_count += 1
+                                                else:
+                                                    unmuted_member_count += 1
+                                                    new_unmuted_member_id = member.id
+                                        if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
+                                            await member.move_to(member.guild.afk_channel)
 
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before, after):
-        db = await self.pool.acquire()
         sys_channel = self.sys_channel
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-        if member.voice is not None:
-            if any(item in member.voice.channel.name.lower() for item in
-                   channel_groups_to_account_contain) and not member.bot:
-                if after.self_mute is True:
-                    muted_minutes_counter = 0
-                    while hasattr(member, 'voice') and member.voice.self_mute is True:
-                        await asyncio.sleep(60)
-                        muted_minutes_counter +=1
-                        if muted_minutes_counter >=20:
-                            await member.move_to(member.guild.afk_channel)
-                            break
+        async with self.pool.acquire() as db:
+            if member.voice is not None:
+                if any(item in member.voice.channel.name.lower() for item in
+                       channel_groups_to_account_contain) and not member.bot:
+                    try:
+                        gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                        roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
+                        if type(gold) == 'NoneType' or gold is None:
+                            try:
+                                await db.execute(
+                                    'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
+                                    member.id, member.display_name, member.joined_at)
+                                await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
+                                role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
+                                await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
+                                checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
+                                if checkrole in member.roles and not any(role in roles_list for role in member.roles):
+                                    await member.add_roles(role_to_add)
+                                elif role_to_add in member.roles and not checkrole in member.roles:
+                                    await member.remove_roles(role_to_add)
+                            except asyncpg.exceptions.UniqueViolationError:
+                                await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
+                        role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
+                        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
+                        if checkrole in member.roles and not any(role in roles_list for role in member.roles):
+                            print(any(role in roles_list for role in member.roles))
+                            await member.add_roles(role_to_add)
+                        elif role_to_add in member.roles and not checkrole in member.roles:
+                            await member.remove_roles(role_to_add)
+                    except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
+                        print('Got error:', err, err.__traceback__)
+                        self.pool = await db_connection()
+                        db = await self.pool.acquire()
 
-                try:
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
-                    if type(gold) == 'NoneType' or gold is None:
-                        try:
-                            await db.execute(
-                                'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
-                                member.id, member.display_name, member.joined_at)
-                            await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
-                            role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
-                            await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
-                            checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
-                            if checkrole in member.roles and not any(role in roles_list for role in member.roles):
-                                await member.add_roles(role_to_add)
-                            elif role_to_add in member.roles and not checkrole in member.roles:
-                                await member.remove_roles(role_to_add)
-                        except asyncpg.exceptions.UniqueViolationError:
-                            await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
-                    role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
-                    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
-                    if checkrole in member.roles and not any(role in roles_list for role in member.roles):
-                        print(any(role in roles_list for role in member.roles))
-                        await member.add_roles(role_to_add)
-                    elif role_to_add in member.roles and not checkrole in member.roles:
-                        await member.remove_roles(role_to_add)
-                except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
-                    print('Got error:', err, err.__traceback__)
-                    self.pool = await db_connection()
-                    db = await self.pool.acquire()
-
-                if before.channel is None and after.channel is not None and not after.afk:
+            if before.channel is None and after.channel is not None and not after.afk and not after.self_mute:
+                if any(item in after.channel.name.lower() for item in
+                       channel_groups_to_account_contain) and not member.bot:
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
@@ -161,20 +153,28 @@ class Listeners(commands.Cog):
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
 
-                elif before.channel is not None and after.channel is None:
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-                    await db.execute(f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={gold} WHERE user_id={member.id} AND logoff IS NULL;")
-        await self.pool.release(db)
+            elif before.channel is not None and after.channel is None:
+                gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
+                await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
+
+            if after.self_mute is True:
+                muted_minutes_counter = 0
+                while hasattr(member, 'voice'):
+                    if member.voice.self_mute is True:
+                        await asyncio.sleep(60)
+                        muted_minutes_counter +=1
+                        if muted_minutes_counter >=20:
+                            await member.move_to(member.guild.afk_channel)
+                            break
 
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
 
     @commands.Cog.listener()
     async def on_member_remove(self, member:discord.Member):
-        db = await self.pool.acquire()
-        await db.execute(f'DELETE FROM LogTable WHERE user_id={member.id};')
-        await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-        await self.pool.release(db)
+        async with self.pool.acquire() as db:
+            await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
+            await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     # @commands.Cog.listener()
@@ -197,7 +197,7 @@ class Games(commands.Cog):
     # ------------- ИГРА СУНДУЧКИ -----------
     @commands.command()
     async def chest(self, ctx):
-        db = await self.pool.acquire()
+
         reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
         author = ctx.message.author
         channel = ctx.message.channel
@@ -213,75 +213,75 @@ class Games(commands.Cog):
             return await ctx.send(f'```Error! Извините, доступ имеют только Сокланы.```')
         else:
             # IF all correct we head further
-            user_gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={author.id};')
-            if int(user_gold) < 6000:
-                return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
-            else:
-                await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
-                               'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-                await db.execute(f'UPDATE discord_users set gold={user_gold - 6000} WHERE id={author.id};')
-                # begin pasting the picture with usual chests
-                async with aiohttp.ClientSession() as session:
-                    async with session.get(
-                            'https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
-                        if resp.status != 200 and resp.status != 301:
-                            return await channel.send('Error! Could not get the file...')
-                        data = io.BytesIO(await resp.read())
-                        start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
-                        await session.close()
-                # end of pasting the picture with usual chests
-                for react in reactions:
-                    await start_message.add_reaction(react)
-
-                def checkS(reaction, user):
-                    return str(reaction.emoji) in reactions and user.bot is not True
-
-                def checkG(reaction, user):
-                    return str(reaction.emoji) in reactions[0:2] and user.bot is not True
-
-                try:
-                    reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
-                except asyncio.TimeoutError:
-                    await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
+            async with self.pool.acquire() as db:
+                user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', author.id)
+                if int(user_gold) < 6000:
+                    return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
                 else:
-                    reward, pic = usual_reward()
-                    await channel.send(f'```yaml\nСундук со скрипом открывается и... {reward}```')
+                    await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
+                                   'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
+                    await db.execute('UPDATE discord_users set gold={user_gold - 6000} WHERE id=$1;', author.id)
+                    # begin pasting the picture with usual chests
                     async with aiohttp.ClientSession() as session:
-                        async with session.get(pic) as resp:
+                        async with session.get(
+                                'https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
                             if resp.status != 200 and resp.status != 301:
                                 return await channel.send('Error! Could not get the file...')
                             data = io.BytesIO(await resp.read())
-                            await channel.send(file=discord.File(data, 'reward.png'))
-                    if 'золотой ключ' in reward.lower():
-                        await ctx.send(
-                            '```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
-                        # Begin pasting the picture with Gold chests
+                            start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
+                            await session.close()
+                    # end of pasting the picture with usual chests
+                    for react in reactions:
+                        await start_message.add_reaction(react)
+
+                    def checkS(reaction, user):
+                        return str(reaction.emoji) in reactions and user.bot is not True
+
+                    def checkG(reaction, user):
+                        return str(reaction.emoji) in reactions[0:2] and user.bot is not True
+
+                    try:
+                        reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
+                    except asyncio.TimeoutError:
+                        await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
+                    else:
+                        reward, pic = usual_reward()
+                        await channel.send(f'```yaml\nСундук со скрипом открывается и... {reward}```')
                         async with aiohttp.ClientSession() as session:
-                            async with session.get(
-                                    'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
-                                if resp.status != 200 and 301:
+                            async with session.get(pic) as resp:
+                                if resp.status != 200 and resp.status != 301:
                                     return await channel.send('Error! Could not get the file...')
                                 data = io.BytesIO(await resp.read())
-                                start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
-                                await session.close()
-                        # End of pasting the picture with Gold chests
-                        for react in reactions[0:3]:
-                            await start_message.add_reaction(react)
-                        try:
-                            reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkG)
-                        except asyncio.TimeoutError:
-                            return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
-                        else:
-                            reward, pic = gold_reward()
-                            await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
-                                               f'и крышка тихонько открывается...\n{reward}```')
+                                await channel.send(file=discord.File(data, 'reward.png'))
+                        if 'золотой ключ' in reward.lower():
+                            await ctx.send(
+                                '```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
+                            # Begin pasting the picture with Gold chests
                             async with aiohttp.ClientSession() as session:
-                                async with session.get(pic) as resp:
+                                async with session.get(
+                                        'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
                                     if resp.status != 200 and 301:
                                         return await channel.send('Error! Could not get the file...')
                                     data = io.BytesIO(await resp.read())
-                                    await channel.send(file=discord.File(data, 'gold-reward.png'))
-        await self.pool.release(db)
+                                    start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
+                                    await session.close()
+                            # End of pasting the picture with Gold chests
+                            for react in reactions[0:3]:
+                                await start_message.add_reaction(react)
+                            try:
+                                reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkG)
+                            except asyncio.TimeoutError:
+                                return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
+                            else:
+                                reward, pic = gold_reward()
+                                await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
+                                                   f'и крышка тихонько открывается...\n{reward}```')
+                                async with aiohttp.ClientSession() as session:
+                                    async with session.get(pic) as resp:
+                                        if resp.status != 200 and 301:
+                                            return await channel.send('Error! Could not get the file...')
+                                        data = io.BytesIO(await resp.read())
+                                        await channel.send(file=discord.File(data, 'gold-reward.png'))
 
     # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
 
@@ -326,11 +326,11 @@ class Shop(commands.Cog):
         self.bot = bot
 
         async def sth():
-            db = await self.pool.acquire()
-            #Тут писать тело функции
-            self.pool.release(db)
+            async with self.pool.acquire() as db:
+                pass
+                #Тут писать тело функции
 
-    async def shop(self):
+    async def shop(self): #или назвать showcase - витрина.
         pass
 
 
