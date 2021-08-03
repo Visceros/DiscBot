@@ -115,18 +115,15 @@ async def on_ready():
     global pool
     global sys_channel
     pool = await db_connection()
-    time.sleep(1)
     print('initial database fill starting...')
     try:
         initial_db_fill.start()
     except RuntimeError:
         initial_db_fill.restart()
-    time.sleep(1)
     try:
         auto_rainbowise.start()
     except RuntimeError:
         auto_rainbowise.restart()
-    time.sleep(1)
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
