@@ -13,10 +13,11 @@ from operator import itemgetter
 from db_connector import db_connection
 import logging
 
-logger = logging.getLogger('discord')
-logger.setLevel(logging.DEBUG)
-#logging.basicConfig(filename='discordlog.log', filemode='w', level=logging.DEBUG)
-logging.basicConfig(level=logging.DEBUG)
+ds_logger = logging.getLogger('discord')
+ds_logger.setLevel(logging.DEBUG)
+#handler = logging.FileHandler(filename='discordlog.log', mode='w')
+handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+ds_logger.addHandler(handler)
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -41,52 +42,50 @@ bot = commands.Bot(description=des, command_prefix=prefix, intents=intents)
 # считываем количество записей в базе данных  - обновлена логика. получаем не только кол-во записей, но и айдишники! ПРОВЕРИТЬ!
 async def initial_db_read():
     global pool
-    db = await pool.acquire()
-    records_in_db = 0
-    records_in_db = await db.fetch('SELECT * FROM discord_users;')
-    if len(records_in_db) >= 1:
-        users_idlist = []
-        records_count = len(records_in_db)
-        for i in range(len(records_in_db)):
-            ids = records_in_db[i][0]
-            users_idlist.append(ids)
-        print(records_count, ' пользователей в базе')
-        await pool.release(db)
-        return records_count, users_idlist
-    else:
-        await pool.release(db)
-        return 0, []
+    async with pool.acquire() as db:
+        records_in_db = 0
+        records_in_db = await db.fetch('SELECT * FROM discord_users;')
+        if len(records_in_db) >= 1:
+            users_idlist = []
+            records_count = len(records_in_db)
+            for i in range(len(records_in_db)):
+                ids = records_in_db[i][0]
+                users_idlist.append(ids)
+            print(records_count, ' пользователей в базе')
+            await pool.release(db)
+            return records_count, users_idlist
+        else:
+            return 0, []
 
 
 # функция для изначального заполнения базы данных пользователями сервера. Работает раз в сутки
 @tasks.loop(hours=24.0)
 async def initial_db_fill():
     """проверяет, все ли пользователи занесены в ДБ, если нет - дозаписывает недостающих"""
-    db = await pool.acquire()
-    users_count, users_ids = await initial_db_read()
-    print('Database reading done.')
-    for guild in bot.guilds:
-        if 'crown' in guild.name.lower() and 'golden' in guild.name.lower():
-            current_members_list = []
-            crown = guild
-            for member in crown.members:
-                if not member.bot:
-                    current_members_list.append(member.id)
-            if users_count < len(current_members_list):
-                print('There are new users to add to database')
-                try:
-                    for member in crown.members:
-                        if not member.bot and member.id not in users_ids:
-                            await db.execute(
-                                'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3) ON CONFLICT (id) DO NOTHING;',
-                                member.id, member.display_name, member.joined_at)
-                except Exception as e:
-                    print('Got error while trying to add missing users to database', e)
-                print('Данные пользователей в базе обновлены')
-        else:
-            print('Golden Crown guild not found')
-    print('database fill cycle ended')
-    await pool.release(db)
+    async with pool.acquire() as db:
+        users_count, users_ids = await initial_db_read()
+        print('Database reading done.')
+        for guild in bot.guilds:
+            if 'crown' in guild.name.lower() and 'golden' in guild.name.lower():
+                current_members_list = []
+                crown = guild
+                for member in crown.members:
+                    if not member.bot:
+                        current_members_list.append(member.id)
+                if users_count < len(current_members_list):
+                    print('There are new users to add to database')
+                    try:
+                        for member in crown.members:
+                            if not member.bot and member.id not in users_ids:
+                                await db.execute(
+                                    'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3) ON CONFLICT (id) DO NOTHING;',
+                                    member.id, member.display_name, member.joined_at)
+                    except Exception as e:
+                        print('Got error while trying to add missing users to database', e)
+                    print('Данные пользователей в базе обновлены')
+            else:
+                print('Golden Crown guild not found')
+        print('database fill cycle ended')
 
 
 @tasks.loop(minutes=5.0)
@@ -139,21 +138,20 @@ async def on_ready():
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
 @tasks.loop(minutes=1)
 async def _increment_money(server: discord.Guild):
-    db = await pool.acquire()
-    channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-    for member in server.members:
-        if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
-            if any(
-                    item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
-                try:
-                    gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
-                    if gold is not None:
-                        gold = int(gold) + 1
-                        await db.execute(f'UPDATE discord_users SET gold={gold} WHERE id={member.id};')
-                except Exception as ex:
-                    await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
-                    await sys_channel.send(content=ex)
-    await pool.release(db)
+    async with pool.acquire() as db:
+        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        for member in server.members:
+            if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
+                if any(
+                        item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
+                    try:
+                        gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
+                        if gold is not None:
+                            gold = int(gold) + 1
+                            await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
+                    except Exception as ex:
+                        await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
+                        await sys_channel.send(content=ex)
 
 
 async def accounting():
@@ -167,9 +165,7 @@ async def accounting():
     except Exception as e:
         print(e)
     else:
-        if not isinstance(crown, discord.Guild):
-            print('Error. No guild named "Golden Crown" found.')
-    _increment_money.start(crown)
+        _increment_money.start(crown)
 
 
 def subtract_time(time_arg):
@@ -179,19 +175,18 @@ def subtract_time(time_arg):
 
 @bot.command()
 async def shutdown(ctx):
-    db = await pool.acquire()
-    sys_channel = discord.utils.find(lambda r: (r.name.lower()=='system'), ctx.guild.channels)
-    for member in ctx.guild.members:
-        if member.voice is not None:
-            gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-            await db.execute(
-                f"UPDATE LogTable SET logoff='{datetime.datetime.now().replace(microsecond=0)}'::timestamptz, gold={int(gold)} WHERE user_id={member.id} AND logoff IS NULL;")
-        else:
-            pass
-    await asyncio.sleep(5)
-    await pool.release(db)
-    await sys_channel.send('Shutdown complete')
-    exit(1)
+    async with pool.acquire() as db:
+        sys_channel = discord.utils.find(lambda r: (r.name.lower()=='system'), ctx.guild.channels)
+        for member in ctx.guild.members:
+            if member.voice is not None:
+                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id=$1;', member.id)
+                await db.execute(
+                    f"UPDATE LogTable SET logoff='$1'::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IS NULL;", datetime.datetime.now().replace(microsecond=0), int(gold), member.id)
+            else:
+                pass
+        await asyncio.sleep(5)
+        await sys_channel.send('Shutdown complete')
+        exit(1)
 
 
 
@@ -202,7 +197,7 @@ async def user(ctx):
     """ "user" - меню-функция для админа - аргументы "add" "del" "show" "update" """
     if ctx.message.author.guild_permissions.administrator:
         if ctx.invoked_subcommand is None:
-            await ctx.send('you didn\'t enter any subcommand / вы не указали, что делать с пользователем')
+            await ctx.send('You didn\'t specify any subcommand / Вы не указали, что делать с пользователем')
             await ctx.message.delete()
     else:
         await user.show(ctx, ctx.message.author)
@@ -213,25 +208,22 @@ async def user(ctx):
 async def add(ctx, member: discord.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых приглашаешь на сервер)"""
     await ctx.message.delete()
-    db = await pool.acquire()
-    try:
-        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
-                         member.id, member.display_name, member.joined_at)
-        await ctx.send('user added to database')
-    except asyncpg.exceptions.UniqueViolationError:
-        await ctx.send('user is already added')
-    finally:
-        await pool.release(db)
+    async with pool.acquire() as db:
+        try:
+            await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
+                             member.id, member.display_name, member.joined_at)
+            await ctx.send('user added to database')
+        except asyncpg.exceptions.UniqueViolationError:
+            await ctx.send('user is already added')
 
 @user.command()
 @commands.has_permissions(administrator=True)
 async def delete(ctx, member: discord.Member):
     """Удаляем человека из базы бота. Введите команду и через пробел - ник, айди, или дискорд-тег участника."""
     await ctx.message.delete()
-    db = await pool.acquire()
-    await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-    await db.execute(f'DELETE FROM LogTable WHERE user_id={member.id};')
-    await pool.release(db)
+    async with pool.acquire() as db:
+        await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
+        await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
 
 
 async def count_result_activity(activity_records_list, warns: int):
@@ -253,45 +245,49 @@ async def count_result_activity(activity_records_list, warns: int):
 @commands.has_permissions(administrator=True)
 async def show(ctx, member: discord.Member):
     """Shows the info about user/ показываем данные пользователя"""
-    db = await pool.acquire()
-    data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id={member.id};')
-    if data is not None:
-        achievments = 0
-        negative_achievements = 0
-        warns = int(data['warns'])
-        for role in member.roles:
-            if 'ачивка' in role.name.lower():
-                achievments += 1
-                if role.color == discord.Colour(int('ff4f4f', 16)):
-                    negative_achievements += 1
-        positive_achievements = achievments - negative_achievements
-        try:
-            seven_days_activity_records = await db.fetch(
-                f"SELECT login, logoff from LogTable WHERE login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=7)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz AND user_id={member.id} ORDER BY login ASC;")
-            thirty_days_activity_records = await db.fetch(
-                f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
-            # db_messages = await db.fetch(
-            #     f"SELECT messages FROM LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login ASC;")
-            # messages = 0
-            # for msg_count in range(len(db_messages)):
-            #     messages += int(msg_count)
-        finally:
-            await pool.release(db)
+    global pool
+    async with pool.acquire() as db:
+        data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
+        if data is not None:
+            achievments = 0
+            negative_achievements = 0
+            warns = int(data['warns'])
+            for role in member.roles:
+                if 'ачивка' in role.name.lower():
+                    achievments += 1
+                    if role.color == discord.Colour(int('ff4f4f', 16)):
+                        negative_achievements += 1
+            positive_achievements = achievments - negative_achievements
+            t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+            t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+            try:
+                seven_days_activity_records = await db.fetch(
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_7days_ago, datetime.datetime.now(), member.id)
+                thirty_days_activity_records = await db.fetch(
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_30days_ago, datetime.datetime.now(), member.id)
+                # db_messages = await db.fetch(
+                #     "SELECT messages from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_30days_ago, datetime.datetime.now(), member.id)
+                # messages = 0
+                # for msg_count in range(len(db_messages)):    ПЕРЕПИСАТЬ
+                #     messages += int(msg_count)
+            except asyncpg.InterfaceError:
+                pool = await db_connection()
 
-        part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
-        part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
-        part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
-        part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
-        embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-        # embed.add_field(name='', value=f"17*{data['symbol']}")
-        embed.add_field(name='Пользователь:', value=part_1, inline=False)
-        embed.add_field(name='Ачивки:', value=part_2, inline=False)
-        embed.add_field(name='Активность:', value=part_3, inline=False)
-        embed.add_field(name='Прочее:', value=part_4, inline=False)
-        await ctx.send(embed=embed)
-    else:
-        await ctx.send('Не найдена информация по вашему профилю.\n'
-                       'Функция "Профиль", "Валюта" и "Ачивки" доступна только игрокам с активностью в голосовых каналах.')
+
+            part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
+            part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
+            part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+            part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
+            embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+            # embed.add_field(name='', value=f"16*{data['symbol']}")
+            embed.add_field(name='Пользователь:', value=part_1, inline=False)
+            embed.add_field(name='Ачивки:', value=part_2, inline=False)
+            embed.add_field(name='Активность:', value=part_3, inline=False)
+            embed.add_field(name='Прочее:', value=part_4, inline=False)
+            await ctx.send(embed=embed)
+        else:
+            await ctx.send('Не найдена информация по вашему профилю.\n'
+                           'Функция "Профиль", "Валюта" и "Ачивки" доступна только игрокам с активностью в голосовых каналах.')
 
 
 @bot.command()
@@ -299,30 +295,26 @@ async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
     await ctx.message.delete()
-    db = await pool.acquire()
     gold = abs(int(gold))
-    try:
-
+    async with pool.acquire() as db:
         if ctx.message.author.guild_permissions.administrator:
-            gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
+            gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
             newgold = int(gold_was) + gold
-            await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
+            await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
             await ctx.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
         else:
-            user_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={author.id};')
+            user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', author.id)
             if gold > int(user_gold):
                 await ctx.channel.send('У вас нет столько денег.')
                 return
             else:
                 newgold = int(user_gold) - gold
-                await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={author.id};')
-                target_gold = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
+                await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, author.id)
+                target_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 newtargetgold = int(target_gold) + gold
-                await db.execute(f'UPDATE discord_users SET gold={newtargetgold} WHERE id={member.id};')
+                await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newtargetgold, member.id)
                 await ctx.send(
                     f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
-    finally:
-        await pool.release(db)
 
 
 @commands.has_permissions(administrator=True)
@@ -330,14 +322,13 @@ async def gmoney(ctx, member: discord.Member, gold):
 async def mmoney(ctx, member: discord.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
     await ctx.message.delete()
-    db = await pool.acquire()
-    gold_was = await db.fetchval(f'SELECT gold FROM discord_users WHERE id={member.id};')
-    newgold = int(gold_was) - int(gold)
-    if newgold < 0:
-        newgold = 0
-    await db.execute(f'UPDATE discord_users SET gold={newgold} WHERE id={member.id};')
-    await ctx.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.')
-    await pool.release(db)
+    async with pool.acquire() as db:
+        gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
+        newgold = int(gold_was) - int(gold)
+        if newgold < 0:
+            newgold = 0
+        await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
+        await ctx.send('У Пользователя {member.mention} было отнято {gold} :coin:.')
 
 
 @user.command()
@@ -345,24 +336,23 @@ async def mmoney(ctx, member: discord.Member, gold):
 async def clear(ctx, member: discord.Member):
     """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
     await ctx.message.delete()
-    db = await pool.acquire()
-    await db.execute(f'DELETE FROM discord_users WHERE id={member.id};')
-    await db.execute(f'INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
-                     member.id, member.display_name, member.joined_at)
-    await db.execute(f'DELETE FROM LogTable WHERE user_id={member.id};')
-    await pool.release(db)
+    async with pool.acquire() as db:
+        await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
+        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
+                         member.id, member.display_name, member.joined_at)
+        await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
 
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
 
 @bot.command()
-async def echo(ctx, *args):  #msg: str
+async def echo(ctx, msg: str):
     """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
-    message = ctx.message.content.split(' ')[1:]
-    await message.delete()
+    #message = ctx.message.content.split(' ')[1:]
+    await ctx.message.delete()
     #await ctx.send(msg)
-    await ctx.send(message)
+    await ctx.send(msg)
 
 
 @bot.command()
@@ -453,59 +443,56 @@ async def poll(ctx, options: int, time=60):
 async def top(ctx, count: int = 10):
     result_list = []
     #await ctx.message.delete()
-    db = await pool.acquire()
     users_count, users_ids = await initial_db_read()
     checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
-    for member in ctx.guild.members:
-        if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-            gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
-            if int(gold) > 0:
-                warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
-                thirty_days_activity_records = await db.fetch(
-                    f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login DESC;")
-                activity = await count_result_activity(thirty_days_activity_records, warns)
-                result_list.append((member.mention, activity))
-    res = sorted(result_list, key=itemgetter(1), reverse=True)
-    count = len(res) if count > len(res) else count
-    # output = ""
-    # for i in range(count):
-    #     output += f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n"
-    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
-    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    embed.add_field(name='Топ активности', value=output)
-    await ctx.send(embed=embed)
-    await pool.release(db)
+    t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+    async with pool.acquire() as db:
+        for member in ctx.guild.members:
+            if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+                gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
+                if int(gold) > 0:
+                    warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
+                    thirty_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                    activity = await count_result_activity(thirty_days_activity_records, warns)
+                    result_list.append((member.mention, activity))
+        res = sorted(result_list, key=itemgetter(1), reverse=True)
+        count = len(res) if count > len(res) else count
+        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+        embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+        embed.add_field(name='Топ активности', value=output)
+        await ctx.send(embed=embed)
 
 
 @bot.command()
 async def antitop(ctx, count: int = 10):
     result_list = []
     await ctx.message.delete()
-    db = await pool.acquire()
-    users_count, users_ids = await initial_db_read()
-    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
-    for member in ctx.guild.members:
-        if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-            gold = await db.fetchval(f"SELECT gold from discord_users WHERE id={member.id};")
-            if int(gold) > 0:
-                warns = await db.fetchval(f"SELECT warns from discord_users WHERE id={member.id};")
-                thirty_days_activity_records = await db.fetch(
-                    f"SELECT login, logoff from LogTable WHERE user_id={member.id} AND login BETWEEN '{datetime.datetime.now() - datetime.timedelta(days=30)}'::timestamptz AND '{datetime.datetime.now()}'::timestamptz ORDER BY login DESC;")
-                activity = await count_result_activity(thirty_days_activity_records, warns)
-                # возможно сюда нужно будет добавить условие, что активность > 0 чтобы не загромождать анти-топ "нулями"
-                time_in_clan = datetime.datetime.now() - member.joined_at
-                if time_in_clan.days//7 > 0:
-                    if time_in_clan.days//7 <= 4:
-                        if activity/(time_in_clan.days//7) < 10:
-                            result_list.append((member.mention, activity, time_in_clan.days//7))
-                    elif time_in_clan.days//7 < 4 and activity < 40:
-                        result_list.append((member.mention, activity, '4+'))
+    async with pool.acquire() as db:
+        users_count, users_ids = await initial_db_read()
+        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
+        for member in ctx.guild.members:
+            if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+                gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
+                if int(gold) > 0:
+                    t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+                    warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
+                    thirty_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                    activity = await count_result_activity(thirty_days_activity_records, warns)
+                    # возможно сюда нужно будет добавить условие, что активность > 0 чтобы не загромождать анти-топ "нулями"
+                    time_in_clan = datetime.datetime.now() - member.joined_at
+                    if time_in_clan.days//7 > 0:
+                        if time_in_clan.days//7 <= 4:
+                            if activity/(time_in_clan.days//7) < 10:
+                                result_list.append((member.mention, activity, time_in_clan.days//7))
+                        elif time_in_clan.days//7 < 4 and activity < 40:
+                            result_list.append((member.mention, activity, '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов), В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    embed.add_field(name='Топ активности', value=output)
+    embed.add_field(name='АнтиТоп активности', value=output)
     await ctx.send(embed=embed)
-    await pool.release(db)
 
 bot.run(token, reconnect=True)
