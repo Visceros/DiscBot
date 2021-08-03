@@ -199,7 +199,6 @@ class Games(commands.Cog):
     # ------------- ИГРА СУНДУЧКИ -----------
     @commands.command()
     async def chest(self, ctx):
-
         reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
         author = ctx.message.author
         channel = ctx.message.channel
@@ -222,7 +221,8 @@ class Games(commands.Cog):
                 else:
                     await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
                                    'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-                    await db.execute('UPDATE discord_users set gold={user_gold - 6000} WHERE id=$1;', author.id)
+                    new_gold = user_gold - 6000
+                    await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     # begin pasting the picture with usual chests
                     async with aiohttp.ClientSession() as session:
                         async with session.get(
@@ -303,20 +303,22 @@ class Games(commands.Cog):
     # ------------- КОНЕЦ ИГРЫ БИНГО -----------
 
     @commands.command(pass_context=True)
-    async def bingo(self, ctx):
+    async def bingo(self, ctx, count):
         await ctx.message.delete()
         prize = 0
+        count = 5 if count > 5 else count
 
         async def makenums():
-            nums = ""
-            for _ in range(3):
-                nums += str(random.randint(0, 9))
+            numlist = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣']
+            nums = ''
+            for _ in range(count):
+                nums += str(random.choice(numlist))
             return nums
 
         ed = await makenums()
         ed_msg = await ctx.send(ed)
         # rules ---> ctx.send('```fix\n каковы правила? ```')
-        for i in range(3, 9):
+        for i in range(5):
             ed = await makenums()
             await ed_msg.edit(content=ed, suppress=False)
             await asyncio.sleep(0.2)

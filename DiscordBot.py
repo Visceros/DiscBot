@@ -343,6 +343,7 @@ async def clear(ctx, member: discord.Member):
 
 
 @bot.command()
+@commands.has_permissions(administrator=True)
 async def echo(ctx, msg: str):
     """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
     #message = ctx.message.content.split(' ')[1:]
