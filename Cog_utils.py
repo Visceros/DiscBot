@@ -389,7 +389,7 @@ class Games(commands.Cog):
                             prize = round(bid + bid / 4)
                         else:
                             prize = bid + 40
-                    await ctx.send(f'Поздравляем, {ctx.author.mention} ваш приз составил **{prize}** :coin:')
+                    await ctx.send(f'Поздравляем, {ctx.author.display_name} ваш приз составил **{prize}** золота :coin:')
                     # user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
                     # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
 
