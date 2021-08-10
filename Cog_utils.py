@@ -342,6 +342,7 @@ class Games(commands.Cog):
                 await slot_msg.delete()
                 if win_lose <= 60:
                     await ctx.send(random.choice(screens['lose']))
+                    await ctx.send('В этот раз не повезло. Попробуйте ещё разок!')
                 else:
                     prizeChoice = randbelow(100)
                     if prizeChoice >= 98:
