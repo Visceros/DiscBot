@@ -310,7 +310,7 @@ class Games(commands.Cog):
     async def bingo(self, ctx, count=3):
         await ctx.message.delete()
         count = 5 if count > 5 else count
-        numlist = {'1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣'}
+        numlist = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣']
         ed = str(random.choice(numlist))
         ed_msg = await ctx.send(ed)
         await asyncio.sleep(0.8)
@@ -337,9 +337,10 @@ class Games(commands.Cog):
                 slot_msg = await ctx.send(random.choice(screens['roll']))
                 for _ in range(4):
                     await slot_msg.edit(content=random.choice(screens['roll']), suppress=False)
-                    await asyncio.sleep(0.2)
+                    await asyncio.sleep(0.5)
                 win_lose = randbelow(100)
                 # после <= стоит шанс проигрыша
+                await slot_msg.delete()
                 if win_lose <= 60:
                     await ctx.send(random.choice(screens['lose']))
                 else:
