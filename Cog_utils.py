@@ -313,11 +313,11 @@ class Games(commands.Cog):
         numlist = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣']
         ed = str(random.choice(numlist))
         ed_msg = await ctx.send(ed)
-        await asyncio.sleep(0.8)
+        await asyncio.sleep(1.2)
         for i in range(count - 1):
             ed += str(random.choice(numlist))
             await ed_msg.edit(content=ed, suppress=False)
-            await asyncio.sleep(0.8)
+            await asyncio.sleep(1.2)
 
     # ------------- КОНЕЦ ИГРЫ БИНГО -----------
 
@@ -325,7 +325,6 @@ class Games(commands.Cog):
     @commands.command(pass_context=True)
     async def slots(self, ctx, bid=10):
         await ctx.message.delete()
-
         if not 'казино' in ctx.channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в канале #казино_777.```')
         async with self.pool.acquire() as db:
@@ -335,7 +334,7 @@ class Games(commands.Cog):
             else:
                 # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, ctx.author.id)
                 slot_msg = await ctx.send(random.choice(screens['roll']))
-                for _ in range(4):
+                for _ in range(3):
                     await slot_msg.edit(content=random.choice(screens['roll']), suppress=False)
                     await asyncio.sleep(0.5)
                 win_lose = randbelow(100)
