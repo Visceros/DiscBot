@@ -492,4 +492,18 @@ async def antitop(ctx, count: int = 10):
     embed.add_field(name='АнтиТоп активности', value=output)
     await ctx.send(embed=embed)
 
+
+@bot.command()
+@commands.has_permissions(administrator=True)
+async def salary(ctx, amount: int = 1000):
+    await ctx.message.delete()
+    salary_roles_ids = {651377975106732034, 449837752687656960}
+    for id in salary_roles_ids:
+        role = discord.utils.find(lambda r: (r.id == id), ctx.guild.roles)
+        for member in role.members:
+            await gmoney(member=member, gold=amount)
+    pass
+
+
+
 bot.run(token, reconnect=True)
