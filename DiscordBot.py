@@ -230,8 +230,8 @@ async def count_result_activity(activity_records_list, warns: int):
         else:
             activity = (activity + (item[1] - item[0]))
     result_activity = activity - datetime.datetime(1, 1, 1)
-    if warns > 0:
-        result_activity = result_activity - datetime.timedelta(minutes=(10 * warns))
+    if warns >= 3:
+        result_activity = result_activity - datetime.timedelta(minutes=(10 * (warns//3)))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
     result_hours = int(result_activity.total_seconds()) / 3600
     return round(result_hours, 0)
@@ -258,9 +258,9 @@ async def show(ctx, member: discord.Member):
             t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
             try:
                 seven_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_7days_ago, datetime.datetime.now(), member.id)
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;", t_7days_ago, datetime.datetime.now(), member.id)
                 thirty_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_30days_ago, datetime.datetime.now(), member.id)
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;", t_30days_ago, datetime.datetime.now(), member.id)
                 # db_messages = await db.fetch(
                 #     "SELECT messages from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_30days_ago, datetime.datetime.now(), member.id)
                 # messages = 0

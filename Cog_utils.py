@@ -16,6 +16,7 @@ class Listeners(commands.Cog):
     def __init__(self, bot: commands.Bot, connection):
         self.pool = connection
         self.bot = bot
+        self.moderation_channel = self.bot.get_channel(773010375775485982)
         self.sys_channel = self.bot.get_channel(749551019553325076)
         self.messaging_channel = self.bot.get_channel(442565510178013184)
 
@@ -29,15 +30,20 @@ class Listeners(commands.Cog):
                     member = before.channel.members[0]
                     if any(item in member.voice.channel.name.lower() for item in
                            channel_groups_to_account_contain):
-                        await asyncio.sleep(120)
+                        await asyncio.sleep(90)
                         if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             await member.move_to(member.guild.afk_channel)
                             user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                             user_warns += 1
                             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
                             await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
-                                                         f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
-                            print('sent warn message to ', member.display_name)
+                                                            f'общих комнатах с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                            if user_warns % 3 ==0:
+                                await self.moderation_channel.send(
+                                    f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности .')
+                            if user_warns == 6:
+                                await member.add_roles(
+                                    discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles))
                             await sys_channel.send(
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
@@ -46,7 +52,7 @@ class Listeners(commands.Cog):
                            channel_groups_to_account_contain):
                     if len(after.channel.members) == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                         print(member.display_name, 'is alone in room', after.channel.name, 'voice self mute:', member.voice.self_mute)
-                        await asyncio.sleep(120)
+                        await asyncio.sleep(90)
                         if after.channel:
                             if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                                 print('moving', member.display_name, 'to afk channel', 'voice self mute:', member.voice.self_mute)
@@ -56,8 +62,11 @@ class Listeners(commands.Cog):
                                 await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
                                 await self.messaging_channel.send(
                                     content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
-                                            f'общих комнатах с включенным микрофоном, что нарушает пункт общих правил сервера об активности.')
-                                print('sent warn message to ', member.display_name)
+                                            f'общих комнатах с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                                if user_warns % 3 == 0:
+                                    await self.moderation_channel.send(f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности .')
+                                if user_warns == 6:
+                                    await member.add_roles(discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles))
                                 await sys_channel.send(
                                     f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
                     elif member.voice.channel is not None and len(member.voice.channel.members) >1:
