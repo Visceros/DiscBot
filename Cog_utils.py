@@ -304,85 +304,85 @@ class Games(commands.Cog):
 
     # ------------- КОНЕЦ ИГРЫ КОЛЕСО ФОРТУНЫ  -----------
 
-        # ------------- ИГРА БИНГО -----------
+               # ------------- ИГРА БИНГО -----------
 
-        @commands.command(pass_context=True)
-        async def bingo(self, ctx, count=3):
-            await ctx.message.delete()
-            count = 5 if count > 5 else count
-            numlist = {'1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣'}
-            ed = str(random.choice(numlist))
-            ed_msg = await ctx.send(ed)
+    @commands.command(pass_context=True)
+    async def bingo(self, ctx, count=3):
+        await ctx.message.delete()
+        count = 5 if count > 5 else count
+        numlist = {'1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣', '0️⃣'}
+        ed = str(random.choice(numlist))
+        ed_msg = await ctx.send(ed)
+        await asyncio.sleep(0.8)
+        for i in range(count - 1):
+            ed += str(random.choice(numlist))
+            await ed_msg.edit(content=ed, suppress=False)
             await asyncio.sleep(0.8)
-            for i in range(count - 1):
-                ed += str(random.choice(numlist))
-                await ed_msg.edit(content=ed, suppress=False)
-                await asyncio.sleep(0.8)
 
-        # ------------- КОНЕЦ ИГРЫ БИНГО -----------
+    # ------------- КОНЕЦ ИГРЫ БИНГО -----------
 
-        # ------------- ИГРА КАЗИНО -----------
-        @commands.command(pass_context=True)
-        async def slots(self, ctx, bid=10):
-            await ctx.message.delete()
+    # ------------- ИГРА КАЗИНО -----------
+    @commands.command(pass_context=True)
+    async def slots(self, ctx, bid=10):
+        await ctx.message.delete()
 
-            if not 'казино' in ctx.channel.name.lower():
-                return await ctx.send('```Error! Извините, эта команда работает только в канале #казино.```')
-            async with self.pool.acquire() as db:
-                user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
-                if bid > user_gold:
-                    return await ctx.send('Недостаточно :coin: для такой ставки.')
+        if not 'казино' in ctx.channel.name.lower():
+            return await ctx.send('```Error! Извините, эта команда работает только в канале #казино_777.```')
+        async with self.pool.acquire() as db:
+            user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
+            if bid > user_gold:
+                return await ctx.send('Недостаточно :coin: для такой ставки.')
+            else:
+                # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, ctx.author.id)
+                slot_msg = await ctx.send(random.choice(screens['roll']))
+                for _ in range(4):
+                    await slot_msg.edit(content=random.choice(screens['roll']), suppress=False)
+                    await asyncio.sleep(0.2)
+                win_lose = randbelow(100)
+                # после <= стоит шанс проигрыша
+                if win_lose <= 60:
+                    await ctx.send(random.choice(screens['lose']))
                 else:
-                    #await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, ctx.author.id)
-                    slot_msg = await ctx.send(random.choice(screens['roll']))
-                    for _ in range(4):
-                        await slot_msg.edit(content=random.choice(screens['roll']), suppress=False)
-                        await asyncio.sleep(0.2)
-                    win_lose = randbelow(100)
-                    # после <= стоит шанс проигрыша
-                    if win_lose <= 60:
-                        await ctx.send(random.choice(screens['lose']))
-                    else:
-                        prizeChoice = randbelow(100)
-                        if prizeChoice >= 98:
-                            await ctx.send(random.choice(screens['win']['2']))
-                            if bid < 100:
-                                prize = bid * 3 + 70
-                            else:
-                                prize = bid * 5
-                        elif prizeChoice >= 90:
-                            await ctx.send(random.choice(screens['win']['8']))
-                            if bid < 100:
-                                prize = bid * 2 + 40
-                            else:
-                                prize = bid * 2 + 50
-                        elif prizeChoice >= 80:
-                            await ctx.send(random.choice(screens['win']['10']))
-                            if bid < 100:
-                                prize = bid * 2 + 40
-                            else:
-                                prize = round(bid + bid / 2)
-                        elif prizeChoice >= 65:
-                            await ctx.send(random.choice(screens['win']['15']))
-                            if bid < 100:
-                                prize = round(bid + bid / 2)
-                            else:
-                                prize = round(bid + bid / 3)
-                        elif prizeChoice >= 40:
-                            await ctx.send(random.choice(screens['win']['25']))
-                            if bid < 100:
-                                prize = round(bid + bid / 3)
-                            else:
-                                prize = round(bid + bid / 4)
-                        elif prizeChoice >= 0:
-                            await ctx.send(random.choice(screens['win']['40']))
-                            if bid < 100:
-                                prize = round(bid + bid / 4)
-                            else:
-                                prize = bid + 40
-                        await ctx.send(f'Поздравляем, {ctx.author.display_name} ваш приз составил **{prize}** :coin:')
-                        # user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
-                        # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
+                    prizeChoice = randbelow(100)
+                    if prizeChoice >= 98:
+                        await ctx.send(random.choice(screens['win']['2']))
+                        if bid < 100:
+                            prize = bid * 3 + 70
+                        else:
+                            prize = bid * 5
+                    elif prizeChoice >= 90:
+                        await ctx.send(random.choice(screens['win']['8']))
+                        if bid < 100:
+                            prize = bid * 2 + 40
+                        else:
+                            prize = bid * 2 + 50
+                    elif prizeChoice >= 80:
+                        await ctx.send(random.choice(screens['win']['10']))
+                        if bid < 100:
+                            prize = bid * 2 + 40
+                        else:
+                            prize = round(bid + bid / 2)
+                    elif prizeChoice >= 65:
+                        await ctx.send(random.choice(screens['win']['15']))
+                        if bid < 100:
+                            prize = round(bid + bid / 2)
+                        else:
+                            prize = round(bid + bid / 3)
+                    elif prizeChoice >= 40:
+                        await ctx.send(random.choice(screens['win']['25']))
+                        if bid < 100:
+                            prize = round(bid + bid / 3)
+                        else:
+                            prize = round(bid + bid / 4)
+                    elif prizeChoice >= 0:
+                        await ctx.send(random.choice(screens['win']['40']))
+                        if bid < 100:
+                            prize = round(bid + bid / 4)
+                        else:
+                            prize = bid + 40
+                    await ctx.send(f'Поздравляем, {ctx.author.display_name} ваш приз составил **{prize}** :coin:')
+                    # user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
+                    # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
 
     # ------------- КОНЕЦ ИГРЫ КАЗИНО -----------
 
