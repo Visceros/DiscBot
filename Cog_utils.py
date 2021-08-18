@@ -211,29 +211,35 @@ class Games(commands.Cog):
     @commands.command()
     async def chest(self, ctx):
         reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
+        reward_chat =  self.bot.get_channel(696060547971547177)
         author = ctx.message.author
         channel = ctx.message.channel
         await ctx.message.delete()
+        del_messages = []
         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), author.guild.roles)
         # Check if it's the right channel to write to and if user have relevant role
-        if not 'сундучки' in channel.name.lower() and not 'казино' in channel.name.lower():
-            return await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
-        is_eligible = False
-        if checkrole in author.roles:
-            is_eligible = True
-        if not is_eligible:
-            return await ctx.send(f'```Error! Извините, доступ имеют только Сокланы.```')
+        if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
+            quit_msg = await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
+            await asyncio.sleep(5)
+            await quit_msg.delete()
+        if checkrole not in author.roles:
+            quit_msg = await ctx.send(f'```Error! Извините, доступ имеют только Сокланы.```')
+            await asyncio.sleep(5)
+            await quit_msg.delete()
         else:
             # IF all correct we head further
             async with self.pool.acquire() as db:
                 user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', author.id)
-                if int(user_gold) < 6000:
-                    return await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
+                if int(user_gold) < 1500:
+                    quit_msg = await ctx.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
+                    await asyncio.sleep(5)
+                    await quit_msg.delete()
                 else:
-                    await ctx.send('```yaml\nРешили испытать удачу и выиграть главный приз? Отлично! \n' +
-                                   'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6```')
-                    new_gold = user_gold - 6000
+                    new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
+                    add_msg = await ctx.send('Решили испытать удачу и выиграть главный приз? Отлично! \n' +
+                                             'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6')
+                    del_messages.append(add_msg)
                     # begin pasting the picture with usual chests
                     async with aiohttp.ClientSession() as session:
                         async with session.get(
@@ -242,6 +248,7 @@ class Games(commands.Cog):
                                 return await channel.send('Error! Could not get the file...')
                             data = io.BytesIO(await resp.read())
                             start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
+                            del_messages.append(start_message)
                             await session.close()
                     # end of pasting the picture with usual chests
                     for react in reactions:
@@ -256,19 +263,25 @@ class Games(commands.Cog):
                     try:
                         reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
                     except asyncio.TimeoutError:
-                        await ctx.send('```yaml\nУдача не терпит медлительных. Время вышло! 👎```')
+                        quit_msg = await ctx.send('Удача не терпит медлительных. Время вышло! 👎')
+                        await asyncio.sleep(10)
+                        await quit_msg.delete()
                     else:
                         reward, pic = usual_reward()
-                        await channel.send(f'```yaml\nСундук со скрипом открывается и... {reward}```')
+                        add_msg = await channel.send(f'Сундук со скрипом открывается...ваш приз: {reward}')
+                        del_messages.append(add_msg)
                         async with aiohttp.ClientSession() as session:
                             async with session.get(pic) as resp:
                                 if resp.status != 200 and resp.status != 301:
                                     return await channel.send('Error! Could not get the file...')
                                 data = io.BytesIO(await resp.read())
-                                await channel.send(file=discord.File(data, 'reward.png'))
+                                add_msg = await channel.send(file=discord.File(data, 'reward.png'))
+                                del_messages.append(add_msg)
+                        if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
+                            await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         if 'золотой ключ' in reward.lower():
                             await ctx.send(
-                                '```fix\nОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!```')
+                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**')
                             # Begin pasting the picture with Gold chests
                             async with aiohttp.ClientSession() as session:
                                 async with session.get(
@@ -277,6 +290,7 @@ class Games(commands.Cog):
                                         return await channel.send('Error! Could not get the file...')
                                     data = io.BytesIO(await resp.read())
                                     start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
+                                    del_messages.append(start_message)
                                     await session.close()
                             # End of pasting the picture with Gold chests
                             for react in reactions[0:3]:
@@ -287,14 +301,20 @@ class Games(commands.Cog):
                                 return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
                             else:
                                 reward, pic = gold_reward()
-                                await channel.send('```fix\nВы проворачиваете Золотой ключ в замочной скважине ' +
-                                                   f'и крышка тихонько открывается...\n{reward}```')
+                                add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}')
+                                del_messages.append(add_msg)
                                 async with aiohttp.ClientSession() as session:
                                     async with session.get(pic) as resp:
                                         if resp.status != 200 and 301:
                                             return await channel.send('Error! Could not get the file...')
                                         data = io.BytesIO(await resp.read())
-                                        await channel.send(file=discord.File(data, 'gold-reward.png'))
+                                        add_msg = await channel.send(file=discord.File(data, 'gold-reward.png'))
+                                        del_messages.append(add_msg)
+                                await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
+                    # Через 5 секунд стираем все сообщения
+                    await asyncio.sleep(15)
+                    for message in del_messages:
+                        await message.delete()
 
     # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
 
@@ -335,6 +355,7 @@ class Games(commands.Cog):
     async def slots(self, ctx, bid=10):
         if not 'казино' in ctx.channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в канале #казино_777.```')
+        bid = 10 if bid <10 else bid
         async with self.pool.acquire() as db:
             user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
             if bid > user_gold:

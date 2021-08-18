@@ -477,9 +477,8 @@ async def antitop(ctx, count: int = 10):
                     thirty_days_activity_records = await db.fetch(
                         "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
                     activity = await count_result_activity(thirty_days_activity_records, warns)
-                    # возможно сюда нужно будет добавить условие, что активность > 0 чтобы не загромождать анти-топ "нулями"
                     time_in_clan = datetime.datetime.now() - member.joined_at
-                    if time_in_clan.days//7 > 0:
+                    if time_in_clan.days//14 > 0:
                         if time_in_clan.days//7 <= 4:
                             if activity/(time_in_clan.days//7) < 10:
                                 result_list.append((member.mention, activity, time_in_clan.days//7))
@@ -487,6 +486,40 @@ async def antitop(ctx, count: int = 10):
                             result_list.append((member.mention, activity, '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
+    # if len(res) > 10:
+    #     data = {}
+    #     buttons = ['⬅️','1️⃣','➡️']
+    #     #page = str((count+10)//10)+'️⃣'
+    #     for i in range(len(res)):
+    #         data[str(i+1)] = f'{res[i][0]}, актив: {res[i][1]} часа(ов), В клане: {res[i][2]} нед.;\n'
+    #     count = 0
+    #     for i in range(count+1,count+11):
+    #         output = "".join(f"{str(i+1)}: {data[str(i+1)]})")
+    #     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    #     embed.add_field(name='АнтиТоп активности', value=output)
+    #     page_message = await ctx.send(embed=embed)
+    #     for button in buttons:
+    #         await page_message.add_reaction(button)
+    #
+    #     def checks(reaction, user):
+    #         return reaction in page_message.reactions and user.bot is not True
+    #
+    #     reaction, user = await bot.wait_for('reaction_add', check=checks)
+    #     if str(reaction) == buttons[0]:
+    #         count = count-10
+    #         count = 0 if count < 0 else count
+    #     elif str(reaction) == buttons[2]:
+    #         count = count + 10
+    #         count = len(res)-10 if count+10 > len(res) else count
+    #         for i in range(count + 1, count + 11):
+    #             output = "".join(f"{str(i + 1)}: {data[str(i + 1)]})")
+    #     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    #     embed.add_field(name='АнтиТоп активности', value=output)
+    #     page_message.edit(embed=embed)
+    #     page = str((count + 10) // 10) + '️⃣'
+    #     page_message.reaction
+    #     pass
+    # else:
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов), В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
