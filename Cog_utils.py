@@ -237,8 +237,8 @@ class Games(commands.Cog):
                 else:
                     new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
-                    add_msg = await ctx.send('Решили испытать удачу и выиграть главный приз? Отлично! \n' +
-                                             'Выберите, какой из шести простых сундуков открываем? Нажмите на цифру от 1 до 6')
+                    add_msg = await ctx.send('**Решили испытать удачу и выиграть главный приз? Отлично! \n' +
+                                             'Выберите, какой из шести простых сундуков открываем?\n\n Нажмите на цифру от 1 до 6**')
                     del_messages.append(add_msg)
                     # begin pasting the picture with usual chests
                     async with aiohttp.ClientSession() as session:
@@ -263,12 +263,12 @@ class Games(commands.Cog):
                     try:
                         reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
                     except asyncio.TimeoutError:
-                        quit_msg = await ctx.send('Удача не терпит медлительных. Время вышло! 👎')
+                        quit_msg = await ctx.send('**Удача не терпит медлительных. Время вышло! 👎**')
                         await asyncio.sleep(10)
                         await quit_msg.delete()
                     else:
                         reward, pic = usual_reward()
-                        add_msg = await channel.send(f'Сундук со скрипом открывается...ваш приз: {reward}')
+                        add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**')
                         del_messages.append(add_msg)
                         async with aiohttp.ClientSession() as session:
                             async with session.get(pic) as resp:
