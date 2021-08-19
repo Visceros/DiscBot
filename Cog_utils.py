@@ -211,7 +211,7 @@ class Games(commands.Cog):
     @commands.command()
     async def chest(self, ctx):
         reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣']
-        reward_chat =  self.bot.get_channel(696060547971547177)
+        reward_chat = self.bot.get_channel(696060547971547177)
         author = ctx.message.author
         channel = ctx.message.channel
         await ctx.message.delete()
@@ -258,7 +258,7 @@ class Games(commands.Cog):
                         return str(reaction.emoji) in reactions and user.bot is not True
 
                     def checkG(reaction, user):
-                        return str(reaction.emoji) in reactions[0:2] and user.bot is not True
+                        return str(reaction.emoji) in reactions[0:3] and user.bot is not True
 
                     try:
                         reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
@@ -266,6 +266,8 @@ class Games(commands.Cog):
                         quit_msg = await ctx.send('**Удача не терпит медлительных. Время вышло! 👎**')
                         await asyncio.sleep(10)
                         await quit_msg.delete()
+                        for message in del_messages:
+                            await message.delete()
                     else:
                         reward, pic = usual_reward()
                         add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**')
@@ -279,9 +281,10 @@ class Games(commands.Cog):
                                 del_messages.append(add_msg)
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
-                        if 'золотой ключ' in reward.lower():
-                            await ctx.send(
+                        elif 'золотой ключ' in reward.lower():
+                            add_msg = await ctx.send(
                                 '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**')
+                            del_messages.append(add_msg)
                             # Begin pasting the picture with Gold chests
                             async with aiohttp.ClientSession() as session:
                                 async with session.get(
@@ -298,7 +301,11 @@ class Games(commands.Cog):
                             try:
                                 reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkG)
                             except asyncio.TimeoutError:
-                                return await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
+                                add_msg = await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
+                                del_messages.append(add_msg)
+                                await asyncio.sleep(15)
+                                for message in del_messages:
+                                    await message.delete()
                             else:
                                 reward, pic = gold_reward()
                                 add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}')
@@ -311,7 +318,7 @@ class Games(commands.Cog):
                                         add_msg = await channel.send(file=discord.File(data, 'gold-reward.png'))
                                         del_messages.append(add_msg)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
-                    # Через 5 секунд стираем все сообщения
+                    # Через 15 секунд стираем все сообщения
                     await asyncio.sleep(15)
                     for message in del_messages:
                         await message.delete()

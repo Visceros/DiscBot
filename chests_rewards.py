@@ -15,7 +15,7 @@ def usual_reward():  # Здесь прописано соответствие ф
     if win_lose_roll < 55:
         return 'пустой сундук.', usualrewards['пустой сундук.']
     else:
-        grade = random.choices(list(usualrewards.keys()), weights=[60,35,30,25,20,10,0])[0]
+        grade = random.choices(list(usualrewards.keys()), weights=[60,35,30,25,20,2000,0])[0]
         ret = random.choice(list(usualrewards[grade].keys()))
         return ret, usualrewards[grade][ret]
 
