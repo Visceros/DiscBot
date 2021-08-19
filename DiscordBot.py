@@ -516,7 +516,7 @@ async def antitop(ctx, count: int = 10):
     #     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     #     embed.add_field(name='АнтиТоп активности', value=output)
     #     page_message.edit(embed=embed)
-    #     page = str((count + 10) // 10) + '️⃣'
+    #     page = str((count + 10) // 10) G+ '️⃣'
     #     page_message.reaction
     #     pass
     # else:

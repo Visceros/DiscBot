@@ -12,10 +12,10 @@ def usual_reward():  # Здесь прописано соответствие ф
         'пустой сундук.': 'https://cdn.discordapp.com/attachments/872840157362008065/872855092380983416/1db40890dff1de9f.png'
     }
     win_lose_roll = random.randint(1,100)
-    if win_lose_roll < 55:
+    if win_lose_roll < 65:
         return 'пустой сундук.', usualrewards['пустой сундук.']
     else:
-        grade = random.choices(list(usualrewards.keys()), weights=[60,35,30,25,20,2000,0])[0]
+        grade = random.choices(list(usualrewards.keys()), weights=[60,35,30,25,20,10,0])[0]
         ret = random.choice(list(usualrewards[grade].keys()))
         return ret, usualrewards[grade][ret]
 
