@@ -529,7 +529,6 @@ async def antitop(ctx, count: int = 10):
 @bot.command()
 @commands.has_permissions(administrator=True)
 async def salary(ctx, amount: int = 1000):
-    db = await pool.acquire()
     await ctx.message.delete()
     salary_roles_ids = {651377975106732034, 449837752687656960}
     async with pool.acquire() as db:
@@ -540,7 +539,6 @@ async def salary(ctx, amount: int = 1000):
                 newgold = int(gold_was) + amount
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
                 await ctx.send(f'Модератору {member.display_name} выдана зарплата: {amount} :coin:')
-
 
 
 bot.run(token, reconnect=True)
