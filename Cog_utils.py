@@ -373,7 +373,7 @@ class Games(commands.Cog):
         channel = ctx.channel
         pins = await channel.pins()
         if bid < 50:
-            return ctx.send('Минимальная ставка: 50')
+            return await ctx.send('Минимальная ставка: 50')
         record_msg = None
         for msg in pins:
             if 'Текущий рекордный выигрыш:' in msg.content:
