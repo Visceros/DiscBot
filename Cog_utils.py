@@ -22,7 +22,7 @@ class Listeners(commands.Cog):
 
     async def if_one_in_voice(self, member: discord.Member, before, after):
         """Проверяем, остался ли пользователь один в канале, если один - перекидываем в АФК-комнату"""
-        sys_channel = self.sys_channel
+        sys_channel = discord.utils.get(member.guild.channels, name='system')
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if after.channel is None:
@@ -168,17 +168,26 @@ class Listeners(commands.Cog):
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
 
-            if after.self_mute is True:
-                muted_minutes_counter = 0
-                while hasattr(member, 'voice'):
-                    if member.voice.self_mute is True:
-                        await asyncio.sleep(60)
-                        muted_minutes_counter +=1
-                        if muted_minutes_counter >=20:
-                            await member.move_to(member.guild.afk_channel)
-                            break
-                    else:
-                        break
+        #если человек выключает микро, то через 20 минут его перекинет в афк.
+            # if after.self_mute is True:
+            #     muted_minutes_counter = 0
+            #     while hasattr(member, 'voice'):
+            #         if member.voice.self_mute is True:
+            #             await asyncio.sleep(60)
+            #             muted_minutes_counter +=1
+            #             if muted_minutes_counter >=20:
+            #                 await member.move_to(member.guild.afk_channel)
+            #                 break
+            #         else:
+            #             break
+
+            if before.self_mute is False and after.self_mute is True:
+                await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                                 datetime.datetime.now().replace(microsecond=0), gold, member.id)
+            elif before.self_mute is True and after.self_mute is False:
+                await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
+                                 member.id, datetime.datetime.now().replace(microsecond=0), gold)
+
 
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
@@ -205,7 +214,6 @@ class Games(commands.Cog):
     def __init__(self, bot, connection):
         self.bot = bot
         self.pool = connection
-
 
     # ------------- ИГРА СУНДУЧКИ -----------
     @commands.command()
@@ -362,13 +370,24 @@ class Games(commands.Cog):
     async def slots(self, ctx, bid=10):
         if not 'казино' in ctx.channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в канале #казино_777.```')
+        channel = ctx.channel
+        pins = await channel.pins()
+        record_msg = None
+        for msg in pins:
+            if 'Текущий рекордный выигрыш:' in msg.content:
+                record_msg = msg
+        if record_msg is None:
+            record_msg = await channel.send('Текущий рекордный выигрыш: 0.')
+            await record_msg.pin()
+        record = int(record_msg.content[record_msg.content.find(':')+1 : record_msg.content.find('.')])
+        self.messaging_channel = self.bot.get_channel(442565510178013184)
         bid = 10 if bid <10 else bid
         async with self.pool.acquire() as db:
             user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
             if bid > user_gold:
                 return await ctx.send('Недостаточно :coin: для такой ставки.')
             else:
-                # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, ctx.author.id)
+                await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, ctx.author.id)
                 slot_msg = await ctx.send(random.choice(screens['roll']))
                 for _ in range(3):
                     await slot_msg.edit(content=random.choice(screens['roll']), suppress=False)
@@ -417,9 +436,19 @@ class Games(commands.Cog):
                             prize = round(bid + bid / 4)
                         else:
                             prize = bid + 40
-                    await ctx.send(f'Поздравляем, {ctx.author.display_name} ваш приз составил **{prize}** золота :coin:')
-                    # user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
-                    # await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
+                    await ctx.send(f'Поздравляем, {ctx.author.display_name} ваш приз составил **{prize}** :coin:')
+                    user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
+                    await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
+                    if prize > record:
+                        embed = discord.Embed()
+                        embed.add_field(name='Внимание!', value=f'**Поздравляем, {ctx.author.mention} побил рекорд сервера в игре казино, новый рекорд: {prize}** :coin:')
+                        await self.messaging_channel.send(embed=embed)
+                        new_record = record_msg.content.replace(str(record), str(prize))
+                        await record_msg.edit(content=new_record)
+                    elif prize >= 500:
+                        embed = discord.Embed()
+                        embed.add_field(name='Внимание!', value=f'Поздравляем, {ctx.author.mention} выиграл крупный приз **{prize}** :coin: в игре Казино!')
+                        await self.messaging_channel.send(embed=embed)
 
     # ------------- КОНЕЦ ИГРЫ КАЗИНО -----------
 

@@ -137,7 +137,7 @@ async def _increment_money(server: discord.Guild):
     async with pool.acquire() as db:
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         for member in server.members:
-            if str(member.status) not in ['offline', 'invisible', 'dnd'] and not member.bot and member.voice is not None:
+            if str(member.status) not in ['offline', 'idle'] and not member.bot and member.voice is not None:
                 if any(
                         item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
                     try:
