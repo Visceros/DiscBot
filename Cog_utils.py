@@ -367,11 +367,13 @@ class Games(commands.Cog):
 
     # ------------- ИГРА КАЗИНО -----------
     @commands.command(pass_context=True)
-    async def slots(self, ctx, bid=10):
+    async def slots(self, ctx, bid=50):
         if not 'казино' in ctx.channel.name.lower():
             return await ctx.send('```Error! Извините, эта команда работает только в канале #казино_777.```')
         channel = ctx.channel
         pins = await channel.pins()
+        if bid < 50:
+            return ctx.send('Минимальная ставка: 50')
         record_msg = None
         for msg in pins:
             if 'Текущий рекордный выигрыш:' in msg.content:
@@ -381,7 +383,6 @@ class Games(commands.Cog):
             await record_msg.pin()
         record = int(record_msg.content[record_msg.content.find(':')+1 : record_msg.content.find('.')])
         self.messaging_channel = self.bot.get_channel(442565510178013184)
-        bid = 10 if bid <10 else bid
         async with self.pool.acquire() as db:
             user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
             if bid > user_gold:
