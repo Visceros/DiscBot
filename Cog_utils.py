@@ -459,13 +459,19 @@ class Shop(commands.Cog):
         self.pool = connection
         self.bot = bot
 
-        async def sth():
-            async with self.pool.acquire() as db:
-                pass
-                #Тут писать тело функции
+    # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ ПОЛЬЗОВАТЕЛЯМИ--------------
 
-    async def shop(self): #или назвать showcase - витрина.
-        pass
+    # @commands.group(case_insensitive=True, invoke_without_command=True)
+    # async def shop(self, ctx):
+    #     if ctx.invoked_subcommand is None:
+    #         await shop.show(self)
+    #     async with self.pool.acquire() as db:
+    #         pass
+    #         #Тут писать тело функции
+    #
+    # @shop.command()
+    # async def show(self): #или назвать showcase - витрина.
+    #     pass
 
 
     async def buy(self):

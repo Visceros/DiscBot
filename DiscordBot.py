@@ -38,7 +38,7 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
 bot = commands.Bot(description=des, command_prefix=prefix, intents=intents)
 
 
-# считываем количество записей в базе данных  - обновлена логика. получаем не только кол-во записей, но и айдишники! ПРОВЕРИТЬ!
+# считываем количество записей в базе данных - получаем не только кол-во записей, но и айдишники.
 async def initial_db_read():
     global pool
     async with pool.acquire() as db:
@@ -110,6 +110,13 @@ async def auto_rainbowise():
             print(e.__cause__, e, sep='\n')
 
 
+# функция сброса варнов у всех юзеров на 0 каждое первое число месяца (дописать очистку данных в LogTable старше 3 мес)
+@tasks.loop(hours=24)
+async def db_auto_clear():
+    if datetime.datetime.now().day == 1:
+        async with pool.acquire() as db:
+            await db.execute('UPDATE discord_users SET warns=0;')
+
 @bot.event
 async def on_ready():
     global pool
@@ -124,11 +131,17 @@ async def on_ready():
         auto_rainbowise.start()
     except RuntimeError:
         auto_rainbowise.restart()
+    try:
+        db_auto_clear.start()
+    except RuntimeError:
+        db_auto_clear.restart()
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
     bot.add_cog(Listeners(bot, connection=pool))
 #    bot.add_cog(Utils(bot, connection = pool))
+
+
 
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
@@ -286,6 +299,20 @@ async def show(ctx, member: discord.Member):
                            'Функция "Профиль", "Валюта" и "Ачивки" доступна только игрокам с активностью в голосовых каналах.')
 
 
+@user.command()
+@commands.has_permissions(administrator=True)
+async def clear(ctx, member: discord.Member):
+    """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
+    await ctx.message.delete()
+    async with pool.acquire() as db:
+        await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
+        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
+                         member.id, member.display_name, member.joined_at)
+        await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
+
+
+# -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
+
 @bot.command()
 async def gmoney(ctx, member: discord.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
@@ -325,21 +352,6 @@ async def mmoney(ctx, member: discord.Member, gold):
             newgold = 0
         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
         await ctx.send('У Пользователя {member.mention} было отнято {gold} :coin:.')
-
-
-@user.command()
-@commands.has_permissions(administrator=True)
-async def clear(ctx, member: discord.Member):
-    """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
-    await ctx.message.delete()
-    async with pool.acquire() as db:
-        await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
-        await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
-                         member.id, member.display_name, member.joined_at)
-        await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
-
-
-# -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
 
 @bot.command()
@@ -539,6 +551,7 @@ async def salary(ctx, amount: int = 1000):
                 newgold = int(gold_was) + amount
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
                 await ctx.send(f'Модератору {member.display_name} выдана зарплата: {amount} :coin:')
+
 
 
 bot.run(token, reconnect=True)
