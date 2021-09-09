@@ -554,7 +554,7 @@ async def salary(ctx, amount: int = 1000):
 
 
 @bot.command()
-async def warn(ctx, count, member: discord.Member):
+async def warn(ctx, member: discord.Member, count=1):
     if member is not None:
         eligible_roles_ids = {651377975106732034, 449837752687656960}
         moderation_channel = bot.get_channel(773010375775485982)
