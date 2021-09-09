@@ -554,7 +554,7 @@ async def salary(ctx, amount: int = 1000):
 
 
 @bot.command()
-async def warn(ctx, member: discord.Member):
+async def warn(ctx, count, member: discord.Member):
     if member is not None:
         eligible_roles_ids = {651377975106732034, 449837752687656960}
         moderation_channel = bot.get_channel(773010375775485982)
@@ -564,7 +564,7 @@ async def warn(ctx, member: discord.Member):
             if role.id in eligible_roles_ids or ctx.message.author.guild_permissions.administrator is True:
                 async with pool.acquire() as db:
                     user_warns = await db.fetchval('SELECT warns FROM discord_users WHERE id=$1', member.id)
-                    user_warns+=1
+                    user_warns+=count
                     await db.execute('UPDATE discord_users SET warns=$1 WHERE id=$2', user_warns, member.id)
                 await moderation_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива (3 минуты).')
                 return await chat_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива.')
