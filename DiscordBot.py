@@ -244,7 +244,7 @@ async def count_result_activity(activity_records_list, warns: int):
             activity = (activity + (item[1] - item[0]))
     result_activity = activity - datetime.datetime(1, 1, 1)
     if warns >= 3:
-        result_activity = result_activity - datetime.timedelta(minutes=(10 * (warns//3)))
+        result_activity = result_activity - datetime.timedelta(minutes=(3 * warns))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
     result_hours = int(result_activity.total_seconds()) / 3600
     return round(result_hours, 0)
@@ -552,6 +552,22 @@ async def salary(ctx, amount: int = 1000):
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
                 await ctx.send(f'Модератору {member.display_name} выдана зарплата: {amount} :coin:')
 
+
+@bot.command()
+async def warn(ctx, member: discord.Member):
+    if member is not None:
+        eligible_roles_ids = {651377975106732034, 449837752687656960}
+        moderation_channel = bot.get_channel(773010375775485982)
+        chat_channel = bot.get_channel(442565510178013184)
+        await ctx.message.delete()
+        for role in ctx.author.roles:
+            if role.id in eligible_roles_ids or ctx.message.author.guild_permissions.administrator is True:
+                async with pool.acquire() as db:
+                    user_warns = await db.fetchval('SELECT warns FROM discord_users WHERE id=$1', member.id)
+                    user_warns+=1
+                    await db.execute('UPDATE discord_users SET warns=$1 WHERE id=$2', user_warns, member.id)
+                await moderation_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает из его актива 10 минут.')
+                await chat_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает из его актива 10 минут.')
 
 
 bot.run(token, reconnect=True)

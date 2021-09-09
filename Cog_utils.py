@@ -38,12 +38,12 @@ class Listeners(commands.Cog):
                             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
                             await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
                                                             f'общих комнатах с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
-                            if user_warns % 3 ==0:
+                            if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
-                                    f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности .')
-                            if user_warns == 6:
-                                await member.add_roles(
-                                    discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles))
+                                    f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
+                            bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
+                            if user_warns >= 6 and not bad_role in member.roles:
+                                await member.add_roles(bad_role)
                             await sys_channel.send(
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
