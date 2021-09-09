@@ -566,8 +566,8 @@ async def warn(ctx, member: discord.Member):
                     user_warns = await db.fetchval('SELECT warns FROM discord_users WHERE id=$1', member.id)
                     user_warns+=1
                     await db.execute('UPDATE discord_users SET warns=$1 WHERE id=$2', user_warns, member.id)
-                await moderation_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает из его актива 10 минут.')
-                await chat_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает из его актива 10 минут.')
+                await moderation_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива (3 минуты).')
+                return await chat_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива.')
 
 
 bot.run(token, reconnect=True)
