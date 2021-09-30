@@ -26,7 +26,9 @@ async def db_connection():
                 Join_date Date,
                 Gold INT DEFAULT 0,
                 Warns INT DEFAULT 0,
-                Symbol varchar(5),
+                HeadSymbol varchar(32),
+                RowSymbol varchar(32),
+                FootSymbol varchar(32),
                 CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
             print('Table of users created or connection established...')
 

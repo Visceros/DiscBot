@@ -168,25 +168,24 @@ class Listeners(commands.Cog):
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
 
-        #если человек выключает микро, то через 20 минут его перекинет в афк.
-            # if after.self_mute is True:
-            #     muted_minutes_counter = 0
-            #     while hasattr(member, 'voice'):
-            #         if member.voice.self_mute is True:
-            #             await asyncio.sleep(60)
-            #             muted_minutes_counter +=1
-            #             if muted_minutes_counter >=20:
-            #                 await member.move_to(member.guild.afk_channel)
-            #                 break
-            #         else:
-            #             break
+            # убираем начисление времени для пользователя с выключенным микрофоном
+            if member.voice is not None:
+                if before.self_mute is False and after.self_mute is True:
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                                     datetime.datetime.now().replace(microsecond=0), gold, member.id)
+                elif before.self_mute is True and after.self_mute is False:
+                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
+                                     member.id, datetime.datetime.now().replace(microsecond=0), gold)
 
-            if before.self_mute is False and after.self_mute is True:
-                await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                                 datetime.datetime.now().replace(microsecond=0), gold, member.id)
-            elif before.self_mute is True and after.self_mute is False:
-                await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
-                                 member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                # убираем начисление времени для "жёлтого" статуса:
+                elif str(before.status) != 'idle' and str(after.status) == 'idle':
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                                     datetime.datetime.now().replace(microsecond=0), gold, member.id)
+                elif str(before.status) == 'idle' and str(after.status) != 'idle':
+                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
+                                     member.id, datetime.datetime.now().replace(microsecond=0), gold)
 
 
         #launching a check for one in a voice channel
@@ -461,20 +460,40 @@ class Shop(commands.Cog):
 
     # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ ПОЛЬЗОВАТЕЛЯМИ--------------
 
-    # @commands.group(case_insensitive=True, invoke_without_command=True)
-    # async def shop(self, ctx):
-    #     if ctx.invoked_subcommand is None:
-    #         await shop.show(self)
-    #     async with self.pool.acquire() as db:
-    #         pass
-    #         #Тут писать тело функции
-    #
-    # @shop.command()
-    # async def show(self): #или назвать showcase - витрина.
-    #     pass
+    @commands.group(case_insensitive=True, invoke_without_command=True)
+    async def shop(self, ctx):
+        if ctx.invoked_subcommand is None:
+            await ctx.send('Вы не ввели команду! '
+                           'Инструкция пользования магазином:\n'
+                           'buy название - купить товар'
+                           'shop add - добавить товар (только администраторы)\n'
+                           'shop delete - удалить товар из магазина (только администраторы)'
+                           )
+
+    @shop.command()
+    @commands.has_permissions(administrator=True)
+    async def add(self, ctx, product_name, price, duration='NULL'):
+        async with self.pool.acquire() as db:
+            try:
+                await db.execute(f'INSERT INTO SHOP (name, price, duration) VALUES($1, $2, $3) ON CONFLICT (product_id, name) DO NOTHING;', product_name, price, duration)
+            except Exception as e:
+                await ctx.send(e)
+
+    @shop.command()
+    @commands.has_permissions(administrator=True)
+    async def delete(self, ctx, arg):
+        if arg.isdigit():
+            async with self.pool.acquire() as db:
+                await db.execute(f'DELETE FROM SHOP WHERE product_id=$1;', arg)
+        elif arg is not None:
+            async with self.pool.acquire() as db:
+                await db.execute(f'DELETE FROM SHOP WHERE product_name=$1;', arg)
+        else:
+            await ctx.send('Вы не ввели какой товар удалить. Укажите id или название товара.')
 
 
-    async def buy(self):
+    async def buy(self, ctx, product_name, num=1):
+
         pass
 
 
