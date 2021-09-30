@@ -443,7 +443,7 @@ class Games(commands.Cog):
                         embed = discord.Embed()
                         embed.add_field(name='Внимание!', value=f'**Поздравляем, {ctx.author.mention} побил рекорд сервера в игре казино, новый рекорд: {prize}** :coin:')
                         await self.messaging_channel.send(embed=embed)
-                        new_record = record_msg.content.replace(str(record), str(prize))
+                        new_record = f'Текущий рекордный выигрыш: {prize}. Рекорд поставил {ctx.author.display_name}'
                         await record_msg.edit(content=new_record)
                     elif prize >= 500:
                         embed = discord.Embed()
