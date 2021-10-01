@@ -239,16 +239,15 @@ class Listeners(commands.Cog):
                                                 await member.move_to(member.guild.afk_channel)
 
                             #Проверяем, что человек сидит один в комнате с ботом в случае, если он перешел из одной комнаты в другую
-                            elif len(before.channel.members) - bot_counter == 1 and any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                            elif len(member.voice.channel.members) - bot_counter == 1 and any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
                                 await self.sys_channel.send(f'{member.mention} сидит один в канале {member.voice.channel.name} с ботом')
                                 await asyncio.sleep(90) #ждём полторы минуты
                                 #Перепроверяем, что это один и тот же человек
                                 bot_counter = 0
-                                for someone in before.channel.members:
+                                for someone in member.voice.channel.members:
                                     if someone.bot is True:
                                         bot_counter += 1
-                                if len(before.channel.members) - bot_counter == 1 and member in before.channel.members \
-                                        and not member.voice.self_mute and not member.voice.mute:
+                                if len(member.voice.channel.members) - bot_counter == 1 and not member.voice.self_mute and not member.voice.mute:
                                     await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
                                     user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                                     user_warns += 1
@@ -305,6 +304,8 @@ class Listeners(commands.Cog):
                         print('Got error:', err, err.__traceback__)
                         self.pool = await db_connection()
                         db = await self.pool.acquire()
+                elif member.bot:
+                    await self.if_one_in_voice(member=member, before=before, after=after)
 
             if before.channel is None and after.channel is not None and not after.afk and not after.self_mute:
                 if any(item in after.channel.name.lower() for item in
@@ -336,15 +337,6 @@ class Listeners(commands.Cog):
                     await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
                                      member.id, datetime.datetime.now().replace(microsecond=0), gold)
 
-                # убираем начисление времени для "жёлтого" статуса:
-                elif str(before.status) != 'idle' and str(after.status) == 'idle':
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                                     datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                elif str(before.status) == 'idle' and str(after.status) != 'idle':
-                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
-                                     member.id, datetime.datetime.now().replace(microsecond=0), gold)
-
 
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
@@ -354,6 +346,21 @@ class Listeners(commands.Cog):
         async with self.pool.acquire() as db:
             await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
+
+    @commands.Cog.listener()
+    async def on_member_update(self, member: discord.Member, before, after):
+        if member.voice is not None:
+            async with self.pool.acquire() as db:
+                # убираем начисление времени для "жёлтого" статуса:
+                if str(before.status) != 'idle' and str(after.status) == 'idle':
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                                     datetime.datetime.now().replace(microsecond=0), gold, member.id)
+                elif str(before.status) == 'idle' and str(after.status) != 'idle':
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
+                                     member.id, datetime.datetime.now().replace(microsecond=0), gold)
+
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     # @commands.Cog.listener()
