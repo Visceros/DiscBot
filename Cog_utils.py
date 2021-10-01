@@ -32,12 +32,13 @@ class Listeners(commands.Cog):
                     for someone in before.channel.members:
                         if someone.bot is True:
                             bot_counter+=1
+                            await self.sys_channel.send(f'{someone.display_name} бот в канале {someone.voice.channel.name}')
                         else:
                             member = someone
                     if len(before.channel.members) - bot_counter == 1 and any(
                             item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
                         if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
-                            await self.sys_channel.send(f'{member.mention} сидит один в канале {member.channel.name} с ботом')
+                            await self.sys_channel.send(f'{member.mention} сидит один в канале {member.voice.channel.name} с ботом')
                             await asyncio.sleep(90) #ждём полторы минуты
                             #Перепроверяем, что это один и тот же человек
                             bot_counter = 0
@@ -141,7 +142,7 @@ class Listeners(commands.Cog):
                             member = someone
                     if len(after.channel.members) - bot_counter == 1:
                         if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
-                            await self.sys_channel.send(f'{member.mention} сидит один в канале {member.channel.name} с ботом')
+                            await self.sys_channel.send(f'{member.mention} сидит один в канале {member.voice.channel.name} с ботом')
                             await asyncio.sleep(90)  # ждём полторы минуты
                             # Перепроверяем, что это один и тот же человек
                             bot_counter = 0
