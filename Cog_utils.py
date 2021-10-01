@@ -44,7 +44,7 @@ class Listeners(commands.Cog):
                             if someone.bot is True:
                                 bot_counter += 1
                         if len(before.channel.members) - bot_counter == 1 and member in before.channel.members \
-                                and not member.voice.self_mute and not member.voice.mute:
+                                and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
                             user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                             user_warns += 1
@@ -247,7 +247,7 @@ class Listeners(commands.Cog):
                                 for someone in member.voice.channel.members:
                                     if someone.bot is True:
                                         bot_counter += 1
-                                if len(member.voice.channel.members) - bot_counter == 1 and not member.voice.self_mute and not member.voice.mute:
+                                if len(member.voice.channel.members) - bot_counter == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                                     await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
                                     user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                                     user_warns += 1
