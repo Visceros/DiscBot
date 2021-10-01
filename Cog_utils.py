@@ -37,6 +37,7 @@ class Listeners(commands.Cog):
                     if len(before.channel.members) - bot_counter == 1 and any(
                             item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
                         if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                            await self.sys_channel.send(f'{member.mention} сидит один в канале {member.channel.name} с ботом')
                             await asyncio.sleep(90) #ждём полторы минуты
                             #Перепроверяем, что это один и тот же человек
                             bot_counter = 0
@@ -44,13 +45,11 @@ class Listeners(commands.Cog):
                                 if someone.bot is True:
                                     bot_counter += 1
                             if len(before.channel.members) - bot_counter == 1 and member in before.channel.members \
-                                    and not member.voice.self_mute and not member.voice.mute and not member.bot:
+                                    and not member.voice.self_mute and not member.voice.mute:
                                 await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
-                                user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;',
-                                                               member.id)
+                                user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                                 user_warns += 1
-                                await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns,
-                                                 member.id) #Выдаём предупреждение
+                                await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id) #Выдаём предупреждение
                                 await self.messaging_channel.send(
                                     content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. сидели одни в'
                                             f'общих комнатах с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
@@ -142,6 +141,7 @@ class Listeners(commands.Cog):
                             member = someone
                     if len(after.channel.members) - bot_counter == 1:
                         if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                            await self.sys_channel.send(f'{member.mention} сидит один в канале {member.channel.name} с ботом')
                             await asyncio.sleep(90)  # ждём полторы минуты
                             # Перепроверяем, что это один и тот же человек
                             bot_counter = 0
