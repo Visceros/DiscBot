@@ -51,7 +51,7 @@ class Listeners(commands.Cog):
                             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id) #Выдаём предупреждение
                             await self.messaging_channel.send(
                                 content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                        f' общей комнате с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                                        f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
@@ -88,7 +88,7 @@ class Listeners(commands.Cog):
                                     if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
                                         await self.messaging_channel.send(
                                             '{} в данный момент вы единственный активный участник в комнате.'
-                                            ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(
+                                            'Отключите микрофон на сервере для более точной статистики активности, иначе это будет рассматриваться как нарушение правил. Спасибо.'.format(
                                                 discord.utils.get(member.guild.members,
                                                                   id=unmuted_member_id).mention))
                                         await asyncio.sleep(60)
@@ -103,6 +103,11 @@ class Listeners(commands.Cog):
                                                         unmuted_member_count += 1
                                                         new_unmuted_member_id = member.id
                                             if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
+                                                user_warns = await db.fetchval(
+                                                    'SELECT Warns from discord_users WHERE id=$1;', member.id)
+                                                user_warns += 1
+                                                await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;',
+                                                                 user_warns, member.id)  # Выдаём предупреждение
                                                 await member.move_to(member.guild.afk_channel)
 
                 #Выдаём предупреждение, если человек один в канале
@@ -118,7 +123,7 @@ class Listeners(commands.Cog):
                             user_warns += 1
                             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
                             await self.messaging_channel.send(content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                            f' общей комнате с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                                            f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
@@ -157,7 +162,7 @@ class Listeners(commands.Cog):
                                              member.id)  # Выдаём предупреждение
                             await self.messaging_channel.send(
                                 content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                        f' общей комнате с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                                        f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
@@ -183,7 +188,7 @@ class Listeners(commands.Cog):
                             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
                             await self.messaging_channel.send(
                                 content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                        f' общей комнате с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                                        f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
@@ -254,7 +259,7 @@ class Listeners(commands.Cog):
                                     await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id) #Выдаём предупреждение
                                     await self.messaging_channel.send(
                                         content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                                f' общей комнате с включенным микрофоном. При дальшейших нарушениях с вашего профиля будет списан актив.')
+                                                f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
                                     if user_warns % 3 == 0:
                                         await self.moderation_channel.send(
                                             f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
