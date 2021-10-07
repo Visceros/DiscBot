@@ -367,10 +367,12 @@ async def echo(ctx, msg: str):
 @bot.command()
 async def me(ctx):
     """Command to see your profile / Этой командой можно увидеть ваш профиль"""
-    if "клан-профиль" in ctx.channel.name:
+    if "клан-профиль" in ctx.channel.name or "system" in ctx.channel.name:
+        print(ctx.channel.name)
         usr = ctx.message.author
         await show(ctx, usr)
     else:
+        print('имя соответствует "клан-профиль"', "клан-профиль" in ctx.channel.name)
         await ctx.send('Команда доступна только в специальном канале.')
 
 

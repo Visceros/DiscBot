@@ -353,18 +353,18 @@ class Listeners(commands.Cog):
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
     @commands.Cog.listener()
-    async def on_member_update(self, member: discord.Member, before, after):
-        if member.voice is not None:
+    async def on_after_update(self, before, after):
+        if after.voice is not None:
             async with self.pool.acquire() as db:
                 # убираем начисление времени для "жёлтого" статуса:
                 if str(before.status) != 'idle' and str(after.status) == 'idle':
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={after.id}')
                     await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                                     datetime.datetime.now().replace(microsecond=0), gold, member.id)
+                                     datetime.datetime.now().replace(microsecond=0), gold, after.id)
                 elif str(before.status) == 'idle' and str(after.status) != 'idle':
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={after.id}')
                     await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
-                                     member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                                     after.id, datetime.datetime.now().replace(microsecond=0), gold)
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
