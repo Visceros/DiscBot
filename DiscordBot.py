@@ -25,7 +25,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -206,7 +206,7 @@ async def shutdown(ctx):
 
 
 @bot.command()
-async def help(ctx, arg:str=None):
+async def bothelp(ctx, arg:str=None):
     basic_help = """
     !me - посмотреть свой профиль\n
     !top - посмотреть топ пользователей по активности\n
@@ -333,6 +333,7 @@ async def show(ctx, member: discord.Member):
             positive_achievements = achievments - negative_achievements
             t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
             t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+
             try:
                 seven_days_activity_records = await db.fetch(
                     "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;", t_7days_ago, datetime.datetime.now(), member.id)
@@ -346,17 +347,21 @@ async def show(ctx, member: discord.Member):
             except asyncpg.InterfaceError:
                 pool = await db_connection()
 
-
-            part_1 = f"Никнейм: {member.mention}\nБанковский счёт: `{data['gold']}` :coin:"
+                #профиль с рамочкой
+            # part_1 = f"{data['RowSymbol']} Никнейм: {member.mention}\n{data['RowSymbol']} Банковский счёт: `{data['gold']}` :coin:"
+            # part_2 = f"\n{data['RowSymbol']} Положительных ачивок: `{positive_achievements}`\n{data['RowSymbol']} Негативных ачивок: `{negative_achievements}`"
+            # part_3 = f"\n{data['RowSymbol']} Активность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\n{data['RowSymbol']} Активность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+            # part_4 = f"\n{data['RowSymbol']} Дата присоединения к серверу: `{data['join_date']}`\n{data['RowSymbol']} ID пользователя: `{member.id}`"
+            part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
             part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
             part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
             part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
             embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-            # embed.add_field(name='', value=f"16*{data['symbol']}")
-            embed.add_field(name='Пользователь:', value=part_1, inline=False)
-            embed.add_field(name='Ачивки:', value=part_2, inline=False)
-            embed.add_field(name='Активность:', value=part_3, inline=False)
-            embed.add_field(name='Прочее:', value=part_4, inline=False)
+            embed.add_field(name=f"{data['RowSymbol']} Пользователь:", value=part_1, inline=False)
+            embed.add_field(name=f"{data['RowSymbol']} Ачивки:", value=part_2, inline=False)
+            embed.add_field(name=f"{data['RowSymbol']} Активность:", value=part_3, inline=False)
+            embed.add_field(name=f"{data['RowSymbol']} Прочее:", value=part_4, inline=False)
+            #await ctx.send(data['HeadSymbol']+'\n'+part_1+part_2+part_3+part_4+'\n'+data['FootSymbol'])
             await ctx.send(embed=embed)
         else:
             await ctx.send('Не найдена информация по вашему профилю.\n'

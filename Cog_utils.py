@@ -10,6 +10,7 @@ import datetime
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
+from DiscordBot import bot
 
 
 class Listeners(commands.Cog):
@@ -642,12 +643,46 @@ class Shop(commands.Cog):
 
     @shop.command()
     @commands.has_permissions(administrator=True)
-    async def add(self, ctx, product_name, price, duration='NULL'):
-        async with self.pool.acquire() as db:
-            try:
-                await db.execute(f'INSERT INTO SHOP (name, price, duration) VALUES($1, $2, $3) ON CONFLICT (product_id, name) DO NOTHING;', product_name, price, duration)
-            except Exception as e:
-                await ctx.send(e)
+    async def add(self, ctx, product_type):
+
+        async def shop_adding_checks(msg):
+            return msg.author == ctx.author and msg.channel == ctx.channel
+
+        if product_type == 'role':
+            await ctx.send('Укажите название роли: ')
+            product_name = await bot.wait_for("message", check=shop_adding_checks)
+            while not discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles):
+                await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
+                product_name = await bot.wait_for("message", check=shop_adding_checks)
+
+            await ctx.send('Укажите стоимость: ')
+            price = await bot.wait_for("message", check=shop_adding_checks)
+            while not price.isdigit():
+                await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
+                price = await bot.wait_for("message", check=shop_adding_checks)
+            price = int(price)
+
+            await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
+            duration = await bot.wait_for("message", check=shop_adding_checks)
+            while not duration.isdigit():
+                await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
+                duration = await bot.wait_for("message", check=shop_adding_checks)
+            if duration == '0':
+                duration = 'NULL'
+            else:
+                duration = int(duration)
+
+            async with self.pool.acquire() as db:
+                try:
+                    await db.execute(f'INSERT INTO SHOP (name, price, duration) VALUES($1, $2, $3) ON CONFLICT (product_id, name) DO NOTHING;', product_name, price, duration)
+                except Exception as e:
+                    await ctx.send('Произошла ошибка при добавлении товара:\n')
+                    await ctx.send(e)
+
+        elif product_type == 'help':
+            await ctx.send('В разработке.')
+            #написать сюда пример, как добавлять роль
+
 
     @shop.command()
     @commands.has_permissions(administrator=True)
