@@ -2,7 +2,7 @@
 
 import discord
 import asyncio  # check if installed / проверьте, установлен ли модуль
-from Cog_utils import Games, Listeners
+from Cog_utils import Games, Listeners, Shop
 import random
 import asyncpg  # check if installed / проверьте, установлен ли модуль
 import os
@@ -25,7 +25,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '>'
+prefix = '!'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -64,8 +64,10 @@ async def initial_db_fill():
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
         print('Database reading done.')
+        _crown = False
         for guild in bot.guilds:
-            if 'crown' in guild.name.lower() and 'golden' in guild.name.lower():
+            if 'crown' in guild.name.lower():
+                _crown = True
                 current_members_list = []
                 crown = guild
                 for member in crown.members:
@@ -82,7 +84,7 @@ async def initial_db_fill():
                     except Exception as e:
                         print('Got error while trying to add missing users to database', e)
                     print('Данные пользователей в базе обновлены')
-            else:
+            if _crown is False:
                 print('Golden Crown guild not found')
         print('database fill cycle ended')
 
@@ -144,7 +146,7 @@ async def on_ready():
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
     bot.add_cog(Listeners(bot, connection=pool))
-#    bot.add_cog(Utils(bot, connection = pool))
+    bot.add_cog(Shop(bot, connection=pool))
 
 
 
@@ -206,7 +208,7 @@ async def shutdown(ctx):
 
 
 @bot.command()
-async def bothelp(ctx, arg:str=None):
+async def gkhelp(ctx, arg:str=None):
     basic_help = """
     !me - посмотреть свой профиль\n
     !top - посмотреть топ пользователей по активности\n

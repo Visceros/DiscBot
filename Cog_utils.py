@@ -10,7 +10,6 @@ import datetime
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
-from DiscordBot import bot
 
 
 class Listeners(commands.Cog):
@@ -439,7 +438,7 @@ class Games(commands.Cog):
                         return str(reaction.emoji) in reactions[0:3] and user.bot is not True
 
                     try:
-                        reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
+                        reaction, user = await self.self.bot.wait_for('reaction_add', timeout=180, check=checkS)
                     except asyncio.TimeoutError:
                         quit_msg = await ctx.send('**Удача не терпит медлительных. Время вышло! 👎**')
                         await asyncio.sleep(10)
@@ -477,7 +476,7 @@ class Games(commands.Cog):
                             for react in reactions[0:3]:
                                 await start_message.add_reaction(react)
                             try:
-                                reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkG)
+                                reaction, user = await self.self.bot.wait_for('reaction_add', timeout=180, check=checkG)
                             except asyncio.TimeoutError:
                                 add_msg = await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
                                 del_messages.append(add_msg)
@@ -660,35 +659,36 @@ class Shop(commands.Cog):
 
             if product_type == 'role':
                 await ctx.send('Укажите название роли: ')
-                product_name = await bot.wait_for("message", check=shop_adding_checks)
+                product_name = await self.bot.wait_for("message", check=shop_adding_checks)
                 while discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles) is None:
                     await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
-                    product_name = await bot.wait_for("message", check=shop_adding_checks)
+                    product_name = await self.bot.wait_for("message", check=shop_adding_checks)
 
                 await ctx.send('Укажите стоимость: ')
-                price = await bot.wait_for("message", check=shop_adding_checks)
+                price = await self.bot.wait_for("message", check=shop_adding_checks)
                 while not price.isdigit():
                     await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
-                    price = await bot.wait_for("message", check=shop_adding_checks)
+                    price = await self.bot.wait_for("message", check=shop_adding_checks)
                 price = int(price)
 
                 await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
-                duration = await bot.wait_for("message", check=shop_adding_checks)
+                duration = await self.bot.wait_for("message", check=shop_adding_checks)
                 while not duration.isdigit():
                     await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
-                    duration = await bot.wait_for("message", check=shop_adding_checks)
+                    duration = await self.bot.wait_for("message", check=shop_adding_checks)
                 if duration == '0':
                     duration = 'NULL'
                 else:
                     duration = int(duration)
 
-
-        async with self.pool.acquire() as db:
-            try:
-                await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
-            except Exception as e:
-                await ctx.send('Произошла ошибка при добавлении товара:\n')
-                await ctx.send(e)
+        if price is not None and product_name is not None and duration is not None:
+            async with self.pool.acquire() as db:
+                try:
+                    await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
+                    await ctx.send('Товар успешно добавлен')
+                except Exception as e:
+                    await ctx.send('Произошла ошибка при добавлении товара:\n')
+                    await ctx.send(e)
 
 
     @shop.command()
@@ -703,15 +703,13 @@ class Shop(commands.Cog):
         else:
             await ctx.send('Вы не ввели какой товар удалить. Укажите id или название товара.')
 
-
     @shop.command()
     async def help(self, ctx):
         await ctx.send('Инструкция пользования магазином:\n'
-                       'buy название - купить товар\n'
-                       'shop add - добавить товар (только администраторы): см. shop add help\n'
-                       'shop delete - удалить товар из магазина (только администраторы)\n'
+                       '!buy название - купить товар\n'
+                       '!shop add - добавить товар (только администраторы): см. shop add help\n'
+                       '!shop delete - удалить товар из магазина (только администраторы)\n'
                        )
-
 
     async def buy(self, ctx, product_name, num=1):
 

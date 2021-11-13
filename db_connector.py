@@ -50,7 +50,7 @@ async def db_connection():
             name text NOT NULL,
             price INT NOT NULL,
             duration INT DEFAULT NULL,
-            CONSTRAINT unique_id UNIQUE (product_id));''')
+            CONSTRAINT unique_id UNIQUE (product_id, name));''')
 
             await db.execute('''CREATE TABLE IF NOT EXISTS ShopLog (
             record_id SERIAL PRIMARY KEY NOT NULL,
