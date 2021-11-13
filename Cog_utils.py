@@ -634,54 +634,61 @@ class Shop(commands.Cog):
     @commands.group(case_insensitive=True, invoke_without_command=True)
     async def shop(self, ctx):
         if ctx.invoked_subcommand is None:
-            await ctx.send('Вы не ввели команду! '
+            await ctx.send('Вы не ввели команду!\n'
                            'Инструкция пользования магазином:\n'
                            'buy название - купить товар\n'
-                           'shop add - добавить товар (только администраторы)\n'
+                           'shop add - добавить товар (только администраторы): см. shop add help\n'
                            'shop delete - удалить товар из магазина (только администраторы)\n'
                            )
 
     @shop.command()
     @commands.has_permissions(administrator=True)
-    async def add(self, ctx, product_type):
+    async def add(self, ctx, product_type, product_name=None, price: int=None, duration: int=None):
 
-        async def shop_adding_checks(msg):
-            return msg.author == ctx.author and msg.channel == ctx.channel
+        if product_type == 'help':
+            await ctx.send('Добавить товар в магазин можно двумя путями:\n'
+                           'путь 1: ввести команду, и указать тип добавляемого товара, например\n!shop add role\n'
+                           'и тогда бот в режиме диалога поможет вам заполнить данные о товаре, или\n'
+                           'путь 2: сразу ввести все параметры, например:\n'
+                           '!shop add role "VIP Ник Фиолетовый" 1500 30\n'
+                           'поддерживаемые типы в этой ревизии: role')
 
-        if product_type == 'role':
-            await ctx.send('Укажите название роли: ')
-            product_name = await bot.wait_for("message", check=shop_adding_checks)
-            while not discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles):
-                await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
+        elif price is None and product_name is None and duration is None:
+
+            async def shop_adding_checks(msg):
+                return msg.author == ctx.author and msg.channel == ctx.channel
+
+            if product_type == 'role':
+                await ctx.send('Укажите название роли: ')
                 product_name = await bot.wait_for("message", check=shop_adding_checks)
+                while discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles) is None:
+                    await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
+                    product_name = await bot.wait_for("message", check=shop_adding_checks)
 
-            await ctx.send('Укажите стоимость: ')
-            price = await bot.wait_for("message", check=shop_adding_checks)
-            while not price.isdigit():
-                await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
+                await ctx.send('Укажите стоимость: ')
                 price = await bot.wait_for("message", check=shop_adding_checks)
-            price = int(price)
+                while not price.isdigit():
+                    await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
+                    price = await bot.wait_for("message", check=shop_adding_checks)
+                price = int(price)
 
-            await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
-            duration = await bot.wait_for("message", check=shop_adding_checks)
-            while not duration.isdigit():
-                await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
+                await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
                 duration = await bot.wait_for("message", check=shop_adding_checks)
-            if duration == '0':
-                duration = 'NULL'
-            else:
-                duration = int(duration)
+                while not duration.isdigit():
+                    await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
+                    duration = await bot.wait_for("message", check=shop_adding_checks)
+                if duration == '0':
+                    duration = 'NULL'
+                else:
+                    duration = int(duration)
 
-            async with self.pool.acquire() as db:
-                try:
-                    await db.execute(f'INSERT INTO SHOP (name, price, duration) VALUES($1, $2, $3) ON CONFLICT (product_id, name) DO NOTHING;', product_name, price, duration)
-                except Exception as e:
-                    await ctx.send('Произошла ошибка при добавлении товара:\n')
-                    await ctx.send(e)
 
-        elif product_type == 'help':
-            await ctx.send('В разработке.')
-            #написать сюда пример, как добавлять роль
+        async with self.pool.acquire() as db:
+            try:
+                await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
+            except Exception as e:
+                await ctx.send('Произошла ошибка при добавлении товара:\n')
+                await ctx.send(e)
 
 
     @shop.command()
@@ -697,10 +704,15 @@ class Shop(commands.Cog):
             await ctx.send('Вы не ввели какой товар удалить. Укажите id или название товара.')
 
 
+    @shop.command()
+    async def help(self, ctx):
+        await ctx.send('Инструкция пользования магазином:\n'
+                       'buy название - купить товар\n'
+                       'shop add - добавить товар (только администраторы): см. shop add help\n'
+                       'shop delete - удалить товар из магазина (только администраторы)\n'
+                       )
+
+
     async def buy(self, ctx, product_name, num=1):
 
         pass
-
-
-class Utils(commands.Cog):
-    pass

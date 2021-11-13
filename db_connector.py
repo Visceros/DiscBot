@@ -46,6 +46,7 @@ async def db_connection():
             #Таблица с товарами в магазине
             await db.execute('''CREATE TABLE IF NOT EXISTS Shop (
             product_id SERIAL PRIMARY KEY NOT NULL,
+            product_type text NOT NULL,
             name text NOT NULL,
             price INT NOT NULL,
             duration INT DEFAULT NULL,
