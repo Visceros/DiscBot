@@ -359,10 +359,10 @@ async def show(ctx, member: discord.Member):
             part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
             part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
             embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-            embed.add_field(name=f"{data['RowSymbol']} Пользователь:", value=part_1, inline=False)
-            embed.add_field(name=f"{data['RowSymbol']} Ачивки:", value=part_2, inline=False)
-            embed.add_field(name=f"{data['RowSymbol']} Активность:", value=part_3, inline=False)
-            embed.add_field(name=f"{data['RowSymbol']} Прочее:", value=part_4, inline=False)
+            embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
+            embed.add_field(name=f"Ачивки:", value=part_2, inline=False)
+            embed.add_field(name=f"Активность:", value=part_3, inline=False)
+            embed.add_field(name=f"Прочее:", value=part_4, inline=False)
             #await ctx.send(data['HeadSymbol']+'\n'+part_1+part_2+part_3+part_4+'\n'+data['FootSymbol'])
             await ctx.send(embed=embed)
         else:
