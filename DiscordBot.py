@@ -258,12 +258,10 @@ async def gkhelp(ctx, arg:str=None):
         embed.add_field(name='Справка пользователя', value=basic_help)
         await ctx.send(embed=embed)
     elif arg=="mod":
-        embed.add_field(name='Справка модератора', value=mod_help)
-        await ctx.send(embed=embed)
+        await ctx.send(mod_help)
     elif arg=="admin":
         if ctx.message.author.guild_permissions.administrator:
-            embed.add_field(name='Справка администратора', value=admin_help)
-            await ctx.send(embed=embed)
+            await ctx.send(admin_help)
         else:
             await ctx.send('Этот раздел доступен только администраторам.')
 
