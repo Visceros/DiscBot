@@ -210,8 +210,7 @@ async def shutdown(ctx):
 @bot.command()
 async def gkhelp(ctx, arg:str=None):
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    basic_help = """    
-    !me - посмотреть свой профиль\n
+    basic_help = """    !me - посмотреть свой профиль\n
     !top - посмотреть топ пользователей по активности\n
     !antitop - посмотреть анти-топ пользователей по активности\n
     !gmoney <имя_пользователя> <количество> или <id пользователя> <количество> - отдать кому-то свои деньги\n
@@ -225,8 +224,7 @@ async def gkhelp(ctx, arg:str=None):
     !warn <пользователь> <кол-во>- выдать кому-то предупреждение и снять 3 минуты активности. Аргументом <пользователь> может 
     являться айди юзера, его имя, или упоминание. Можно выдать несколько предупреждений поставив после пользователя пробел и число.\n
     !u <пользователь> - посмотреть профиль любого пользователя.\n"""
-    admin_help = """
-    !me - посмотреть свой профиль\n
+    admin_help = """    !me - посмотреть свой профиль\n
     !u <пользователь> - посмотреть профиль любого пользователя.\n
     !top - посмотреть топ пользователей по активности\n
     !antitop - посмотреть анти-топ пользователей по активности\n
@@ -448,10 +446,41 @@ async def me(ctx):
         await ctx.send('Команда доступна только в специальном канале.')
 
 
+# просмотр урезанного профиля пользователей для модерации
 @bot.command()
 async def u(ctx, member: discord.Member):
-    await show(ctx, member)
+    eligible_roles_ids = {651377975106732034, 449837752687656960}
     await ctx.message.delete()
+    if any(role.id in eligible_roles_ids for role in ctx.author.roles) or ctx.message.author.guild_permissions.administrator is True:
+        global pool
+        async with pool.acquire() as db:
+            data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
+            if data is not None:
+                warns = int(data['warns'])
+                t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+                t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+
+                try:
+                    seven_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
+                        t_7days_ago, datetime.datetime.now(), member.id)
+                    thirty_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
+                        t_30days_ago, datetime.datetime.now(), member.id)
+                except asyncpg.InterfaceError:
+                    pool = await db_connection()
+            time_in_clan = datetime.datetime.now() - member.joined_at
+
+            part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
+            part_2 = f"`{time_in_clan.days//7} недель`"
+            part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+            embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+            embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
+            embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
+            embed.add_field(name=f"Активность:", value=part_3, inline=False)
+            await ctx.send(embed=embed)
+    else:
+        await ctx.send('Вы не являетесь модератором или администратором.')
 
 
 @bot.command()
@@ -571,7 +600,7 @@ async def antitop(ctx, count: int = 10):
                         if time_in_clan.days//7 <= 4:
                             if activity/(time_in_clan.days//7) < 10:
                                 result_list.append((member.mention, activity, time_in_clan.days//7))
-                        elif time_in_clan.days//7 < 4 and activity < 40:
+                        elif time_in_clan.days//7 >= 4 and activity < 40:
                             result_list.append((member.mention, activity, '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
