@@ -208,7 +208,7 @@ async def shutdown(ctx):
 
 
 @bot.command()
-async def gkhelp(ctx, arg:str=None):
+async def gchelp(ctx, arg:str=None):
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     basic_help = """    !me - посмотреть свой профиль\n
     !top - посмотреть топ пользователей по активности\n

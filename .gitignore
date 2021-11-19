@@ -1,5 +1,4 @@
 /.env
-/discord.log
-/discordlog.log
+/*.log
 /golden-rewards.txt
 /usual-rewards.txt
