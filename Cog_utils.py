@@ -438,7 +438,7 @@ class Games(commands.Cog):
                         return str(reaction.emoji) in reactions[0:3] and user.bot is not True
 
                     try:
-                        reaction, user = await self.self.bot.wait_for('reaction_add', timeout=180, check=checkS)
+                        reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
                     except asyncio.TimeoutError:
                         quit_msg = await ctx.send('**Удача не терпит медлительных. Время вышло! 👎**')
                         await asyncio.sleep(10)
@@ -476,7 +476,7 @@ class Games(commands.Cog):
                             for react in reactions[0:3]:
                                 await start_message.add_reaction(react)
                             try:
-                                reaction, user = await self.self.bot.wait_for('reaction_add', timeout=180, check=checkG)
+                                reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkG)
                             except asyncio.TimeoutError:
                                 add_msg = await ctx.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
                                 del_messages.append(add_msg)
