@@ -13,10 +13,10 @@ from operator import itemgetter
 from db_connector import db_connection
 import logging
 
-ds_logger = logging.getLogger('discord')
-ds_logger.setLevel(logging.DEBUG)
-handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
-ds_logger.addHandler(handler)
+# ds_logger = logging.getLogger('discord')
+# ds_logger.setLevel(logging.DEBUG)
+# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+# ds_logger.addHandler(handler)
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -119,18 +119,18 @@ async def auto_rainbowise():
 # функция сброса варнов у всех юзеров на 0 каждое первое число месяца (дописать очистку данных в LogTable старше 3 мес)
 @tasks.loop(hours=24)
 async def montly_task():
-    if datetime.datetime.now().day == 1:
+    if datetime.datetime.now().day == 2:
 
-        #снятие варнов в 1 день месяца
+        #снятие варнов на 2 день месяца
         async with pool.acquire() as db:
             await db.execute('UPDATE discord_users SET warns=0;')
 
-        # снятие ачивки "накрутчик"
+        # снятие ачивки "накрутчик" на 2 день месяца
         for user in bot.get_guild(198134036890255361).members:
             for role in user.roles:
                 if role.name.lower() == 'накрутчик': await user.remove_role(role)
 
-        #раздача зарплаты верховному совету
+        #раздача зарплаты верховному совету на 2 день месяца
         for guild in bot.guilds:
             amount = 1000  # количество заработной платы
             salary_roles_ids = {651377975106732034, 449837752687656960} # ID ролей, которым начисляется зарплата
