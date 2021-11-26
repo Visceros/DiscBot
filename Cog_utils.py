@@ -353,7 +353,7 @@ class Listeners(commands.Cog):
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
     @commands.Cog.listener()
-    async def on_after_update(self, before, after):
+    async def on_member_update(self, before, after):
         if after.voice is not None:
             async with self.pool.acquire() as db:
                 # убираем начисление времени для "жёлтого" статуса:
@@ -628,29 +628,36 @@ class Shop(commands.Cog):
         self.pool = connection
         self.bot = bot
 
-    # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ ПОЛЬЗОВАТЕЛЯМИ--------------
+    # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
 
     @commands.group(case_insensitive=True, invoke_without_command=True)
     async def shop(self, ctx):
         if ctx.invoked_subcommand is None:
-            await ctx.send('Вы не ввели команду!\n'
+            temp_msg = await ctx.send('Вы не ввели команду!\n'
                            'Инструкция пользования магазином:\n'
                            'buy название - купить товар\n'
                            'shop add - добавить товар (только администраторы): см. shop add help\n'
                            'shop delete - удалить товар из магазина (только администраторы)\n'
                            )
+            await asyncio.sleep(90)
+            if temp_msg is not None:
+                await temp_msg.delete()
 
     @shop.command()
     @commands.has_permissions(administrator=True)
     async def add(self, ctx, product_type, product_name=None, price: int=None, duration: int=None):
+        await ctx.message.delete()
 
         if product_type == 'help':
-            await ctx.send('Добавить товар в магазин можно двумя путями:\n'
+            temp_help_msg = await ctx.send('Добавить товар в магазин можно двумя путями:\n'
                            'путь 1: ввести команду, и указать тип добавляемого товара, например\n!shop add role\n'
                            'и тогда бот в режиме диалога поможет вам заполнить данные о товаре, или\n'
                            'путь 2: сразу ввести все параметры, например:\n'
                            '!shop add role "VIP Ник Фиолетовый" 1500 30\n'
                            'поддерживаемые типы в этой ревизии: role')
+            await asyncio.sleep(30)
+            if temp_help_msg is not None:
+                await temp_help_msg.delete()
 
         elif price is None and product_name is None and duration is None:
 
@@ -690,27 +697,101 @@ class Shop(commands.Cog):
                     await ctx.send('Произошла ошибка при добавлении товара:\n')
                     await ctx.send(e)
 
-
     @shop.command()
     @commands.has_permissions(administrator=True)
     async def delete(self, ctx, arg):
+
+        await ctx.message.delete()
         if arg.isdigit():
             async with self.pool.acquire() as db:
                 await db.execute(f'DELETE FROM SHOP WHERE product_id=$1;', arg)
+                _msg = await ctx.send('Товар успешно удалён')
+                await asyncio.sleep(5)
+                await _msg.delete()
         elif arg is not None:
             async with self.pool.acquire() as db:
                 await db.execute(f'DELETE FROM SHOP WHERE product_name=$1;', arg)
+                _msg = await ctx.send('Товар успешно удалён')
+                await asyncio.sleep(5)
+                await _msg.delete()
         else:
             await ctx.send('Вы не ввели какой товар удалить. Укажите id или название товара.')
 
     @shop.command()
     async def help(self, ctx):
-        await ctx.send('Инструкция пользования магазином:\n'
+        temp_msg = await ctx.send('Инструкция пользования магазином:\n'
                        '!buy название - купить товар\n'
                        '!shop add - добавить товар (только администраторы): см. shop add help\n'
                        '!shop delete - удалить товар из магазина (только администраторы)\n'
                        )
+        await asyncio.sleep(90)
+        if temp_msg is not None:
+            await temp_msg.delete()
+        # -------------КОНЕЦ БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
 
-    async def buy(self, ctx, product_name, num=1):
+    @commands.command()
+    async def buy(self, ctx, arg=None, num=1):
+        if arg is None:
+            await ctx.send('Вы не указали какой товар хотите купить. Введите номер позиции или скопируйте/введите название в кавычках "".')
+            return
+        else:
+            # Если человек ввёл цифры, считаем, что он ввёл ID товара
+            if arg.isdigit():
+                product_id = int(arg)
+                async with self.pool.acquire() as db:
+                    product = await db.fetchrow('SELECT * FROM SHOP WHERE product_id=$1', product_id)
+                    if product is not None:
+                        cost = product['price']
+                        user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', ctx.author.id)
+                        if int(user_gold) < int(cost):
+                            await ctx.send('Извините, у вас недостаточно валюты для этой покупки!')
+                            return
+                        if product['product_type'] == 'role':
+                            role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
+                            if role is None:
+                                await ctx.send('Что-то пошло не так! Такая роль не найдена на сервере, проверьте правильно ли указали название.')
+                                return
+                            user_gold = user_gold - cost
+                            if role not in ctx.author.roles:
+                                await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
+                                await ctx.author.add_roles(role)
+                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, purchase_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date())
+                                await ctx.send('Покупка произведена успешно.')
+                            else:
+                                await ctx.send('У вас уже есть эта роль.')
 
-        pass
+                        elif product['product_type'] == 'frame':
+                            pass # заготовка под работу с рамками профиля
+
+                    else:
+                        await ctx.send('Извините, товар с таким номером не найден.')
+                        return
+
+            # Если человек ввёл слова, считаем это названием товара
+            elif isinstance(arg, str):
+                product_name = arg
+                async with self.pool.acquire() as db:
+                    product = await db.fetchrow('SELECT * FROM SHOP WHERE name=$1', product_name)
+                    if product is not None:
+                        cost = product['price']
+                        user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', ctx.author.id)
+                        if int(user_gold) < int(cost):
+                            await ctx.send('Извините, у вас недостаточно валюты для этой покупки!')
+                            return
+                        if product['product_type'] == 'role':
+                            role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
+                            if role is None:
+                                await ctx.send('Что-то пошло не так! Такая роль не найдена на сервере, проверьте правильно ли указали название.')
+                                return
+                            user_gold = user_gold - cost
+                            if role not in ctx.author.roles:
+                                await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
+                                await ctx.author.add_roles(role)
+                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, purchase_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date())
+                                await ctx.send('Покупка произведена успешно.')
+                            else:
+                                await ctx.send('У вас уже есть эта роль.')
+
+                    else:
+                        await ctx.send('Извините, товар с таким названием не найден.')
+                        return
