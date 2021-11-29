@@ -25,7 +25,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -261,7 +261,7 @@ async def shutdown(ctx):
         exit(1)
 
 
-@bot.command(name="help")
+@bot.command()
 async def gchelp(ctx, arg:str=None):
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     basic_help = """    !me - посмотреть свой профиль\n
