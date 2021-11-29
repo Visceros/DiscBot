@@ -731,11 +731,13 @@ class Shop(commands.Cog):
 
     @commands.command()
     async def buy(self, ctx, arg=None, num=1):
+        shoplog_channel = discord.utils.find(lambda r: (r.name.lower() == 'market_log'), ctx.guild.channels)
         if arg is None:
-            await ctx.send('Вы не указали какой товар хотите купить. Введите номер позиции или скопируйте/введите название в кавычках "".')
+            await ctx.send('Для покупки введите номер позиции или скопируйте/введите название в кавычках "".')
             return
         else:
             # Если человек ввёл цифры, считаем, что он ввёл ID товара
+
             if arg.isdigit():
                 product_id = int(arg)
                 async with self.pool.acquire() as db:
@@ -749,16 +751,27 @@ class Shop(commands.Cog):
                         if product['product_type'] == 'role':
                             role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
                             if role is None:
-                                await ctx.send('Что-то пошло не так! Такая роль не найдена на сервере, проверьте правильно ли указали название.')
+                                await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
                                 return
-                            user_gold = user_gold - cost
+
+                            vip_roles_list = []  # Получаем список VIP-ролей из магазина
+                            roles_records = await db.fetch("SELECT * FROM Shop WHERE product_type='role';")
+                            for _role in roles_records:
+                                vip_roles_list.append(_role['name'])
+                            # При покупке нового цвета ника убираем старый, если был
+                            for viprole in vip_roles_list:
+                                if viprole in ctx.author.roles and viprole != role:
+                                    await ctx.author.remove_roles(viprole)
+
                             if role not in ctx.author.roles:
+                                user_gold = user_gold - cost
                                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
                                 await ctx.author.add_roles(role)
                                 await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, purchase_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date())
-                                await ctx.send('Покупка произведена успешно.')
+                                await ctx.send('Спасибо за покупку!')
+                                await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
                             else:
-                                await ctx.send('У вас уже есть эта роль.')
+                                await ctx.send('Эта покупка уже совершена. Продление возможно по истечению срока аренды.')
 
                         elif product['product_type'] == 'frame':
                             pass # заготовка под работу с рамками профиля
@@ -781,16 +794,27 @@ class Shop(commands.Cog):
                         if product['product_type'] == 'role':
                             role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
                             if role is None:
-                                await ctx.send('Что-то пошло не так! Такая роль не найдена на сервере, проверьте правильно ли указали название.')
+                                await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
                                 return
-                            user_gold = user_gold - cost
+
+                            vip_roles_list = []  # Получаем список VIP-ролей из магазина
+                            roles_records = await db.fetch("SELECT * FROM Shop WHERE product_type='role';")
+                            for _role in roles_records:
+                                vip_roles_list.append(_role['name'])
+                            # При покупке нового цвета ника убираем старый, если был
+                            for viprole in vip_roles_list:
+                                if viprole in ctx.author.roles and viprole != role:
+                                    await ctx.author.remove_roles(viprole)
+
                             if role not in ctx.author.roles:
+                                user_gold = user_gold - cost
                                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
                                 await ctx.author.add_roles(role)
                                 await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, purchase_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date())
-                                await ctx.send('Покупка произведена успешно.')
+                                await ctx.send('Спасибо за покупку!')
+                                await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
                             else:
-                                await ctx.send('У вас уже есть эта роль.')
+                                await ctx.send('Эта покупка уже совершена. Продление возможно по истечению срока аренды.')
 
                     else:
                         await ctx.send('Извините, товар с таким названием не найден.')
