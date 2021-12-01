@@ -117,7 +117,7 @@ class Listeners(commands.Cog):
                            channel_groups_to_account_contain):
                         await asyncio.sleep(90) #Ждём полторы минуты
                         #Перепроверяем, что это один и тот же человек
-                        if len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
+                        if member.voice is not None and len(before.channel.members) == 1 and before.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
                             await member.move_to(member.guild.afk_channel)
                             user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
                             user_warns += 1
@@ -180,95 +180,95 @@ class Listeners(commands.Cog):
                            channel_groups_to_account_contain):
                         await asyncio.sleep(90)  # Ждём полторы минуты
                         # Перепроверяем, что это один и тот же человек
-                        if len(after.channel.members) == 1 and after.channel.members[
-                            0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
-                            await member.move_to(member.guild.afk_channel)
-                            user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
-                            user_warns += 1
-                            await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
-                            await self.messaging_channel.send(
-                                content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                        f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
-                            if user_warns % 3 == 0:
-                                await self.moderation_channel.send(
-                                    f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                            bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
-                            if user_warns >= 6 and not bad_role in member.roles:
-                                await member.add_roles(bad_role)
-                            await sys_channel.send(
-                                f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
+                        if after.channel is not None and not after.channel == member.guild.afk_channel:
+                            if len(after.channel.members) == 1 and after.channel.members[0] == member and not member.voice.self_mute and not member.voice.mute and not member.bot:
+                                await member.move_to(member.guild.afk_channel)
+                                user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
+                                user_warns += 1
+                                await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
+                                await self.messaging_channel.send(
+                                    content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
+                                            f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
+                                if user_warns % 3 == 0:
+                                    await self.moderation_channel.send(
+                                        f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
+                                bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
+                                if user_warns >= 6 and not bad_role in member.roles:
+                                    await member.add_roles(bad_role)
+                                await sys_channel.send(
+                                    f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
-                        # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
-                        elif member.voice.channel is not None and len(member.voice.channel.members) > 1:
-                            muted_member_count = 0
-                            unmuted_member_count = 0
-                            bot_counter = 0
-                            for member in member.voice.channel.members:
-                                if not member.bot:  # Отсекаем ботов
-                                    if member.voice.self_mute:
-                                        muted_member_count += 1
-                                    else:
-                                        unmuted_member_count += 1
-                                        unmuted_member_id = member.id
-                                else:
-                                    bot_counter+=1
-                            if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
-                                await asyncio.sleep(90)
-                                if member.voice:
-                                    muted_member_count = 0
-                                    unmuted_member_count = 0
-                                    for member in member.voice.channel.members:
-                                        if not member.bot:
-                                            if member.voice.self_mute:
-                                                muted_member_count += 1
-                                            else:
-                                                unmuted_member_count += 1
-                                                new_unmuted_member_id = member.id
-                                    if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
-                                        await self.messaging_channel.send(
-                                            '{} в данный момент вы единственный активный участник в комнате.'
-                                            ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(
-                                                discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
-                                        await asyncio.sleep(60)
-                                        if member.voice:
-                                            muted_member_count = 0
-                                            unmuted_member_count = 0
-                                            for member in member.voice.channel.members:
-                                                if not member.bot:
-                                                    if member.voice.self_mute:
-                                                        muted_member_count += 1
-                                                    else:
-                                                        unmuted_member_count += 1
-                                                        new_unmuted_member_id = member.id
-                                            if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
-                                                await member.move_to(member.guild.afk_channel)
-
-                            #Проверяем, что человек сидит один в комнате с ботом в случае, если он перешел из одной комнаты в другую
-                            elif len(member.voice.channel.members) - bot_counter == 1 and any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
-                                await self.sys_channel.send(f'{member.mention} сидит один в канале {member.voice.channel.name} с ботом')
-                                await asyncio.sleep(90) #ждём полторы минуты
-                                #Перепроверяем, что это один и тот же человек
+                            # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
+                            elif member.voice.channel is not None and len(member.voice.channel.members) > 1:
+                                muted_member_count = 0
+                                unmuted_member_count = 0
                                 bot_counter = 0
-                                for someone in member.voice.channel.members:
-                                    if someone.bot is True:
-                                        bot_counter += 1
-                                if len(member.voice.channel.members) - bot_counter == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
-                                    await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
-                                    user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
-                                    user_warns += 1
-                                    await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id) #Выдаём предупреждение
-                                    await self.messaging_channel.send(
-                                        content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                                f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
-                                    if user_warns % 3 == 0:
-                                        await self.moderation_channel.send(
-                                            f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                                    bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
-                                                                  member.guild.roles)
-                                    if user_warns >= 6 and not bad_role in member.roles:
-                                        await member.add_roles(bad_role)
-                                    await sys_channel.send(
-                                        f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
+                                for member in member.voice.channel.members:
+                                    if not member.bot:  # Отсекаем ботов
+                                        if member.voice.self_mute:
+                                            muted_member_count += 1
+                                        else:
+                                            unmuted_member_count += 1
+                                            unmuted_member_id = member.id
+                                    else:
+                                        bot_counter+=1
+                                if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
+                                    await asyncio.sleep(90)
+                                    if member.voice:
+                                        muted_member_count = 0
+                                        unmuted_member_count = 0
+                                        for member in member.voice.channel.members:
+                                            if not member.bot:
+                                                if member.voice.self_mute:
+                                                    muted_member_count += 1
+                                                else:
+                                                    unmuted_member_count += 1
+                                                    new_unmuted_member_id = member.id
+                                        if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
+                                            await self.messaging_channel.send(
+                                                '{} в данный момент вы единственный активный участник в комнате.'
+                                                ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(
+                                                    discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
+                                            await asyncio.sleep(60)
+                                            if member.voice:
+                                                muted_member_count = 0
+                                                unmuted_member_count = 0
+                                                for member in member.voice.channel.members:
+                                                    if not member.bot:
+                                                        if member.voice.self_mute:
+                                                            muted_member_count += 1
+                                                        else:
+                                                            unmuted_member_count += 1
+                                                            new_unmuted_member_id = member.id
+                                                if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
+                                                    await member.move_to(member.guild.afk_channel)
+
+                                #Проверяем, что человек сидит один в комнате с ботом в случае, если он перешел из одной комнаты в другую
+                                elif len(member.voice.channel.members) - bot_counter == 1 and any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                                    await self.sys_channel.send(f'{member.mention} сидит один в канале {member.voice.channel.name} с ботом')
+                                    await asyncio.sleep(90) #ждём полторы минуты
+                                    #Перепроверяем, что это один и тот же человек
+                                    bot_counter = 0
+                                    for someone in member.voice.channel.members:
+                                        if someone.bot is True:
+                                            bot_counter += 1
+                                    if len(member.voice.channel.members) - bot_counter == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
+                                        await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
+                                        user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
+                                        user_warns += 1
+                                        await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id) #Выдаём предупреждение
+                                        await self.messaging_channel.send(
+                                            content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
+                                                    f' общей комнате с включенным микрофоном. За каждое нарушение с вашего профиля будет списан актив.')
+                                        if user_warns % 3 == 0:
+                                            await self.moderation_channel.send(
+                                                f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
+                                        bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
+                                                                      member.guild.roles)
+                                        if user_warns >= 6 and not bad_role in member.roles:
+                                            await member.add_roles(bad_role)
+                                        await sys_channel.send(
+                                            f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
@@ -733,7 +733,7 @@ class Shop(commands.Cog):
     async def buy(self, ctx, arg=None, num=1):
         shoplog_channel = discord.utils.find(lambda r: (r.name.lower() == 'market_log'), ctx.guild.channels)
         if arg is None:
-            await ctx.send('Для покупки введите номер позиции или скопируйте/введите название в кавычках "".')
+            await ctx.send('Для покупки введите команду и номер товара.')
             return
         else:
             # Если человек ввёл цифры, считаем, что он ввёл ID товара

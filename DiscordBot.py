@@ -629,6 +629,9 @@ async def top(ctx, count: int = 10):
     res = sorted(result_list, key=itemgetter(1), reverse=True)
     count = len(res) if count > len(res) else count
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+    while len(output) > 1024:
+        count -=1
+        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
     await ctx.send(embed=embed)
