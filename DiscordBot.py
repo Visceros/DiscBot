@@ -402,17 +402,17 @@ async def show(ctx, member: discord.Member):
             part_2 = f"\n{data['RowSymbol']} **Ачивки:**\n{data['RowSymbol']} Позитивных ачивок: `{positive_achievements}`\n{data['RowSymbol']} Негативных ачивок: `{negative_achievements}`"
             part_3 = f"\n{data['RowSymbol']} **Активность:**\n{data['RowSymbol']} Активность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\n{data['RowSymbol']} Активность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
             part_4 = f"\n{data['RowSymbol']} **Прочее:**\n{data['RowSymbol']} Дата присоединения к серверу: `{data['join_date']}`\n{data['RowSymbol']} ID пользователя: `{member.id}`"
-            #part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
-            #part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
-            #part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
-            #part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
-            #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-            #embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
-            #embed.add_field(name=f"Ачивки:", value=part_2, inline=False)
-            #embed.add_field(name=f"Активность:", value=part_3, inline=False)
-            #embed.add_field(name=f"Прочее:", value=part_4, inline=False)
+            part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
+            part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
+            part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+            part_4 = f"\nДата присоединения к серверу: `{data['join_date']}`\nID пользователя: `{member.id}`"
+            # embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+            # embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
+            # embed.add_field(name=f"Ачивки:", value=part_2, inline=False)
+            # embed.add_field(name=f"Активность:", value=part_3, inline=False)
+            # embed.add_field(name=f"Прочее:", value=part_4, inline=False)
             await ctx.send(data['HeadSymbol']+'\n'+part_1+part_2+part_3+part_4+'\n'+data['FootSymbol'])
-            #await ctx.send(embed=embed)
+            # await ctx.send(file=file, embed=embed)
         else:
             await ctx.send('Не найдена информация по вашему профилю.\n'
                            'Функция "Профиль", "Валюта" и "Ачивки" доступна только игрокам с активностью в голосовых каналах.')
@@ -488,11 +488,9 @@ async def echo(ctx, msg: str):
 async def me(ctx):
     """Command to see your profile / Этой командой можно увидеть ваш профиль"""
     if "клан-профиль" in ctx.channel.name or "system" in ctx.channel.name:
-        print(ctx.channel.name)
         usr = ctx.message.author
         await show(ctx, usr)
     else:
-        print('имя соответствует "клан-профиль"', "клан-профиль" in ctx.channel.name)
         await ctx.send('Команда доступна только в специальном канале.')
 
 
