@@ -405,12 +405,13 @@ async def show(ctx, member: discord.Member):
             # part_2 = f"\n{data['RowSymbol']} **Ачивки:**\n{data['RowSymbol']} Позитивных ачивок: `{positive_achievements}`\n{data['RowSymbol']} Негативных ачивок: `{negative_achievements}`"
             # part_3 = f"\n{data['RowSymbol']} **Активность:**\n{data['RowSymbol']} Активность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\n{data['RowSymbol']} Активность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
             # part_4 = f"\n{data['RowSymbol']} **Прочее:**\n{data['RowSymbol']} Дата присоединения к серверу: `{data['join_date']}`\n{data['RowSymbol']} ID пользователя: `{member.id}`"
+            # await ctx.send(data['HeadSymbol'] + '\n' + part_1 + part_2 + part_3 + part_4 + '\n' + data['FootSymbol'])
 
                 # профиль вложением
-            part_1 = f"Никнейм: {member.display_name}\nБанковский счёт: `{data['gold']}` :coin:"
-            part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
-            part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
-            part_4 = f"\nНа сервере с: `{data['join_date']}`\nID пользователя: `{member.id}`"
+            # part_1 = f"Никнейм: {member.display_name}\nБанковский счёт: `{data['gold']}` :coin:"
+            # part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
+            # part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+            # part_4 = f"\nНа сервере с: `{data['join_date']}`\nID пользователя: `{member.id}`"
             #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
             #embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
             #embed.add_field(name=f"Ачивки:", value=part_2, inline=False)
@@ -418,32 +419,35 @@ async def show(ctx, member: discord.Member):
             #embed.add_field(name=f"Прочее:", value=part_4, inline=False)
             #await ctx.send(embed=embed)
 
-            #await ctx.send(data['HeadSymbol'] + '\n' + part_1 + part_2 + part_3 + part_4 + '\n' + data['FootSymbol'])
-
                 # профиль картинкой
-            background = Image.open('background.png')
+            part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
+            part_2 = f"\nРЕПУТАЦИЯ:\nПоложительных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
+            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {await count_result_activity(seven_days_activity_records, warns)} час(ов)\nАктивность за 30 дней: {await count_result_activity(thirty_days_activity_records, warns)} час(ов)"
+            part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
+            background = Image.open('images/default_profile_pic.png')
             background = background.convert('RGBA')
             background_img = background.copy()
             draw = ImageDraw.Draw(background_img)
             profile_text = part_1+'\n'+part_2+'\n'+part_3+'\n'+part_4   # текст профиля
 
-            profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22)
+            profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22)  # Шрифт текста профиля
             background_width, background_height = background_img.size
-            rectangle_image = Image.new('RGBA', (background_width, background_height))
-            rectangle_drawer = ImageDraw.Draw(rectangle_image)
-            rectangle_drawer.rectangle([5,5, background_width-5, background_height-5], fill=(10,10,10,128), outline=(99,99,99))
-            background_img = Image.alpha_composite(background_img, rectangle_image)
-            draw = ImageDraw.Draw(background_img)
+                # <--- Блок с затеняющим прямоугольником --->
+            # rectangle_image = Image.new('RGBA', (background_width, background_height))
+            # rectangle_drawer = ImageDraw.Draw(rectangle_image)
+            # rectangle_drawer.rectangle([5,5, background_width-5, background_height-5], fill=(10,10,10,128), outline=(99,99,99))
+            # background_img = Image.alpha_composite(background_img, rectangle_image)  # Добавляем затенение на фон
+            # draw = ImageDraw.Draw(background_img)  # Сохраняем в рабочую переменную
+                # <--- Конец блока с затеняющим прямоугольником --->
             text_width, text_height = draw.textsize(profile_text, font=profile_font)
             x = (background_width-text_width)//2
             y = (background_height-text_height)//3
-            draw.text((x ,y), text=profile_text, fill=(255,255,255,255), font=profile_font)
+            draw.text((x ,y), text=profile_text, fill=(199,199,199,255), font=profile_font) # вписываем текст
             buffer = io.BytesIO()
-            background_img.save(buffer, format='PNG')
+            background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
             await ctx.send(file=discord.File(buffer, 'profile.png'))
             buffer.close()
-
 
         else:
             await ctx.send('Не найдена информация по вашему профилю.\n'
