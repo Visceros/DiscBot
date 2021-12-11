@@ -26,9 +26,8 @@ async def db_connection():
                 Join_date Date,
                 Gold INT DEFAULT 0,
                 Warns INT DEFAULT 0,
-                HeadSymbol varchar(255) DEFAULT '⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜',
-                RowSymbol varchar(32) DEFAULT '⬜',
-                FootSymbol varchar(255) DEFAULT '⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜⬜',
+                profile_pic text DEFAULT 'default_profile_pic.png',
+                profile_text_color text DEFAULT '(199,199,199,255))',
                 CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
             print('Table of users created or connection established...')
 
@@ -40,7 +39,7 @@ async def db_connection():
             gold INT DEFAULT 0,
             record_id SERIAL PRIMARY KEY NOT NULL,
             Messages INT DEFAULT 0,
-            CONSTRAINT user_id_fkey FOREIGN KEY (user_id) REFERENCES discord_users (Id));''')
+            CONSTRAINT user_id_fkey FOREIGN KEY (user_id) REFERENCES discord_users(Id) ON DELETE CASCADE);''')
             print('Log Table online...')
 
             #Таблица с товарами в магазине
@@ -50,6 +49,7 @@ async def db_connection():
             name text NOT NULL,
             price INT NOT NULL,
             duration INT DEFAULT NULL,
+            json_data json DEFAULT NULL,
             CONSTRAINT unique_id UNIQUE (product_id, name));''')
 
             await db.execute('''CREATE TABLE IF NOT EXISTS ShopLog (
@@ -58,7 +58,7 @@ async def db_connection():
             buyer_id BIGINT NOT NULL,
             item_name text,
             buyer_name text,
-            purchase_date timestamp with time zone,
+            expiry_date timestamp with time zone,
             CONSTRAINT customer_id FOREIGN KEY (buyer_id) REFERENCES discord_users (Id),
             CONSTRAINT item_id FOREIGN KEY (product_id) REFERENCES Shop (product_id)
             );''')

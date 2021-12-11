@@ -7,6 +7,7 @@ import aiohttp
 import io
 import random
 import datetime
+import json
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
@@ -354,7 +355,8 @@ class Listeners(commands.Cog):
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
     @commands.Cog.listener()
-    async def on_member_update(self, before, after):
+    async def on_member_update(self, before, after:discord.Member):
+        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         if after.voice is not None:
             async with self.pool.acquire() as db:
                 # убираем начисление времени для "жёлтого" статуса:
@@ -366,6 +368,20 @@ class Listeners(commands.Cog):
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={after.id}')
                     await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
                                      after.id, datetime.datetime.now().replace(microsecond=0), gold)
+
+            # Кикаем из голосовых каналов с учётом активности тех новичков, кто не поставил себе ник по форме
+
+            if after.display_name == '[Ранг]Ник (Имя)[ТЕГ]' and any(item in after.voice.channel.name.lower() for item in
+                       channel_groups_to_account_contain):
+                await after.edit(voice_channel=None)
+                private_msg_channel = after.dm_channel
+                if private_msg_channel is None:
+                    private_msg_channel = await after.create_dm()
+                await private_msg_channel.send(f'Клановые каналы сервера {after.guild.name} недоступны, до тех пор, пока ваш ник не соответствует правилам сервера')
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member:discord.Member):
+        await member.edit(nick='[Ранг]Ник (Имя)[ТЕГ]')
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
@@ -636,9 +652,9 @@ class Shop(commands.Cog):
         if ctx.invoked_subcommand is None:
             temp_msg = await ctx.send('Вы не ввели команду!\n'
                            'Инструкция пользования магазином:\n'
-                           'buy название - купить товар\n'
-                           'shop add - добавить товар (только администраторы): см. shop add help\n'
-                           'shop delete - удалить товар из магазина (только администраторы)\n'
+                           '!buy название - купить товар\n'
+                           '!shop add - добавить товар (только администраторы): см. shop add help\n'
+                           '!shop delete - удалить товар из магазина (только администраторы)\n'
                            )
             await asyncio.sleep(90)
             if temp_msg is not None:
@@ -646,7 +662,7 @@ class Shop(commands.Cog):
 
     @shop.command()
     @commands.has_permissions(administrator=True)
-    async def add(self, ctx, product_type, product_name=None, price: int=None, duration: int=None):
+    async def add(self, ctx, product_type, product_name=None, price: int=None, duration: int=None, json_data=None):
         await ctx.message.delete()
 
         if product_type == 'help':
@@ -655,7 +671,7 @@ class Shop(commands.Cog):
                            'и тогда бот в режиме диалога поможет вам заполнить данные о товаре, или\n'
                            'путь 2: сразу ввести все параметры, например:\n'
                            '!shop add role "VIP Ник Фиолетовый" 1500 30\n'
-                           'поддерживаемые типы в этой ревизии: role')
+                           'поддерживаемые типы в этой ревизии: role, profile_skin')
             await asyncio.sleep(30)
             if temp_help_msg is not None:
                 await temp_help_msg.delete()
@@ -689,14 +705,49 @@ class Shop(commands.Cog):
                 else:
                     duration = int(duration)
 
-        if price is not None and product_name is not None and duration is not None:
-            async with self.pool.acquire() as db:
-                try:
-                    await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
-                    await ctx.send('Товар успешно добавлен')
-                except Exception as e:
-                    await ctx.send('Произошла ошибка при добавлении товара:\n')
-                    await ctx.send(e)
+                if price is not None and product_name is not None and duration is not None:
+                    async with self.pool.acquire() as db:
+                        try:
+                            await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
+                            await ctx.send('Товар успешно добавлен')
+                        except Exception as e:
+                            await ctx.send('Произошла ошибка при добавлении товара:\n')
+                            await ctx.send(e)
+
+                # Добавление нового скина на профиль
+            elif product_type == 'profile_skin':
+                await ctx.send('Укажите название товара: ')
+                product_name = await self.bot.wait_for("message", check=shop_adding_checks)
+
+                await ctx.send('Укажите стоимость: ')
+                price = await self.bot.wait_for("message", check=shop_adding_checks)
+                while not price.isdigit():
+                    await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
+                    price = await self.bot.wait_for("message", check=shop_adding_checks)
+                price = int(price)
+
+                await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
+                duration = await self.bot.wait_for("message", check=shop_adding_checks)
+                while not duration.isdigit():
+                    await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
+                    duration = await self.bot.wait_for("message", check=shop_adding_checks)
+                if duration == '0':
+                    duration = 'NULL'
+                else:
+                    duration = int(duration)
+
+                await ctx.send('Укажите json-данные для профиля "{\'image_name\': \'название_файла_картинки.png\', \'text_color\':(196,196,196)}"')
+                json_data = json.loads(await self.bot.wait_for("message", check=shop_adding_checks))
+                json_data['text_color'] += (255,)
+
+                if None not in [product_name, price, duration, json_data]:
+                    async with self.pool.acquire() as db:
+                        try:
+                            await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration, json_data) VALUES($1, $2, $3, $4, $5) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration, json_data)
+                            await ctx.send('Товар успешно добавлен')
+                        except Exception as e:
+                            await ctx.send('Произошла ошибка при добавлении товара:\n')
+                            await ctx.send(e)
 
     @shop.command()
     @commands.has_permissions(administrator=True)
@@ -761,6 +812,7 @@ class Shop(commands.Cog):
                                 vip_roles_list.append(_role['name'])
                             # При покупке нового цвета ника убираем старый, если был
                             for viprole in vip_roles_list:
+                                viprole = discord.utils.find(lambda r: r.name.lower() == viprole.lower(), ctx.guild.roles)
                                 if viprole in ctx.author.roles and viprole != role:
                                     await ctx.author.remove_roles(viprole)
 
@@ -768,14 +820,15 @@ class Shop(commands.Cog):
                                 user_gold = user_gold - cost
                                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
                                 await ctx.author.add_roles(role)
-                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, purchase_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date())
+                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date()+datetime.timedelta(days=30))
                                 await ctx.send('Спасибо за покупку!')
                                 await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
                             else:
                                 await ctx.send('Эта покупка уже совершена. Продление возможно по истечению срока аренды.')
 
-                        elif product['product_type'] == 'frame':
-                            pass # заготовка под работу с рамками профиля
+                        elif product['product_type'] == 'profile_skin':
+                            pass # заготовка под работу с фоном профиля ДОПИСАТЬ ПОДСТАНОВКУ ИЗ JSON данных картинки для профиля и цвета текста
+                        # названия ключей 'image_name' и 'text_color'
 
                     else:
                         await ctx.send('Извините, товар с таким номером не найден.')
@@ -811,7 +864,7 @@ class Shop(commands.Cog):
                                 user_gold = user_gold - cost
                                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
                                 await ctx.author.add_roles(role)
-                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, purchase_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date())
+                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date())
                                 await ctx.send('Спасибо за покупку!')
                                 await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
                             else:

@@ -150,10 +150,9 @@ async def daily_task():
 
         #Проверяем не истёк ли срок каких-либо покупок из списка в Логе покупок
         async with pool.acquire() as db:
-            _31_days_before_today = datetime.datetime.now() - datetime.timedelta(days=31)
-            records_list = await db.fetch("SELECT FROM ShopLog WHERE purchase_date BETWEEN $1 AND $2 ", datetime.datetime.now().date, _31_days_before_today.date())
+            records_list = await db.fetch("SELECT FROM ShopLog WHERE expiry_date=$1;", datetime.datetime.now().date)
             for record in records_list:
-                if record['purchase_date'] == _31_days_before_today.date(): # если срок действия покупки 30 дней вышел
+                if record['expiry_date'] == datetime.datetime.now().date: # если срок действия покупки 30 дней вышел
                     product = await db.execute('SELECT FROM Shop WHERE product_id=$1', record['product_id'])
 
                     # Получаем сущность пользователя и сервера
@@ -172,9 +171,10 @@ async def daily_task():
                         else:
                             await sys_channel.send(f'Ошибка при снятии купленной роли {product["name"]} с пользователя {user.display_name}, id {user.id}. Не удалось найти соответствующую роль на сервере.')
 
-            # Зарезервированное место для обработки изменения платной рамки обратно на стандартную.
+            # Зарезервированное место для обработки изменения платного фона профиля обратно на стандартный.
 
                     #elif product['product_type'] == 'frame':
+
 
 @bot.event
 async def on_ready():
