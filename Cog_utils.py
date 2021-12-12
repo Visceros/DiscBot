@@ -738,8 +738,9 @@ class Shop(commands.Cog):
                 else:
                     duration = int(duration.content)
 
-                await ctx.send('Укажите json-данные для профиля "{\'image_name\': \'название_файла_картинки.png\', \'text_color\':(196,196,196)}"')
-                json_data = json.loads(await self.bot.wait_for("message", check=shop_adding_checks))
+                await ctx.send('Укажите json-данные для профиля `"{\'image_name\': \'название_файла_картинки.png\', \'text_color\':(196,196,196)}"`')
+                json_data = await self.bot.wait_for("message", check=shop_adding_checks)
+                json_data = json.loads(json_data.content)
                 json_data['text_color'] += (255,)
 
                 if None not in [product_name, price, duration, json_data]:
