@@ -381,7 +381,7 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member:discord.Member):
-        await member.edit(nick='[Ранг]Ник (Имя)[ТЕГ]')
+        await member.edit(nick='[Ранг] Nickname (ВашеИмя) GC')
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
@@ -663,8 +663,8 @@ class Shop(commands.Cog):
     @shop.command()
     @commands.has_permissions(administrator=True)
     async def add(self, ctx, product_type, product_name=None, price: int=None, duration: int=None, json_data=None):
+        author = ctx.message.author
         await ctx.message.delete()
-
         if product_type == 'help':
             temp_help_msg = await ctx.send('Добавить товар в магазин можно двумя путями:\n'
                            'путь 1: ввести команду, и указать тип добавляемого товара, например\n!shop add role\n'
@@ -678,7 +678,7 @@ class Shop(commands.Cog):
 
         elif price is None and product_name is None and duration is None:
 
-            async def shop_adding_checks(msg):
+            def shop_adding_checks(msg):
                 return msg.author == ctx.author and msg.channel == ctx.channel
 
             if product_type == 'role':
@@ -744,10 +744,21 @@ class Shop(commands.Cog):
                     async with self.pool.acquire() as db:
                         try:
                             await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration, json_data) VALUES($1, $2, $3, $4, $5) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration, json_data)
-                            await ctx.send('Товар успешно добавлен')
+                            temp_msg = await ctx.send('Товар успешно добавлен')
+                            await asyncio.sleep(5)
+                            await temp_msg.delete()
                         except Exception as e:
                             await ctx.send('Произошла ошибка при добавлении товара:\n')
                             await ctx.send(e)
+
+                messages_to_delete = []
+                messages = await ctx.channel.history(limit=123, around=datetime.datetime.now().date()).flatten()
+                for msg in messages:
+                    if msg.author == author or msg.author.bot is True:
+                        messages_to_delete.append(msg)
+                await asyncio.sleep(5)
+                await ctx.channel.delete_messages(messages_to_delete)
+
 
     @shop.command()
     @commands.has_permissions(administrator=True)
@@ -785,9 +796,13 @@ class Shop(commands.Cog):
     async def buy(self, ctx, arg=None, num=1):
         shoplog_channel = discord.utils.find(lambda r: (r.name.lower() == 'market_log'), ctx.guild.channels)
         if arg is None:
-            await ctx.send('Для покупки введите команду и номер товара.')
+            msg = await ctx.send('Для покупки введите команду и номер товара.')
+            await asyncio.sleep(5)
+            await ctx.message.delete()
+            await msg.delete()
             return
         else:
+            await ctx.message.delete()
             # Если человек ввёл цифры, считаем, что он ввёл ID товара
 
             if arg.isdigit():
@@ -798,12 +813,16 @@ class Shop(commands.Cog):
                         cost = product['price']
                         user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', ctx.author.id)
                         if int(user_gold) < int(cost):
-                            await ctx.send('Извините, у вас недостаточно валюты для этой покупки!')
+                            temp_msg = await ctx.send('Извините, у вас недостаточно валюты для этой покупки!')
+                            await asyncio.sleep(5)
+                            await temp_msg.delete()
                             return
                         if product['product_type'] == 'role':
                             role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
                             if role is None:
-                                await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
+                                temp_msg = await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
+                                await asyncio.sleep(5)
+                                await temp_msg.delete()
                                 return
 
                             vip_roles_list = []  # Получаем список VIP-ролей из магазина
@@ -832,7 +851,7 @@ class Shop(commands.Cog):
 
                     else:
                         await ctx.send('Извините, товар с таким номером не найден.')
-                        return
+
 
             # Если человек ввёл слова, считаем это названием товара
             elif isinstance(arg, str):
@@ -843,12 +862,16 @@ class Shop(commands.Cog):
                         cost = product['price']
                         user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', ctx.author.id)
                         if int(user_gold) < int(cost):
-                            await ctx.send('Извините, у вас недостаточно валюты для этой покупки!')
+                            temp_msg = await ctx.send('Извините, у вас недостаточно валюты для этой покупки!')
+                            await asyncio.sleep(5)
+                            await temp_msg.delete()
                             return
                         if product['product_type'] == 'role':
                             role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
                             if role is None:
-                                await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
+                                temp_msg = await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
+                                await asyncio.sleep(5)
+                                await temp_msg.delete()
                                 return
 
                             vip_roles_list = []  # Получаем список VIP-ролей из магазина
@@ -872,4 +895,11 @@ class Shop(commands.Cog):
 
                     else:
                         await ctx.send('Извините, товар с таким названием не найден.')
-                        return
+
+        await ctx.send('message')
+
+        def author_check(m: discord.Message):
+            return m.author.bot or m.author == ctx.author
+
+        await asyncio.sleep(5)
+        await ctx.channel.purge(check=author_check, around=datetime.datetime.now().date())

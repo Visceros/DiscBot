@@ -27,7 +27,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
