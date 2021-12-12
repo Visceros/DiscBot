@@ -721,20 +721,20 @@ class Shop(commands.Cog):
 
                 await ctx.send('Укажите стоимость: ')
                 price = await self.bot.wait_for("message", check=shop_adding_checks)
-                while not price.isdigit():
+                while not price.content.isdigit():
                     await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
                     price = await self.bot.wait_for("message", check=shop_adding_checks)
                 price = int(price)
 
                 await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
                 duration = await self.bot.wait_for("message", check=shop_adding_checks)
-                while not duration.isdigit():
+                while not duration.content.isdigit():
                     await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
                     duration = await self.bot.wait_for("message", check=shop_adding_checks)
-                if duration == '0':
+                if duration.content == '0':
                     duration = 'NULL'
                 else:
-                    duration = int(duration)
+                    duration = int(duration.content)
 
                 await ctx.send('Укажите json-данные для профиля "{\'image_name\': \'название_файла_картинки.png\', \'text_color\':(196,196,196)}"')
                 json_data = json.loads(await self.bot.wait_for("message", check=shop_adding_checks))
