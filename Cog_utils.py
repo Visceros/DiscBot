@@ -687,23 +687,24 @@ class Shop(commands.Cog):
                 while discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles) is None:
                     await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
                     product_name = await self.bot.wait_for("message", check=shop_adding_checks)
+                    product_name = product_name.content
 
                 await ctx.send('Укажите стоимость: ')
                 price = await self.bot.wait_for("message", check=shop_adding_checks)
-                while not price.isdigit():
+                while not price.content.isdigit():
                     await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
                     price = await self.bot.wait_for("message", check=shop_adding_checks)
-                price = int(price)
+                price = int(price.content)
 
                 await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
                 duration = await self.bot.wait_for("message", check=shop_adding_checks)
-                while not duration.isdigit():
+                while not duration.content.isdigit():
                     await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
                     duration = await self.bot.wait_for("message", check=shop_adding_checks)
-                if duration == '0':
+                if duration.content == '0':
                     duration = 'NULL'
                 else:
-                    duration = int(duration)
+                    duration = int(duration.content)
 
                 if price is not None and product_name is not None and duration is not None:
                     async with self.pool.acquire() as db:
@@ -718,13 +719,14 @@ class Shop(commands.Cog):
             elif product_type == 'profile_skin':
                 await ctx.send('Укажите название товара: ')
                 product_name = await self.bot.wait_for("message", check=shop_adding_checks)
+                product_name = product_name.content
 
                 await ctx.send('Укажите стоимость: ')
                 price = await self.bot.wait_for("message", check=shop_adding_checks)
                 while not price.content.isdigit():
                     await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
                     price = await self.bot.wait_for("message", check=shop_adding_checks)
-                price = int(price)
+                price = int(price.content)
 
                 await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
                 duration = await self.bot.wait_for("message", check=shop_adding_checks)
