@@ -400,25 +400,6 @@ async def show(ctx, member: discord.Member):
             except asyncpg.InterfaceError:
                 pool = await db_connection()
 
-                # профиль с рамочкой
-            # part_1 = f"{data['RowSymbol']} **Пользователь:** \n{data['RowSymbol']}{member.mention}\n{data['RowSymbol']} Банковский счёт: `{data['gold']}` :coin:"
-            # part_2 = f"\n{data['RowSymbol']} **Ачивки:**\n{data['RowSymbol']} Позитивных ачивок: `{positive_achievements}`\n{data['RowSymbol']} Негативных ачивок: `{negative_achievements}`"
-            # part_3 = f"\n{data['RowSymbol']} **Активность:**\n{data['RowSymbol']} Активность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\n{data['RowSymbol']} Активность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
-            # part_4 = f"\n{data['RowSymbol']} **Прочее:**\n{data['RowSymbol']} Дата присоединения к серверу: `{data['join_date']}`\n{data['RowSymbol']} ID пользователя: `{member.id}`"
-            # await ctx.send(data['HeadSymbol'] + '\n' + part_1 + part_2 + part_3 + part_4 + '\n' + data['FootSymbol'])
-
-                # профиль вложением
-            # part_1 = f"Никнейм: {member.display_name}\nБанковский счёт: `{data['gold']}` :coin:"
-            # part_2 = f"\nПоложительных ачивок: `{positive_achievements}`\nНегативных ачивок: `{negative_achievements}`"
-            # part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
-            # part_4 = f"\nНа сервере с: `{data['join_date']}`\nID пользователя: `{member.id}`"
-            #embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-            #embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
-            #embed.add_field(name=f"Ачивки:", value=part_2, inline=False)
-            #embed.add_field(name=f"Активность:", value=part_3, inline=False)
-            #embed.add_field(name=f"Прочее:", value=part_4, inline=False)
-            #await ctx.send(embed=embed)
-
                 # профиль картинкой
             part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
             part_2 = f"\nРЕПУТАЦИЯ:\nПоложительных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"

@@ -449,10 +449,10 @@ class Games(commands.Cog):
                         await start_message.add_reaction(react)
 
                     def checkS(reaction, user):
-                        return str(reaction.emoji) in reactions and user.bot is not True
+                        return str(reaction.emoji) in reactions and user == author
 
                     def checkG(reaction, user):
-                        return str(reaction.emoji) in reactions[0:3] and user.bot is not True
+                        return str(reaction.emoji) in reactions[0:3] and user == author
 
                     try:
                         reaction, user = await self.bot.wait_for('reaction_add', timeout=180, check=checkS)
@@ -739,9 +739,16 @@ class Shop(commands.Cog):
                     duration = int(duration.content)
 
                 await ctx.send('Укажите json-данные для профиля `"{\'image_name\': \'название_файла_картинки.png\', \'text_color\':(196,196,196)}"`')
-                json_data = await self.bot.wait_for("message", check=shop_adding_checks)
-                json_data = json.loads(json_data.content)
+                json_data_msg = await self.bot.wait_for("message", check=shop_adding_checks)
+                json_data = json.loads(json_data_msg.content)
                 json_data['text_color'] += (255,)
+                try:
+                    await ctx.send(json_data)
+                except Exception as e:
+                    await ctx.send('Ошибка отображения json_data:')
+                    await ctx.send(e)
+                json_data = json.dumps(json_data)
+                await ctx.send(json_data)
 
                 if None not in [product_name, price, duration, json_data]:
                     async with self.pool.acquire() as db:
@@ -755,7 +762,7 @@ class Shop(commands.Cog):
                             await ctx.send(e)
 
                 messages_to_delete = []
-                messages = await ctx.channel.history(limit=123, around=datetime.datetime.now().date()).flatten()
+                messages = await ctx.channel.history(limit=10, around=datetime.datetime.now().date()).flatten()
                 for msg in messages:
                     if msg.author == author or msg.author.bot is True:
                         messages_to_delete.append(msg)
@@ -822,6 +829,7 @@ class Shop(commands.Cog):
                             return
                         if product['product_type'] == 'role':
                             role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
+                            print(product['name'].lower(), role)
                             if role is None:
                                 temp_msg = await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
                                 await asyncio.sleep(5)
