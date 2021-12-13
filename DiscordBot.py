@@ -486,7 +486,7 @@ async def mmoney(ctx, member: discord.Member, gold):
         if newgold < 0:
             newgold = 0
         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-        await ctx.send('У Пользователя {member.mention} было отнято {gold} :coin:.')
+        await ctx.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.')
 
 
 @bot.command()

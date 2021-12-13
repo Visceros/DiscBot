@@ -910,4 +910,4 @@ class Shop(commands.Cog):
             return m.author.bot or m.author == ctx.author
 
         await asyncio.sleep(5)
-        await ctx.channel.purge(check=author_check, around=datetime.datetime.now().date())
+        await ctx.channel.purge(check=author_check, around=datetime.datetime.now())
