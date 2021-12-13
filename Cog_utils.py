@@ -829,7 +829,6 @@ class Shop(commands.Cog):
                             return
                         if product['product_type'] == 'role':
                             role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
-                            print(product['name'].lower(), role)
                             if role is None:
                                 temp_msg = await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
                                 await asyncio.sleep(5)
