@@ -898,15 +898,13 @@ class Shop(commands.Cog):
                                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
                                 await ctx.author.add_roles(role)
                                 await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date())
-                                await ctx.send('Спасибо за покупку!')
                                 await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
+                                await ctx.send('Спасибо за покупку!')
                             else:
                                 await ctx.send('Эта покупка уже совершена. Продление возможно по истечению срока аренды.')
 
                     else:
                         await ctx.send('Извините, товар с таким названием не найден.')
-
-        await ctx.send('message')
 
         def author_check(m: discord.Message):
             return m.author.bot or m.author == ctx.author
