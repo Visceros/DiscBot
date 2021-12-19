@@ -855,7 +855,7 @@ class Shop(commands.Cog):
                             await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
                             await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                             json_data = json.loads(product['json_data'])
-                            await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2', json_data['image_name'], json_data['text_color'])
+                            await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', json_data['image_name'], json_data['text_color'], ctx.author.id)
                             await ctx.send('Спасибо за покупку!')
 
                     else:
@@ -907,7 +907,7 @@ class Shop(commands.Cog):
                             await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
                             await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                             json_data = json.loads(product['json_data'])
-                            await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2', json_data['image_name'], json_data['text_color'])
+                            await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', json_data['image_name'], json_data['text_color'], ctx.author.id)
                             await ctx.send('Спасибо за покупку!')
 
                     else:
