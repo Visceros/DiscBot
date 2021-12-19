@@ -738,15 +738,9 @@ class Shop(commands.Cog):
                 else:
                     duration = int(duration.content)
 
-                await ctx.send('Укажите json-данные для профиля `"{\'image_name\': \'название_файла_картинки.png\', \'text_color\':(196,196,196)}"`')
+                await ctx.send('Укажите json-данные для профиля `"{\"image_name\": \"название_файла_картинки.png\", \"text_color\":\"rrggbb\"}"`')
                 json_data_msg = await self.bot.wait_for("message", check=shop_adding_checks)
                 json_data = json.loads(json_data_msg.content)
-                json_data['text_color'] += (255,)
-                try:
-                    await ctx.send(json_data)
-                except Exception as e:
-                    await ctx.send('Ошибка отображения json_data:')
-                    await ctx.send(e)
                 json_data = json.dumps(json_data)
                 await ctx.send(json_data)
 
@@ -762,7 +756,7 @@ class Shop(commands.Cog):
                             await ctx.send(e)
 
                 messages_to_delete = []
-                messages = await ctx.channel.history(limit=10, around=datetime.datetime.now().date()).flatten()
+                messages = await ctx.channel.history(limit=10, around=datetime.datetime.now()).flatten()
                 for msg in messages:
                     if msg.author == author or msg.author.bot is True:
                         messages_to_delete.append(msg)
@@ -851,17 +845,21 @@ class Shop(commands.Cog):
                                 await ctx.author.add_roles(role)
                                 await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date()+datetime.timedelta(days=30))
                                 await ctx.send('Спасибо за покупку!')
-                                await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
+                                await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                             else:
                                 await ctx.send('Эта покупка уже совершена. Продление возможно по истечению срока аренды.')
 
                         elif product['product_type'] == 'profile_skin':
-                            pass # заготовка под работу с фоном профиля ДОПИСАТЬ ПОДСТАНОВКУ ИЗ JSON данных картинки для профиля и цвета текста
-                        # названия ключей 'image_name' и 'text_color'
+                            user_gold = user_gold - cost
+                            await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
+                            await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
+                            await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
+                            json_data = json.loads(product['json_data'])
+                            await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2', json_data['image_name'], json_data['text_color'])
+                            await ctx.send('Спасибо за покупку!')
 
                     else:
                         await ctx.send('Извините, товар с таким номером не найден.')
-
 
             # Если человек ввёл слова, считаем это названием товара
             elif isinstance(arg, str):
@@ -897,11 +895,20 @@ class Shop(commands.Cog):
                                 user_gold = user_gold - cost
                                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
                                 await ctx.author.add_roles(role)
-                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date())
-                                await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.datetime.now().date()}')
+                                await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product_name, ctx.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
+                                await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                                 await ctx.send('Спасибо за покупку!')
                             else:
                                 await ctx.send('Эта покупка уже совершена. Продление возможно по истечению срока аренды.')
+
+                        elif product['product_type'] == 'profile_skin':
+                            user_gold = user_gold - cost
+                            await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, ctx.author.id)
+                            await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], ctx.author.id, product['name'], ctx.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
+                            await shoplog_channel.send(f'Пользователь {ctx.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
+                            json_data = json.loads(product['json_data'])
+                            await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2', json_data['image_name'], json_data['text_color'])
+                            await ctx.send('Спасибо за покупку!')
 
                     else:
                         await ctx.send('Извините, товар с таким названием не найден.')

@@ -27,7 +27,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -150,9 +150,9 @@ async def daily_task():
 
         #Проверяем не истёк ли срок каких-либо покупок из списка в Логе покупок
         async with pool.acquire() as db:
-            records_list = await db.fetch("SELECT FROM ShopLog WHERE expiry_date=$1;", datetime.datetime.now().date)
+            records_list = await db.fetch("SELECT FROM ShopLog WHERE expiry_date=$1;", datetime.date.today())
             for record in records_list:
-                if record['expiry_date'] == datetime.datetime.now().date: # если срок действия покупки 30 дней вышел
+                if record['expiry_date'] == datetime.date.today(): # если срок действия покупки 30 дней вышел
                     product = await db.execute('SELECT FROM Shop WHERE product_id=$1', record['product_id'])
 
                     # Получаем сущность пользователя и сервера
@@ -171,9 +171,16 @@ async def daily_task():
                         else:
                             await sys_channel.send(f'Ошибка при снятии купленной роли {product["name"]} с пользователя {user.display_name}, id {user.id}. Не удалось найти соответствующую роль на сервере.')
 
-            # Зарезервированное место для обработки изменения платного фона профиля обратно на стандартный.
-
-                    #elif product['product_type'] == 'frame':
+            # ПРОВЕРИТЬ КАК РАБОТАЕТ
+                    #Если это скин профиля - меняем скин на дефолтный (если только не был куплен другой)
+                    elif product['product_type'] == 'profile_skin':
+                        current_profile_skin = await db.fetchval('SELECT profile_pic from discord_users WHERE id=$1', user.id)
+                        if current_profile_skin == product['json_data']['image_name']:  #Если фон профиля не сменился
+                            try:
+                                await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2', 'default_profile_pic.png', 'c7c7c7')
+                            except Exception as e:
+                                await sys_channel.send('Произошла ошибка при возвращении стандартного фона профиля:')
+                                await sys_channel.send(e)
 
 
 @bot.event
@@ -402,37 +409,31 @@ async def show(ctx, member: discord.Member):
 
                 # профиль картинкой
             part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
-            part_2 = f"\nРЕПУТАЦИЯ:\nПоложительных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
+            part_2 = f"\nРЕПУТАЦИЯ:\nПозитивных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
             part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {await count_result_activity(seven_days_activity_records, warns)} час(ов)\nАктивность за 30 дней: {await count_result_activity(thirty_days_activity_records, warns)} час(ов)"
             part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
-            background = Image.open('images/default_profile_pic.png')
-            background = background.convert('RGBA')
+            path = os.path.join('images', 'profile', data['profile_pic'])
+            background = Image.open(path)
             background_img = background.copy()
             draw = ImageDraw.Draw(background_img)
-            profile_text = part_1+'\n'+part_2+'\n'+part_3+'\n'+part_4   # текст профиля
 
-            profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22)  # Шрифт текста профиля
+            profile_text = part_1+'\n'+part_2+'\n'+part_3+'\n'+part_4   # текст профиля
+            profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
             background_width, background_height = background_img.size
-                # <--- Блок с затеняющим прямоугольником --->
-            # rectangle_image = Image.new('RGBA', (background_width, background_height))
-            # rectangle_drawer = ImageDraw.Draw(rectangle_image)
-            # rectangle_drawer.rectangle([5,5, background_width-5, background_height-5], fill=(10,10,10,128), outline=(99,99,99))
-            # background_img = Image.alpha_composite(background_img, rectangle_image)  # Добавляем затенение на фон
-            # draw = ImageDraw.Draw(background_img)  # Сохраняем в рабочую переменную
-                # <--- Конец блока с затеняющим прямоугольником --->
             text_width, text_height = draw.textsize(profile_text, font=profile_font)
             x = (background_width-text_width)//2
             y = (background_height-text_height)//3
-            draw.text((x ,y), text=profile_text, fill=(199,199,199,255), font=profile_font) # вписываем текст
+            draw.text((x,y), text=profile_text, fill=f"#{data['profile_text_color']}", font=profile_font) # вписываем текст
             buffer = io.BytesIO()
-            background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
+            background_img.save(buffer, format='PNG') # сохраняем в буфер обмена
             buffer.seek(0)
             await ctx.send(file=discord.File(buffer, 'profile.png'))
             buffer.close()
 
         else:
             await ctx.send('Не найдена информация по вашему профилю.\n'
-                           'Функция "Профиль", "Валюта" и "Ачивки" доступна только игрокам с активностью в голосовых каналах.')
+                           'Функция "Профиль", "Валюта" и "Репутация" доступна только игрокам с активностью в голосовых каналах.')
+
 
 @user.command()
 @commands.has_permissions(administrator=True)
@@ -660,20 +661,18 @@ async def antitop(ctx, count: int = 10):
         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
         for member in ctx.guild.members:
             if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-                gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
-                if int(gold) > 0:
-                    t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
-                    warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
-                    thirty_days_activity_records = await db.fetch(
-                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
-                    activity = await count_result_activity(thirty_days_activity_records, warns)
-                    time_in_clan = datetime.datetime.now() - member.joined_at
-                    if time_in_clan.days//14 > 0:
-                        if time_in_clan.days//7 <= 4:
-                            if activity/(time_in_clan.days//7) < 10:
-                                result_list.append((member.mention, activity, time_in_clan.days//7))
-                        elif time_in_clan.days//7 >= 4 and activity < 40:
-                            result_list.append((member.mention, activity, '4+'))
+                t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+                warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
+                thirty_days_activity_records = await db.fetch(
+                    "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                activity = await count_result_activity(thirty_days_activity_records, warns)
+                time_in_clan = datetime.datetime.now() - member.joined_at
+                if time_in_clan.days//14 > 0:
+                    if time_in_clan.days//7 <= 4:
+                        if activity/(time_in_clan.days//7) < 10:
+                            result_list.append((member.mention, activity, time_in_clan.days//7))
+                    elif time_in_clan.days//7 >= 4 and activity < 40:
+                        result_list.append((member.mention, activity, '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
     # if len(res) > 10:
