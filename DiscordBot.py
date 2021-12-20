@@ -747,4 +747,13 @@ async def warn(ctx, member: discord.Member, count=1):
                 return await chat_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива.')
 
 
+@bot.command()
+async def react(ctx, number:int=5):
+    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+    await ctx.message.delete()
+    for i in range(number):
+        rnd = random.randint(0,len(ctx.guild.emojis)-1)
+        emoj = ctx.guild.emojis[rnd]
+        await msg.add_reaction(emoj)
+
 bot.run(token, reconnect=True)
