@@ -179,7 +179,7 @@ async def daily_task():
                             try:
                                 await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', 'default_profile_pic.png', 'c7c7c7', user.id)
                             except Exception as e:
-                                await sys_channel.send('Произошла ошибка при возвращении стандартного фона профиля:')
+                                await sys_channel.send(f'{guild.owner.mention} Произошла ошибка при возвращении стандартного фона профиля для пользователя {user.mention}:')
                                 await sys_channel.send(e)
 
 
