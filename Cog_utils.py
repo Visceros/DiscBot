@@ -761,7 +761,7 @@ class Shop(commands.Cog):
                             await ctx.send(e)
 
                 messages_to_delete = []
-                messages = await ctx.channel.history(limit=20, around=datetime.datetime.now()).flatten()
+                messages = await ctx.channel.history(limit=10, around=datetime.datetime.now()).flatten()
                 for msg in messages:
                     if msg.author == author or msg.author.bot:
                         messages_to_delete.append(msg)
