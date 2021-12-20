@@ -683,13 +683,16 @@ class Shop(commands.Cog):
 
         elif price is None and product_name is None and duration is None:
 
-            def shop_adding_checks(msg):
+            def shop_name_adding_check(msg):
                 first_word = msg.content.replace(msg.content[0], '').split()[0]
                 return msg.author == ctx.author and msg.channel == ctx.channel and self.bot.get_command(first_word) is None
 
+            def shop_adding_checks(msg):
+                return msg.author == ctx.author and msg.channel == ctx.channel
+
             if product_type == 'role':
                 await ctx.send('Укажите название роли: ')
-                product_name = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
+                product_name = await self.bot.wait_for("message", check=shop_name_adding_check, timeout=150)
                 while discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles) is None:
                     await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
                     product_name = await self.bot.wait_for("message", check=shop_adding_checks)
@@ -724,7 +727,7 @@ class Shop(commands.Cog):
                 # Добавление нового скина на профиль
             elif product_type == 'profile_skin':
                 await ctx.send('Укажите название товара: ')
-                product_name = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
+                product_name = await self.bot.wait_for("message", check=shop_name_adding_check, timeout=150)
                 product_name = product_name.content
 
                 await ctx.send('Укажите стоимость: ')
