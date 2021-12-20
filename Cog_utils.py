@@ -660,9 +660,10 @@ class Shop(commands.Cog):
             if temp_msg is not None:
                 await temp_msg.delete()
 
+
     @shop.command()
     @commands.has_permissions(administrator=True)
-    async def add(self, ctx, product_type, product_name=None, price: int=None, duration: int=None, json_data=None):
+    async def add(self, ctx, product_type, product_name:str=None, price: int=None, duration: int=None, json_data=None):
         author = ctx.message.author
         await ctx.message.delete()
         if product_type == 'help':
@@ -679,28 +680,28 @@ class Shop(commands.Cog):
         elif price is None and product_name is None and duration is None:
 
             def shop_adding_checks(msg):
-                return msg.author == ctx.author and msg.channel == ctx.channel
+                return msg.author == ctx.author and msg.channel == ctx.channel and not ctx.valid
 
             if product_type == 'role':
                 await ctx.send('Укажите название роли: ')
-                product_name = await self.bot.wait_for("message", check=shop_adding_checks)
+                product_name = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 while discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles) is None:
                     await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
                     product_name = await self.bot.wait_for("message", check=shop_adding_checks)
                     product_name = product_name.content
 
                 await ctx.send('Укажите стоимость: ')
-                price = await self.bot.wait_for("message", check=shop_adding_checks)
+                price = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 while not price.content.isdigit():
                     await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
-                    price = await self.bot.wait_for("message", check=shop_adding_checks)
+                    price = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 price = int(price.content)
 
                 await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
-                duration = await self.bot.wait_for("message", check=shop_adding_checks)
+                duration = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 while not duration.content.isdigit():
                     await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
-                    duration = await self.bot.wait_for("message", check=shop_adding_checks)
+                    duration = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 if duration.content == '0':
                     duration = 'NULL'
                 else:
@@ -718,31 +719,30 @@ class Shop(commands.Cog):
                 # Добавление нового скина на профиль
             elif product_type == 'profile_skin':
                 await ctx.send('Укажите название товара: ')
-                product_name = await self.bot.wait_for("message", check=shop_adding_checks)
+                product_name = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 product_name = product_name.content
 
                 await ctx.send('Укажите стоимость: ')
-                price = await self.bot.wait_for("message", check=shop_adding_checks)
+                price = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 while not price.content.isdigit():
                     await ctx.send('Ошибка! Стоимость должна быть числом. Укажите стоимость в виде числа')
-                    price = await self.bot.wait_for("message", check=shop_adding_checks)
+                    price = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 price = int(price.content)
 
                 await ctx.send('Укажите срок действия покупки (в днях). Поставьте 0, если срока нет')
-                duration = await self.bot.wait_for("message", check=shop_adding_checks)
+                duration = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 while not duration.content.isdigit():
                     await ctx.send('Ошибка! Нужно было ввести число. Пожалуйста, укажите срок в виде числа:')
-                    duration = await self.bot.wait_for("message", check=shop_adding_checks)
+                    duration = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 if duration.content == '0':
                     duration = 'NULL'
                 else:
                     duration = int(duration.content)
 
                 await ctx.send('Укажите json-данные для профиля `"{\"image_name\": \"название_файла_картинки.png\", \"text_color\":\"rrggbb\"}"`')
-                json_data_msg = await self.bot.wait_for("message", check=shop_adding_checks)
+                json_data_msg = await self.bot.wait_for("message", check=shop_adding_checks, timeout=150)
                 json_data = json.loads(json_data_msg.content)
                 json_data = json.dumps(json_data)
-                await ctx.send(json_data)
 
                 if None not in [product_name, price, duration, json_data]:
                     async with self.pool.acquire() as db:
@@ -756,9 +756,9 @@ class Shop(commands.Cog):
                             await ctx.send(e)
 
                 messages_to_delete = []
-                messages = await ctx.channel.history(limit=10, around=datetime.datetime.now()).flatten()
+                messages = await ctx.channel.history(limit=20, around=datetime.datetime.now()).flatten()
                 for msg in messages:
-                    if msg.author == author or msg.author.bot is True:
+                    if msg.author == author or msg.author.bot:
                         messages_to_delete.append(msg)
                 await asyncio.sleep(5)
                 await ctx.channel.delete_messages(messages_to_delete)
@@ -767,7 +767,6 @@ class Shop(commands.Cog):
     @shop.command()
     @commands.has_permissions(administrator=True)
     async def delete(self, ctx, arg):
-
         await ctx.message.delete()
         if arg.isdigit():
             async with self.pool.acquire() as db:
