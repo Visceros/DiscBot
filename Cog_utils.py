@@ -593,40 +593,22 @@ class Games(commands.Cog):
                     prizeChoice = randbelow(100)
                     if prizeChoice >= 98:
                         await ctx.send(random.choice(screens['win']['2']))
-                        if bid < 100:
-                            prize = bid * 3 + 70
-                        else:
-                            prize = bid * 5
+                        prize = bid * 5
                     elif prizeChoice >= 90:
-                        await ctx.send(random.choice(screens['win']['8']))
-                        if bid < 100:
-                            prize = bid * 2 + 40
-                        else:
-                            prize = bid * 2 + 50
+                        await ctx.send(random.choice(screens['win']['5']))
+                        prize = bid * 2
                     elif prizeChoice >= 80:
-                        await ctx.send(random.choice(screens['win']['10']))
-                        if bid < 100:
-                            prize = bid * 2 + 40
-                        else:
-                            prize = round(bid + bid / 2)
+                        await ctx.send(random.choice(screens['win']['8']))
+                        prize = round(bid + bid*0.7)
                     elif prizeChoice >= 65:
-                        await ctx.send(random.choice(screens['win']['15']))
-                        if bid < 100:
-                            prize = round(bid + bid / 2)
-                        else:
-                            prize = round(bid + bid / 3)
+                        await ctx.send(random.choice(screens['win']['10']))
+                        prize = round(bid + bid*0.3)
                     elif prizeChoice >= 40:
-                        await ctx.send(random.choice(screens['win']['25']))
-                        if bid < 100:
-                            prize = round(bid + bid / 3)
-                        else:
-                            prize = round(bid + bid / 4)
+                        await ctx.send(random.choice(screens['win']['20']))
+                        prize = round(bid + bid*0.2)
                     elif prizeChoice >= 0:
-                        await ctx.send(random.choice(screens['win']['40']))
-                        if bid < 100:
-                            prize = round(bid + bid / 4)
-                        else:
-                            prize = bid + 40
+                        await ctx.send(random.choice(screens['win']['30']))
+                        prize = round(bid + bid/10)
                     await ctx.send(f'Поздравляем, {ctx.author.display_name} ваш приз составил **{prize}** :coin:')
                     user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
@@ -764,7 +746,7 @@ class Shop(commands.Cog):
                             await ctx.send(e)
 
                 messages_to_delete = []
-                messages = await ctx.channel.history(limit=10, around=datetime.datetime.now()).flatten()
+                messages = await ctx.channel.history(limit=14, around=datetime.datetime.now()).flatten()
                 for msg in messages:
                     if msg.author == author or msg.author.bot:
                         messages_to_delete.append(msg)
