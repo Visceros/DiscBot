@@ -8,6 +8,7 @@ import io
 import random
 import datetime
 import json
+import pafy
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
@@ -629,6 +630,35 @@ class Games(commands.Cog):
 
     # ------------- КОНЕЦ ИГРЫ КАЗИНО -----------
 
+
+    # ------------- Проигрыватель музыки с YouTube -----------
+    @commands.command()
+    async def play(self, ctx, url:str):
+        if not url.startswith(('https', 'http')):
+            await ctx.send('Мне кажется, в адресе ссылки ошибка, ссылка должна начинаться с https/http.')
+            return
+        channel = ctx.author.voice.channel
+        if channel is None:
+            await ctx.send('Вы должны быть в голосовом канале, чтобы я играл вам музыку.')
+            return
+        if not 'list=' in url:
+            song = pafy.new(url)
+            song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
+            song_url = song.url # берём её адрес
+            voice = await channel.connect(reconnect=True)
+            player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
+            voice.is_playing()
+            source = discord.FFmpegPCMAudio(song_url, executable='ffmpeg') # needs to install ffmpeg!!
+            voice.play(source, after=source.cleanup())
+            while voice.is_playing():
+                await asyncio.sleep(10)
+            else:
+                await asyncio.sleep(3)
+                await player_message.delete()
+                await asyncio.sleep(45)
+                await voice.disconnect()
+        pass
+    # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
 class Shop(commands.Cog):
     def __init__(self, bot: commands.Bot, connection):
