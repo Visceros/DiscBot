@@ -640,7 +640,9 @@ class Games(commands.Cog):
         channel = ctx.author.voice.channel
         if channel is None:
             await ctx.send('Вы должны быть в голосовом канале, чтобы слушать музыку.')
+            await ctx.message.delete
             return
+        await ctx.message.delete
         if not 'list=' in url:
             song = pafy.new(url)
             song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
