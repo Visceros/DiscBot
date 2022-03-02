@@ -29,7 +29,7 @@ class Listeners(commands.Cog):
         async with self.pool.acquire() as db:
             # Запускаем проверку в случае, когда кто-то вышел из канала
             if after.channel is None and any(
-                            item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                            item in before.channel.name.lower() for item in channel_groups_to_account_contain):
                 # Выдаём предупреждение, если человек один в канале, но сидит с ботом/ботами
                 if len(before.channel.members) > 1:
                     bot_counter = 0
@@ -639,25 +639,48 @@ class Games(commands.Cog):
             return
         channel = ctx.author.voice.channel
         if channel is None:
-            await ctx.send('Вы должны быть в голосовом канале, чтобы я играл вам музыку.')
+            await ctx.send('Вы должны быть в голосовом канале, чтобы слушать музыку.')
             return
         if not 'list=' in url:
             song = pafy.new(url)
             song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
-            song_url = song.url # берём её адрес
-            voice = await channel.connect(reconnect=True)
+            vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+            if vc == None:
+                vc = await channel.connect(reconnect=True)
+            else:
+                await vc.move_to(channel)
             player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
-            voice.is_playing()
-            source = discord.FFmpegPCMAudio(song_url, executable='ffmpeg') # needs to install ffmpeg!!
-            voice.play(source, after=source.cleanup())
-            while voice.is_playing():
+            #print(discord.FFmpegPCMAudio(song.url, executable=r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'))
+            await asyncio.sleep(1)
+            vc.play(discord.FFmpegPCMAudio(song.url, executable=r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'), after=vc.source.cleanup()) # needs to download ffmpeg application!!
+            while vc.is_playing():
                 await asyncio.sleep(10)
             else:
                 await asyncio.sleep(3)
                 await player_message.delete()
-                await asyncio.sleep(45)
-                await voice.disconnect()
+                await asyncio.sleep(10)
+                await vc.disconnect()
         pass
+
+    @commands.command()
+    async def stop(self, ctx):
+        vc = ctx.guild.voice_client
+        if vc.is_playing() or vc.is_paused():
+            vc.stop()
+        else:
+            await ctx.send('Я и так уже молчу!')
+        await ctx.message.delete()
+
+    @commands.command()
+    async def pause(self, ctx):
+        vc = ctx.guild.voice_client
+        if vc.is_playing() or vc.is_paused():
+            vc.pause()
+        elif vc.is_paused():
+            vc.resume()
+        else:
+            await ctx.send('Нечего ставить на паузу')
+        await ctx.message.delete()
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
 class Shop(commands.Cog):
