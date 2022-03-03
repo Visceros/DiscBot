@@ -8,6 +8,7 @@ import io
 import random
 import datetime
 import json
+import pafy
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
@@ -28,7 +29,7 @@ class Listeners(commands.Cog):
         async with self.pool.acquire() as db:
             # Запускаем проверку в случае, когда кто-то вышел из канала
             if after.channel is None and any(
-                            item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain):
+                            item in before.channel.name.lower() for item in channel_groups_to_account_contain):
                 # Выдаём предупреждение, если человек один в канале, но сидит с ботом/ботами
                 if len(before.channel.members) > 1:
                     bot_counter = 0
@@ -629,6 +630,60 @@ class Games(commands.Cog):
 
     # ------------- КОНЕЦ ИГРЫ КАЗИНО -----------
 
+
+    # ------------- Проигрыватель музыки с YouTube -----------
+    @commands.command()
+    async def play(self, ctx, url:str):
+        if not url.startswith(('https', 'http')):
+            await ctx.send('Мне кажется, в адресе ссылки ошибка, ссылка должна начинаться с https/http.')
+            return
+        channel = ctx.author.voice.channel
+        if channel is None:
+            await ctx.send('Вы должны быть в голосовом канале, чтобы слушать музыку.')
+            await ctx.message.delete
+            return
+        await ctx.message.delete
+        if not 'list=' in url:
+            song = pafy.new(url)
+            song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
+            vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+            if vc == None:
+                vc = await channel.connect(reconnect=True)
+            else:
+                await vc.move_to(channel)
+            player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
+            #print(discord.FFmpegPCMAudio(song.url, executable=r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'))
+            await asyncio.sleep(1)
+            vc.play(discord.FFmpegPCMAudio(song.url, executable=r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'), after=vc.source.cleanup()) # needs to download ffmpeg application!!
+            while vc.is_playing():
+                await asyncio.sleep(10)
+            else:
+                await asyncio.sleep(3)
+                await player_message.delete()
+                await asyncio.sleep(10)
+                await vc.disconnect()
+        pass
+
+    @commands.command()
+    async def stop(self, ctx):
+        vc = ctx.guild.voice_client
+        if vc.is_playing() or vc.is_paused():
+            vc.stop()
+        else:
+            await ctx.send('Я и так уже молчу!')
+        await ctx.message.delete()
+
+    @commands.command()
+    async def pause(self, ctx):
+        vc = ctx.guild.voice_client
+        if vc.is_playing() or vc.is_paused():
+            vc.pause()
+        elif vc.is_paused():
+            vc.resume()
+        else:
+            await ctx.send('Нечего ставить на паузу')
+        await ctx.message.delete()
+    # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
 class Shop(commands.Cog):
     def __init__(self, bot: commands.Bot, connection):
