@@ -637,12 +637,13 @@ class Games(commands.Cog):
         if not url.startswith(('https', 'http')):
             await ctx.send('Мне кажется, в адресе ссылки ошибка, ссылка должна начинаться с https/http.')
             return
-        channel = ctx.author.voice.channel
-        if channel is None:
+        try:
+            channel = ctx.author.voice.channel
+        except (AttributeError, TypeError):
             await ctx.send('Вы должны быть в голосовом канале, чтобы слушать музыку.')
-            await ctx.message.delete
+            await ctx.message.delete()
             return
-        await ctx.message.delete
+        await ctx.message.delete()
         if not 'list=' in url:
             song = pafy.new(url)
             song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
@@ -652,9 +653,8 @@ class Games(commands.Cog):
             else:
                 await vc.move_to(channel)
             player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
-            #print(discord.FFmpegPCMAudio(song.url, executable=r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'))
             await asyncio.sleep(1)
-            vc.play(discord.FFmpegPCMAudio(song.url, executable=r'C:\Program Files\ffmpeg\bin\ffmpeg.exe'), after=vc.source.cleanup()) # needs to download ffmpeg application!!
+            vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
             while vc.is_playing():
                 await asyncio.sleep(10)
             else:
@@ -676,7 +676,7 @@ class Games(commands.Cog):
     @commands.command()
     async def pause(self, ctx):
         vc = ctx.guild.voice_client
-        if vc.is_playing() or vc.is_paused():
+        if vc.is_playing():
             vc.pause()
         elif vc.is_paused():
             vc.resume()
