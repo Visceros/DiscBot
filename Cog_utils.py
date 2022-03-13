@@ -664,6 +664,9 @@ class Games(commands.Cog):
         else:
             playlist = Playlist(url)
             #playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
+            if playlist.length <=0:
+                print('Error! Playlist length is 0')
+                return
             for item in playlist:
                 song = pafy.new(item)
                 song = song.getbestaudio().url
