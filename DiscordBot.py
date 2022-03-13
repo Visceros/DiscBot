@@ -14,6 +14,7 @@ from db_connector import db_connection
 from PIL import Image, ImageDraw, ImageFont
 import io
 import logging
+import csv
 
 # ds_logger = logging.getLogger('discord')
 # ds_logger.setLevel(logging.DEBUG)

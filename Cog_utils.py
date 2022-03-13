@@ -8,7 +8,7 @@ import io
 import random
 import datetime
 import json
-import pafy
+#import pafy
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
@@ -648,30 +648,38 @@ class Games(commands.Cog):
             song = pafy.new(url)
             song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
             vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
-            if vc == None:
+            if vc is None:
                 vc = await channel.connect(reconnect=True)
             else:
                 await vc.move_to(channel)
             player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
-            await asyncio.sleep(1)
             vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
             while vc.is_playing():
-                await asyncio.sleep(10)
+                await asyncio.sleep(5)
             else:
-                await asyncio.sleep(3)
                 await player_message.delete()
                 await asyncio.sleep(10)
                 await vc.disconnect()
-        pass
-
-    @commands.command()
-    async def stop(self, ctx):
-        vc = ctx.guild.voice_client
-        if vc.is_playing() or vc.is_paused():
-            vc.stop()
         else:
-            await ctx.send('Я и так уже молчу!')
-        await ctx.message.delete()
+            playlist = pafy.get_playlist(url)
+            songs_count = len(playlist['items'])
+            playlist_message = await ctx.send(f"Запускаю плейлист {playlist['title']} из {songs_count} видео для {ctx.author.display_name}.")
+            for item in range(songs_count):
+                song = playlist['items'][item]['pafy'].getbestaudio().url
+                vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+                if vc is None:
+                    vc = await channel.connect(reconnect=True)
+                elif vc.channel != channel:
+                    await vc.move_to(channel)
+                player_message = await ctx.send(f"Сейчас играет {playlist['items'][item]['pafy'].title}")
+                await asyncio.sleep(1)
+                vc.play(discord.FFmpegPCMAudio(song, executable='ffmpeg'))  # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+                while vc.is_playing():
+                    await asyncio.sleep(5)
+                else:
+                    await player_message.delete()
+            await playlist_message.delete()
+            await vc.disconnect()
 
     @commands.command()
     async def pause(self, ctx):
@@ -682,6 +690,16 @@ class Games(commands.Cog):
             vc.resume()
         else:
             await ctx.send('Нечего ставить на паузу')
+        await ctx.message.delete()
+
+
+    @commands.command()
+    async def stop(self, ctx):
+        vc = ctx.guild.voice_client
+        if vc.is_playing() or vc.is_paused():
+            vc.stop()
+        else:
+            await ctx.send('Я и так уже молчу!')
         await ctx.message.delete()
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
