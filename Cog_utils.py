@@ -8,7 +8,8 @@ import io
 import random
 import datetime
 import json
-#import pafy
+import pafy
+from pytube import Playlist
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
@@ -661,11 +662,11 @@ class Games(commands.Cog):
                 await asyncio.sleep(10)
                 await vc.disconnect()
         else:
-            playlist = pafy.get_playlist(url)
-            songs_count = len(playlist['items'])
-            playlist_message = await ctx.send(f"Запускаю плейлист {playlist['title']} из {songs_count} видео для {ctx.author.display_name}.")
-            for item in range(songs_count):
-                song = playlist['items'][item]['pafy'].getbestaudio().url
+            playlist = Playlist(url)
+            playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
+            for item in playlist:
+                song = pafy.new(item)
+                song = song.getbestaudio().url
                 vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
                 if vc is None:
                     vc = await channel.connect(reconnect=True)
