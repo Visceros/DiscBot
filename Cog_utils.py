@@ -663,7 +663,7 @@ class Games(commands.Cog):
                 await vc.disconnect()
         else:
             playlist = Playlist(url)
-            playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
+            #playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
             for item in playlist:
                 song = pafy.new(item)
                 song = song.getbestaudio().url
@@ -679,7 +679,7 @@ class Games(commands.Cog):
                     await asyncio.sleep(5)
                 else:
                     await player_message.delete()
-            await playlist_message.delete()
+            #await playlist_message.delete()
             await vc.disconnect()
 
     @commands.command()
