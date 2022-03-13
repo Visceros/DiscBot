@@ -667,6 +667,7 @@ class Games(commands.Cog):
             if playlist.length <=0:
                 print('Error! Playlist length is 0')
                 return
+            vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
             for item in playlist:
                 song = pafy.new(item)
                 song = song.getbestaudio().url
