@@ -667,17 +667,18 @@ class Games(commands.Cog):
             if playlist.length <=0:
                 print('Error! Playlist length is 0')
                 return
+            vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
             for item in playlist:
                 song = pafy.new(item)
-                song = song.getbestaudio().url
+                song = song.getbestaudio()
                 vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
                 if vc is None:
                     vc = await channel.connect(reconnect=True)
                 elif vc.channel != channel:
                     await vc.move_to(channel)
-                player_message = await ctx.send(f"Сейчас играет {playlist['items'][item]['pafy'].title}")
+                player_message = await ctx.send(f"Сейчас играет {song.title}")
                 await asyncio.sleep(1)
-                vc.play(discord.FFmpegPCMAudio(song, executable='ffmpeg'))  # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+                vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg'))  # needs to download ffmpeg application!! or /usr/bin/ffmpeg
                 while vc.is_playing():
                     await asyncio.sleep(5)
                 else:
