@@ -1,4 +1,5 @@
 # coding: utf8
+import json
 
 import discord
 import asyncio  # check if installed / проверьте, установлен ли модуль
@@ -147,14 +148,16 @@ async def montly_task():
 
 @tasks.loop(hours=24)
 async def daily_task():
-    if datetime.datetime.now().hour == 0 and datetime.datetime.now().minute == 0:
-
+    while not (datetime.datetime.now().hour == 0 and datetime.datetime.now().minute == 0):
+        await asyncio.sleep(10)
+    else:
+        global sys_channel
         #Проверяем не истёк ли срок каких-либо покупок из списка в Логе покупок
         async with pool.acquire() as db:
-            records_list = await db.fetch("SELECT FROM ShopLog WHERE expiry_date=$1;", datetime.date.today())
+            records_list = await db.fetch("SELECT * FROM ShopLog WHERE date_trunc('day', expiry_date)=CURRENT_DATE")
             for record in records_list:
-                if record['expiry_date'] == datetime.date.today(): # если срок действия покупки 30 дней вышел
-                    product = await db.execute('SELECT FROM Shop WHERE product_id=$1', record['product_id'])
+                if record['expiry_date'].date() == datetime.date.today(): # если срок действия покупки 30 дней вышел
+                    product = await db.fetchrow('SELECT * FROM Shop WHERE product_id=$1', record['product_id'])
 
                     # Получаем сущность пользователя и сервера
                     for server in bot.guilds:
@@ -166,19 +169,23 @@ async def daily_task():
 
                     # Если это роль - снимаем роль
                     if product['product_type'] == 'role':
-                        role = discord.utils.find(lambda r: (r.name.lower() == record['product_name'].lower()), guild.roles)
-                        if role is not None:
-                            await user.remove_roles(role)
-                        else:
-                            await sys_channel.send(f'Ошибка при снятии купленной роли {product["name"]} с пользователя {user.display_name}, id {user.id}. Не удалось найти соответствующую роль на сервере.')
+                        role = discord.utils.find(lambda r: (r.name.lower() == record['item_name'].lower()), guild.roles)
+                        if role is not None and role in user.roles:
+                            try:
+                                await user.remove_roles(role)
+                                print('Снимаю', role.name, 'у', user.display_name)
+                            except:
+                                await sys_channel.send(f'Ошибка при снятии купленной роли {product["name"]} с пользователя {user.display_name}, id {user.id}. Не удалось найти соответствующую роль на сервере.')
 
             # ПРОВЕРИТЬ КАК РАБОТАЕТ
                     #Если это скин профиля - меняем скин на дефолтный (если только не был куплен другой)
                     elif product['product_type'] == 'profile_skin':
                         current_profile_skin = await db.fetchval('SELECT profile_pic from discord_users WHERE id=$1', user.id)
-                        if current_profile_skin == product['json_data']['image_name']:  #Если фон профиля не сменился
+                        json_data = json.loads(product['json_data'])
+                        if current_profile_skin == json_data['image_name']:  #Если фон профиля не сменился
                             try:
                                 await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', 'default_profile_pic.png', 'c7c7c7', user.id)
+                                print('Вернул стандартный фон профиля пользователяю', user.display_name)
                             except Exception as e:
                                 await sys_channel.send(f'{guild.owner.mention} Произошла ошибка при возвращении стандартного фона профиля для пользователя {user.mention}:')
                                 await sys_channel.send(e)
@@ -202,10 +209,7 @@ async def on_ready():
         montly_task.start()
     except RuntimeError:
         montly_task.restart()
-    try:
-        daily_task.start()
-    except RuntimeError:
-        daily_task.restart()
+    daily_task.start()
     await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
