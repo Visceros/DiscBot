@@ -27,8 +27,8 @@ async def db_connection():
                 Gold INT DEFAULT 0,
                 Warns INT DEFAULT 0,
                 profile_pic text DEFAULT 'default_profile_pic.png',
-                profile_text_color text DEFAULT '(199,199,199,255))',
-                CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
+                profile_text_color text DEFAULT '(199,199,199,255)',
+                CONSTRAINT users_unique UNIQUE (Id, Nickname);''')
             print('Table of users created or connection established...')
 
             # Таблица для слежения за активностью пользователей
