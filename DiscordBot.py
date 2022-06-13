@@ -425,12 +425,13 @@ async def show(ctx, member: discord.Member):
 
             profile_text = part_1+'\n'+part_2+'\n'+part_3+'\n'+part_4   # текст профиля
             profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
+            text_color = data['profile_text_color']
+            print(text_color, type(text_color))
             background_width, background_height = background_img.size
             text_width, text_height = draw.textsize(profile_text, font=profile_font)
             x = (background_width-text_width)//2
             y = (background_height-text_height)//3
-            #draw.text((x,y), text=profile_text, fill=f"{data['profile_text_color']}", font=profile_font) # вписываем текст
-            draw.text((x, y), text=profile_text, fill=(199,199,199,255), font=profile_font)  # вписываем текст
+            draw.text((x,y), text=profile_text, fill=text_color, font=profile_font) # вписываем текст
             buffer = io.BytesIO()
             background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
