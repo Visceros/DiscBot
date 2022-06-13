@@ -86,9 +86,10 @@ async def initial_db_fill():
                     try:
                         for member in crown.members:
                             if not member.bot and member.id not in users_ids:
-                                await db.execute(
-                                    'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3) ON CONFLICT (id) DO NOTHING;',
-                                    member.id, member.display_name, member.joined_at)
+                                if not member.display_name == '[Ранг] Nickname (ВашеИмя) GC':
+                                    await db.execute(
+                                        'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3) ON CONFLICT (id) DO NOTHING;',
+                                        member.id, member.display_name, member.joined_at)
                     except Exception as e:
                         print('Got error while trying to add missing users to database', e)
                     print('Данные пользователей в базе обновлены')
