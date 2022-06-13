@@ -429,9 +429,10 @@ async def show(ctx, member: discord.Member):
             text_width, text_height = draw.textsize(profile_text, font=profile_font)
             x = (background_width-text_width)//2
             y = (background_height-text_height)//3
-            draw.text((x,y), text=profile_text, fill=f"{data['profile_text_color']}", font=profile_font) # вписываем текст
+            #draw.text((x,y), text=profile_text, fill=f"{data['profile_text_color']}", font=profile_font) # вписываем текст
+            draw.text((x, y), text=profile_text, fill=(199,199,199,255), font=profile_font)  # вписываем текст
             buffer = io.BytesIO()
-            background_img.save(buffer, format='PNG') # сохраняем в буфер обмена
+            background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
             await ctx.send(file=discord.File(buffer, 'profile.png'))
             buffer.close()
