@@ -419,7 +419,7 @@ async def show(ctx, member: discord.Member):
             part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {await count_result_activity(seven_days_activity_records, warns)} час(ов)\nАктивность за 30 дней: {await count_result_activity(thirty_days_activity_records, warns)} час(ов)"
             part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
             path = os.path.join('images', 'profile', data['profile_pic'])
-            background = Image.open(path)
+            background = Image.open(path).convert('RGBA')
             background_img = background.copy()
             draw = ImageDraw.Draw(background_img)
 
