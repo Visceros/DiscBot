@@ -14,6 +14,7 @@ from operator import itemgetter
 from db_connector import db_connection
 from PIL import Image, ImageDraw, ImageFont
 import io
+import ast
 import logging
 import csv
 
@@ -425,7 +426,7 @@ async def show(ctx, member: discord.Member):
 
             profile_text = part_1+'\n'+part_2+'\n'+part_3+'\n'+part_4   # текст профиля
             profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
-            text_color = json.loads(data['profile_text_color'])
+            text_color = ast.literal_eval(data['profile_text_color'])
             print(text_color, type(text_color))
             background_width, background_height = background_img.size
             text_width, text_height = draw.textsize(profile_text, font=profile_font)
