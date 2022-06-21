@@ -219,7 +219,7 @@ class Listeners(commands.Cog):
                                     unmuted_member_id = member.id
                             else:
                                 bot_counter+=1
-                        if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
+                        if unmuted_member_count == 1 and muted_member_count+bot_counter >= unmuted_member_count and unmuted_member_id:
                             await asyncio.sleep(90)
                             if member.voice:
                                 muted_member_count = 0
@@ -285,7 +285,7 @@ class Listeners(commands.Cog):
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
-                if any(item in member.voice.channel.name.lower() for item in
+                if any(item in after.voice.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
@@ -655,6 +655,7 @@ class Games(commands.Cog):
                 await vc.move_to(channel)
             player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
             vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+            await asyncio.sleep(1)
             while vc.is_playing():
                 await asyncio.sleep(5)
             else:
@@ -663,7 +664,7 @@ class Games(commands.Cog):
                 await vc.disconnect()
         else:
             playlist = Playlist(url)
-            #playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
+            playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
             if playlist.length <=0:
                 print('Error! Playlist length is 0')
                 return
@@ -683,7 +684,7 @@ class Games(commands.Cog):
                     await asyncio.sleep(5)
                 else:
                     await player_message.delete()
-            #await playlist_message.delete()
+            await playlist_message.delete()
             await vc.disconnect()
 
     @commands.command()
