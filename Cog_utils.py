@@ -285,7 +285,7 @@ class Listeners(commands.Cog):
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
-                if any(item in after.voice.channel.name.lower() for item in
+                if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
@@ -381,7 +381,7 @@ class Listeners(commands.Cog):
 
             # Кикаем из голосовых каналов с учётом активности тех новичков, кто не поставил себе ник по форме
 
-            if after.display_name == '[Ранг]Ник (Имя)[ТЕГ]' and any(item in after.voice.channel.name.lower() for item in
+            if after.display_name == '[Ранг]Ник (Имя)[ТЕГ]' and any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain):
                 await after.edit(voice_channel=None)
                 private_msg_channel = after.dm_channel
