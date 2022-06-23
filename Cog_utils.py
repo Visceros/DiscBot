@@ -67,7 +67,7 @@ class Listeners(commands.Cog):
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
                 # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
-                elif len(before.voice.channel.members) > 1:
+                elif len(before.channel.members) > 1:
                     muted_member_count = 0
                     unmuted_member_count = 0
                     for user in before.voice.channel.members:
