@@ -235,6 +235,9 @@ async def _increment_money(server: discord.Guild):
                         if gold is not None:
                             gold = int(gold) + 1
                             await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
+                        else:
+                            gold = 1
+                            await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
                     except Exception as ex:
                         await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
                         await sys_channel.send(content=ex)
