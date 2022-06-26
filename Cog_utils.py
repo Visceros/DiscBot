@@ -5,6 +5,7 @@ import asyncio
 import asyncpg
 import aiohttp
 import io
+import os
 import random
 import datetime
 import json
@@ -445,15 +446,9 @@ class Games(commands.Cog):
                                              'Выберите, какой из шести простых сундуков открываем?\n\n Нажмите на цифру от 1 до 6**')
                     del_messages.append(add_msg)
                     # begin pasting the picture with usual chests
-                    async with aiohttp.ClientSession() as session:
-                        async with session.get(
-                                'https://cdn.discordapp.com/attachments/585041003967414272/647943159762124824/Untitled_-_6.png') as resp:
-                            if resp.status != 200 and resp.status != 301:
-                                return await channel.send('Error! Could not get the file...')
-                            data = io.BytesIO(await resp.read())
-                            start_message = await channel.send(file=discord.File(data, 'Normal-chests.png'))
-                            del_messages.append(start_message)
-                            await session.close()
+                    path = os.path.join(os.getcwd(), 'images', 'Normal-chests.png')
+                    start_message = await channel.send(file=discord.File(path, 'Normal-chests.png'))
+                    del_messages.append(start_message)
                     # end of pasting the picture with usual chests
                     for react in reactions:
                         await start_message.add_reaction(react)
@@ -490,15 +485,9 @@ class Games(commands.Cog):
                                 '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**')
                             del_messages.append(add_msg)
                             # Begin pasting the picture with Gold chests
-                            async with aiohttp.ClientSession() as session:
-                                async with session.get(
-                                        'https://cdn.discordapp.com/attachments/585041003967414272/647935813962694676/51d6848c09aba40c.png') as resp:
-                                    if resp.status != 200 and 301:
-                                        return await channel.send('Error! Could not get the file...')
-                                    data = io.BytesIO(await resp.read())
-                                    start_message = await channel.send(file=discord.File(data, 'Golden-chests.png'))
-                                    del_messages.append(start_message)
-                                    await session.close()
+                            path = os.path.join(os.getcwd(), 'images', 'Golden-chests.png')
+                            start_message = await channel.send(file=discord.File(path, 'Golden-chests.png'))
+                            del_messages.append(start_message)
                             # End of pasting the picture with Gold chests
                             for react in reactions[0:3]:
                                 await start_message.add_reaction(react)
