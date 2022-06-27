@@ -724,6 +724,7 @@ class Shop(commands.Cog):
     async def add(self, ctx, product_type, product_name:str=None, price: int=None, duration: int=None, json_data=None):
         author = ctx.message.author
         await ctx.message.delete()
+
         if product_type == 'help':
             temp_help_msg = await ctx.send('Добавить товар в магазин можно двумя путями:\n'
                            'путь 1: ввести команду, и указать тип добавляемого товара, например\n!shop add role\n'
@@ -734,6 +735,17 @@ class Shop(commands.Cog):
             await asyncio.sleep(30)
             if temp_help_msg is not None:
                 await temp_help_msg.delete()
+        elif product_type is not None and price is not None and product_name is not None and duration is not None:
+            if duration == 0: duration = 'NULL'
+            async with self.pool.acquire() as db:
+                try:
+                    await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
+                    await ctx.send('Товар успешно добавлен')
+                except Exception as e:
+                    await ctx.send('Произошла ошибка при добавлении товара:\n')
+                    await ctx.send(e)
+
+
         elif price is None and product_name is None and duration is None:
 
             def shop_name_adding_check(msg):
@@ -745,7 +757,7 @@ class Shop(commands.Cog):
             if product_type == 'role':
                 await ctx.send('Укажите название роли: ')
                 product_name = await self.bot.wait_for("message", check=shop_name_adding_check, timeout=150)
-                while discord.utils.find(lambda r: (product_name.lower() in r.name.lower()), ctx.guild.roles) is None:
+                while discord.utils.find(lambda r: (product_name.content.lower() in r.name.lower()), ctx.guild.roles) is None:
                     await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
                     product_name = await self.bot.wait_for("message", check=shop_adding_checks)
                     product_name = product_name.content
@@ -766,15 +778,6 @@ class Shop(commands.Cog):
                     duration = 'NULL'
                 else:
                     duration = int(duration.content)
-
-                if price is not None and product_name is not None and duration is not None:
-                    async with self.pool.acquire() as db:
-                        try:
-                            await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
-                            await ctx.send('Товар успешно добавлен')
-                        except Exception as e:
-                            await ctx.send('Произошла ошибка при добавлении товара:\n')
-                            await ctx.send(e)
 
                 # Добавление нового скина на профиль
             elif product_type == 'profile_skin':
