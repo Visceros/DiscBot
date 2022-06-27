@@ -734,12 +734,10 @@ class Shop(commands.Cog):
             await asyncio.sleep(30)
             if temp_help_msg is not None:
                 await temp_help_msg.delete()
-
         elif price is None and product_name is None and duration is None:
 
             def shop_name_adding_check(msg):
-                first_word = msg.content.replace(msg.content[0], '').split()[0]
-                return msg.author == ctx.author and msg.channel == ctx.channel and self.bot.get_command(first_word) is None
+                return msg.author == ctx.author and msg.channel == ctx.channel
 
             def shop_adding_checks(msg):
                 return msg.author == ctx.author and msg.channel == ctx.channel
