@@ -392,7 +392,7 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member:discord.Member):
-        await member.edit(nick='[Ранг] Nickname (ВашеИмя) GC')
+        await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.

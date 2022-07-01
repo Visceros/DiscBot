@@ -148,6 +148,7 @@ async def montly_task():
                         newgold = int(gold_was) + amount
                         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
 
+
 @tasks.loop(hours=24)
 async def daily_task():
     while not (datetime.datetime.now().hour == 0 and datetime.datetime.now().minute == 0):
