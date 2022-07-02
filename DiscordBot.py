@@ -105,7 +105,7 @@ async def auto_rainbowise():
         if 'golden crown' in guild.name.lower():
             crown = bot.get_guild(guild.id)
         try:
-            role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
+            role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
         except discord.NotFound:
             sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
         except Exception as e:
@@ -520,7 +520,9 @@ async def me(ctx):
         usr = ctx.message.author
         await show(ctx, usr)
     else:
-        await ctx.send('Команда доступна только в специальном канале.')
+        msg = await ctx.send('Команда доступна только в специальном канале.')
+        await asyncio.sleep(10)
+        await msg.delete()
 
 
 # просмотр урезанного профиля пользователей для модерации
