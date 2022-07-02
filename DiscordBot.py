@@ -106,13 +106,11 @@ async def auto_rainbowise():
             crown = bot.get_guild(guild.id)
         try:
             role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
+            clr = random.choice(rgb_colors)
+            if role is not None:
+                await role.edit(color=discord.Colour(int(clr, 16)))
         except discord.NotFound:
             sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
-        except Exception as e:
-            print(e)
-        clr = random.choice(rgb_colors)
-        try:
-            await role.edit(color=discord.Colour(int(clr, 16)))
         except Exception as e:
             print(
                 f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
@@ -143,10 +141,11 @@ async def montly_task():
             async with pool.acquire() as db:
                 for id in salary_roles_ids:
                     role = discord.utils.find(lambda r: (r.id == id), guild.roles)
-                    for member in role.members:
-                        gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
-                        newgold = int(gold_was) + amount
-                        await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
+                    if role is not None:
+                        for member in role.members:
+                            gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
+                            newgold = int(gold_was) + amount
+                            await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
 
 
 @tasks.loop(hours=24)
