@@ -978,5 +978,5 @@ class Shop(commands.Cog):
         def author_check(m: discord.Message):
             return m.author.bot or m.author == ctx.author
 
-        await asyncio.sleep(5)
-        await ctx.channel.purge(check=author_check, around=datetime.datetime.now())
+        #await asyncio.sleep(5)
+        #await ctx.channel.purge(check=author_check, around=datetime.datetime.now())
