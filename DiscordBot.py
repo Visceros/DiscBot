@@ -529,36 +529,36 @@ async def me(ctx):
 async def u(ctx, member: discord.Member):
     eligible_roles_ids = {651377975106732034, 449837752687656960}
     await ctx.message.delete()
-    if any(role.id in eligible_roles_ids for role in ctx.author.roles) or ctx.message.author.guild_permissions.administrator is True:
-        global pool
-        async with pool.acquire() as db:
-            data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
-            if data is not None:
-                warns = int(data['warns'])
-                t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
-                t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+    #if any(role.id in eligible_roles_ids for role in ctx.author.roles) or ctx.message.author.guild_permissions.administrator is True:
+    global pool
+    async with pool.acquire() as db:
+        data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
+        if data is not None:
+            warns = int(data['warns'])
+            t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
+            t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
 
-                try:
-                    seven_days_activity_records = await db.fetch(
-                        "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
-                        t_7days_ago, datetime.datetime.now(), member.id)
-                    thirty_days_activity_records = await db.fetch(
-                        "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
-                        t_30days_ago, datetime.datetime.now(), member.id)
-                except asyncpg.InterfaceError:
-                    pool = await db_connection()
-            time_in_clan = datetime.datetime.now() - member.joined_at
+            try:
+                seven_days_activity_records = await db.fetch(
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
+                    t_7days_ago, datetime.datetime.now(), member.id)
+                thirty_days_activity_records = await db.fetch(
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
+                    t_30days_ago, datetime.datetime.now(), member.id)
+            except asyncpg.InterfaceError:
+                pool = await db_connection()
+        time_in_clan = datetime.datetime.now() - member.joined_at
 
-            part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
-            part_2 = f"`{time_in_clan.days//7} недель`"
-            part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
-            embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-            embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
-            embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
-            embed.add_field(name=f"Активность:", value=part_3, inline=False)
-            await ctx.send(embed=embed)
-    else:
-        await ctx.send('Вы не являетесь модератором или администратором.')
+        part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
+        part_2 = f"`{time_in_clan.days//7} недель`"
+        part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+        embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+        embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
+        embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
+        embed.add_field(name=f"Активность:", value=part_3, inline=False)
+        await ctx.send(embed=embed)
+    #else:
+        #await ctx.send('Вы не являетесь модератором или администратором.')
 
 
 @bot.command()
