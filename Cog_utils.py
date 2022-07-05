@@ -470,10 +470,11 @@ class Games(commands.Cog):
                             await message.delete()
                     else:
                         reward, pic = usual_reward()
+                        path = os.path.join(os.getcwd(), 'images', pic)
                         add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**')
                         del_messages.append(add_msg)
                         async with aiohttp.ClientSession() as session:
-                            async with session.get(pic) as resp:
+                            async with session.get(path) as resp:
                                 if resp.status != 200 and resp.status != 301:
                                     return await channel.send('Error! Could not get the file...')
                                 data = io.BytesIO(await resp.read())
@@ -502,10 +503,11 @@ class Games(commands.Cog):
                                     await message.delete()
                             else:
                                 reward, pic = gold_reward()
+                                path = os.path.join(os.getcwd(), 'images', pic)
                                 add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}')
                                 del_messages.append(add_msg)
                                 async with aiohttp.ClientSession() as session:
-                                    async with session.get(pic) as resp:
+                                    async with session.get(path) as resp:
                                         if resp.status != 200 and 301:
                                             return await channel.send('Error! Could not get the file...')
                                         data = io.BytesIO(await resp.read())
