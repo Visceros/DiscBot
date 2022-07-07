@@ -273,9 +273,11 @@ async def shutdown(ctx):
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute(
                     f"UPDATE LogTable SET logoff=NOW()::timestamptz(0), gold=$1 WHERE user_id=$2 AND logoff IS NULL;", int(gold), member.id)
-            else:
-                pass
-        await asyncio.sleep(5)
+                await member.move_to(None)
+        clan_role = discord.utils.find(lambda r: 'соклан' in r.name.lower(),ctx.guild.roles)
+        chat_channel = discord.utils.find(lambda r: ('чат-сервера' in r.name.lower()), ctx.guild.channels)
+        await chat_channel.send(f'{clan_role.mention} вы были автоматически отключены от голосовых каналов в связи с перезапуском бота, чтобы у вас корректно учитывалась активность. Просим переподключиться, спасибо.')
+        await asyncio.sleep(2)
         await sys_channel.send('Shutdown complete')
         exit(1)
 
