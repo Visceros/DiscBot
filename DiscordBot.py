@@ -382,8 +382,9 @@ async def count_result_activity(activity_records_list, warns: int):
     if warns >= 3:
         result_activity = result_activity - datetime.timedelta(minutes=(3 * warns))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
-    result_hours = int(result_activity.total_seconds()) / 3600
-    return round(result_hours, 0)
+    result_hours = int(result_activity.total_seconds()) // 3600
+    result_minutes = (int(result_activity.total_seconds()) % 3600) // 60
+    return result_hours, result_minutes
 
 
 @user.command()
@@ -420,9 +421,11 @@ async def show(ctx, member: discord.Member):
                 pool = await db_connection()
 
                 # профиль картинкой
+            hours7, minutes7 = await count_result_activity(seven_days_activity_records, warns)
+            hours30, minutes30 = await count_result_activity(thirty_days_activity_records, warns)
             part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
             part_2 = f"\nРЕПУТАЦИЯ:\nПозитивных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
-            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {await count_result_activity(seven_days_activity_records, warns)} час(ов)\nАктивность за 30 дней: {await count_result_activity(thirty_days_activity_records, warns)} час(ов)"
+            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {hours7} ч. {minutes7} мин.\nАктивность за 30 дней: {hours30} ч. {minutes30} мин."
             part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
             path = os.path.join('images', 'profile', data['profile_pic'])
             background = Image.open(path).convert('RGBA')
