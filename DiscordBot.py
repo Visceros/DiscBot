@@ -658,13 +658,13 @@ async def top(ctx, count: int = 10):
                     thirty_days_activity_records = await db.fetch(
                         "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
                     activity = await count_result_activity(thirty_days_activity_records, warns)
-                    result_list.append((member.mention, activity))
+                    result_list.append((member.mention, activity[0], activity[1]))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
     count = len(res) if count > len(res) else count
-    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин.;\n" for i in range(count))
     while len(output) > 1024:
         count -=1
-        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов);\n" for i in range(count))
+        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин.\n" for i in range(count))
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
     await ctx.send(embed=embed)
@@ -687,47 +687,13 @@ async def antitop(ctx, count: int = 10):
                 time_in_clan = datetime.datetime.now() - member.joined_at
                 if time_in_clan.days//14 > 0:
                     if time_in_clan.days//7 <= 4:
-                        if activity/(time_in_clan.days//7) < 10:
-                            result_list.append((member.mention, activity, time_in_clan.days//7))
+                        if activity[0]/(time_in_clan.days//7) < 10:
+                            result_list.append((member.mention, activity[0], activity[1], time_in_clan.days//7))
                     elif time_in_clan.days//7 >= 4 and activity < 40:
-                        result_list.append((member.mention, activity, '4+'))
+                        result_list.append((member.mention, activity[0], activity[1], '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
-    # if len(res) > 10:
-    #     data = {}
-    #     buttons = ['⬅️','1️⃣','➡️']
-    #     #page = str((count+10)//10)+'️⃣'
-    #     for i in range(len(res)):
-    #         data[str(i+1)] = f'{res[i][0]}, актив: {res[i][1]} часа(ов), В клане: {res[i][2]} нед.;\n'
-    #     count = 0
-    #     for i in range(count+1,count+11):
-    #         output = "".join(f"{str(i+1)}: {data[str(i+1)]})")
-    #     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    #     embed.add_field(name='АнтиТоп активности', value=output)
-    #     page_message = await ctx.send(embed=embed)
-    #     for button in buttons:
-    #         await page_message.add_reaction(button)
-    #
-    #     def checks(reaction, user):
-    #         return reaction in page_message.reactions and user.bot is not True
-    #
-    #     reaction, user = await bot.wait_for('reaction_add', check=checks)
-    #     if str(reaction) == buttons[0]:
-    #         count = count-10
-    #         count = 0 if count < 0 else count
-    #     elif str(reaction) == buttons[2]:
-    #         count = count + 10
-    #         count = len(res)-10 if count+10 > len(res) else count
-    #         for i in range(count + 1, count + 11):
-    #             output = "".join(f"{str(i + 1)}: {data[str(i + 1)]})")
-    #     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
-    #     embed.add_field(name='АнтиТоп активности', value=output)
-    #     page_message.edit(embed=embed)
-    #     page = str((count + 10) // 10) G+ '️⃣'
-    #     page_message.reaction
-    #     pass
-    # else:
-    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} часа(ов), В клане: {res[i][2]} нед.;\n" for i in range(count))
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин., В клане: {res[i][3]} нед.;\n" for i in range(count))
     embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
     await ctx.send(embed=embed)
@@ -773,5 +739,12 @@ async def react(ctx, number:int=5):
         rnd = random.randint(0,len(ctx.guild.emojis)-1)
         emoj = ctx.guild.emojis[rnd]
         await msg.add_reaction(emoj)
+
+
+@bot.command()
+async def roll(ctx, number:int=100):
+    await ctx.message.delete()
+    rnd = random.randint(1, number)
+    await ctx.send(f"{ctx.message.author} rolled {rnd}")
 
 bot.run(token, reconnect=True)
