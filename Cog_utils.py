@@ -504,15 +504,15 @@ class Games(commands.Cog):
                             else:
                                 reward, pic = gold_reward()
                                 path = os.path.join(os.getcwd(), 'images', pic)
-                                add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}')
+                                add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=discord.File(path, 'gold-reward.png'))
                                 del_messages.append(add_msg)
-                                async with aiohttp.ClientSession() as session:
-                                    async with session.get(path) as resp:
-                                        if resp.status != 200 and 301:
-                                            return await channel.send('Error! Could not get the file...')
-                                        data = io.BytesIO(await resp.read())
-                                        add_msg = await channel.send(file=discord.File(data, 'gold-reward.png'))
-                                        del_messages.append(add_msg)
+                                # async with aiohttp.ClientSession() as session:
+                                #     async with session.get(path) as resp:
+                                #         if resp.status != 200 and 301:
+                                #             return await channel.send('Error! Could not get the file...')
+                                #         data = io.BytesIO(await resp.read())
+                                #         add_msg = await channel.send(file=discord.File(data, 'gold-reward.png'))
+                                #         del_messages.append(add_msg)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                     # Через 15 секунд стираем все сообщения
                     await asyncio.sleep(15)
