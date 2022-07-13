@@ -471,15 +471,15 @@ class Games(commands.Cog):
                     else:
                         reward, pic = usual_reward()
                         path = os.path.join(os.getcwd(), 'images', pic)
-                        add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**')
+                        add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=discord.File(path, 'reward.png'))
                         del_messages.append(add_msg)
-                        async with aiohttp.ClientSession() as session:
-                            async with session.get(path) as resp:
-                                if resp.status != 200 and resp.status != 301:
-                                    return await channel.send('Error! Could not get the file...')
-                                data = io.BytesIO(await resp.read())
-                                add_msg = await channel.send(file=discord.File(data, 'reward.png'))
-                                del_messages.append(add_msg)
+                        # async with aiohttp.ClientSession() as session:
+                        #     async with session.get(path) as resp:
+                        #         if resp.status != 200 and resp.status != 301:
+                        #             return await channel.send('Error! Could not get the file...')
+                        #         data = io.BytesIO(await resp.read())
+                        #         add_msg = await channel.send(file=discord.File(data, 'reward.png'))
+                        #         del_messages.append(add_msg)
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         elif 'золотой ключ' in reward.lower():
