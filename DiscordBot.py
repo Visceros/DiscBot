@@ -689,7 +689,7 @@ async def antitop(ctx, count: int = 10):
                     if time_in_clan.days//7 <= 4:
                         if activity[0]/(time_in_clan.days//7) < 10:
                             result_list.append((member.mention, activity[0], activity[1], time_in_clan.days//7))
-                    elif time_in_clan.days//7 >= 4 and activity < 40:
+                    elif time_in_clan.days//7 >= 4 and activity[0] < 40:
                         result_list.append((member.mention, activity[0], activity[1], '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
