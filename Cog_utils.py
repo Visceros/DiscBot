@@ -298,10 +298,10 @@ class Listeners(commands.Cog):
                                     member.id, member.display_name, member.joined_at)
                                 await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
                                 role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
-                                await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                                 checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                                 if checkrole in member.roles and not any(role in roles_list for role in member.roles):
                                     await member.add_roles(role_to_add)
+                                    await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                                 elif role_to_add in member.roles and not checkrole in member.roles:
                                     await member.remove_roles(role_to_add)
                             except asyncpg.exceptions.UniqueViolationError:
@@ -320,7 +320,8 @@ class Listeners(commands.Cog):
                 elif member.bot:
                     await self.if_one_in_voice(member=member, before=before, after=after)
 
-            if before.channel is None and after.channel is not None and not after.afk and not after.self_mute:
+            if before.channel is None and after.voice is not None and not after.afk and not after.self_mute:
+                await self.sys_channel.send(f'{after.display_name} joined channel {after.voice.channel}')
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
                     try:
@@ -339,6 +340,11 @@ class Listeners(commands.Cog):
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
+                await self.sys_channel.send(f'{after.display_name} left channel {after.voice.channel}')
+
+            elif before.channel is not None and after.channel is not None:
+                await self.sys_channel.send(f'{after.display_name} moved from {before.voice.channel} to {after.voice.channel}')
+
 
             # убираем начисление времени для пользователя с выключенным микрофоном
             if member.voice is not None:
@@ -638,6 +644,7 @@ class Games(commands.Cog):
             return
         await ctx.message.delete()
         if not 'list=' in url:
+            self.type = 'song'
             song = pafy.new(url)
             song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
             vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
@@ -645,7 +652,7 @@ class Games(commands.Cog):
                 vc = await channel.connect(reconnect=True)
             else:
                 await vc.move_to(channel)
-            player_message = await ctx.send(f'Включаю {song.title} по заказу {ctx.author.display_name}.')
+            player_message = await ctx.send(f'Playing {song.title} for {ctx.author.display_name}.')
             vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
             await asyncio.sleep(1)
             while vc.is_playing():
@@ -655,11 +662,14 @@ class Games(commands.Cog):
                 await asyncio.sleep(10)
                 await vc.disconnect()
         else:
+            self.type = 'playlist'
             playlist = Playlist(url)
-            playlist_message = await ctx.send(f"Запускаю плейлист {playlist.title} из {playlist.length} видео для {ctx.author.display_name}.")
             if playlist.length <=0:
                 print('Error! Playlist length is 0')
+                await ctx.send('Playlist length is 0. Nothing to play')
                 return
+            playlist_message = await ctx.send(
+                f"Now playing {playlist.title} of {playlist.length} tracks for {ctx.author.display_name}.")
             vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
             for item in playlist:
                 song = pafy.new(item)
@@ -696,6 +706,8 @@ class Games(commands.Cog):
         vc = ctx.guild.voice_client
         if vc.is_playing() or vc.is_paused():
             vc.stop()
+            if self.type=='playlist':
+                await vc.disconnect()
         else:
             await ctx.send('Я и так уже молчу!')
         await ctx.message.delete()

@@ -102,10 +102,8 @@ async def initial_db_fill():
 @tasks.loop(minutes=5.0)
 async def auto_rainbowise():
     for guild in bot.guilds:
-        if 'golden crown' in guild.name.lower():
-            crown = bot.get_guild(guild.id)
         try:
-            role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), crown.roles)
+            role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
             clr = random.choice(rgb_colors)
             if role is not None:
                 await role.edit(color=discord.Colour(int(clr, 16)))
@@ -510,9 +508,9 @@ async def mmoney(ctx, member: discord.Member, gold):
 @commands.has_permissions(administrator=True)
 async def echo(ctx, msg: str):
     """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
-    #message = ctx.message.content.split(' ')[1:]
+    message = "".join(ctx.message.content.split(' '))
     await ctx.message.delete()
-    await ctx.send(msg)
+    await ctx.send(message)
     msg = ctx.message.author + ' using !echo sent: ' + msg
     await sys_channel.send(msg)
 
@@ -524,7 +522,7 @@ async def me(ctx):
         usr = ctx.message.author
         await show(ctx, usr)
     else:
-        msg = await ctx.send('Команда доступна только в специальном канале.')
+        msg = await ctx.send('Command is accessible only in predefined channel / Команда доступна только в специальном канале.')
         await asyncio.sleep(10)
         await msg.delete()
 
@@ -745,6 +743,6 @@ async def react(ctx, number:int=5):
 async def roll(ctx, number:int=100):
     await ctx.message.delete()
     rnd = random.randint(1, number)
-    await ctx.send(f"{ctx.message.author} rolled {rnd}")
+    await ctx.send(f"{ctx.message.author.display_name} rolled {rnd}")
 
 bot.run(token, reconnect=True)
