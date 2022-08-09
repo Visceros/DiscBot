@@ -687,7 +687,8 @@ class Games(commands.Cog):
                 else:
                     await player_message.delete()
             await playlist_message.delete()
-            await vc.disconnect()
+            if vc is not None:
+                await vc.disconnect()
 
     @commands.command()
     async def pause(self, ctx):
@@ -709,7 +710,15 @@ class Games(commands.Cog):
             if self.type=='playlist':
                 await vc.disconnect()
         else:
-            await ctx.send('Я и так уже молчу!')
+            await ctx.send("I am silent already/ Я и так уже молчу!")
+        await ctx.message.delete()
+
+    @commands.command()
+    async def next(self, ctx):
+        vc = ctx.guild.voice_client
+        if self.type == 'playlist':
+            if vc.is_playing() or vc.is_paused():
+                vc.stop()
         await ctx.message.delete()
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
