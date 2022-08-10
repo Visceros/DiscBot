@@ -321,7 +321,7 @@ class Listeners(commands.Cog):
                     await self.if_one_in_voice(member=member, before=before, after=after)
 
             if before.channel is None and after.voice is not None and not after.afk and not after.self_mute:
-                await self.sys_channel.send(f'{after.display_name} joined channel {after.voice.channel}')
+                await self.sys_channel.send(f'{member.display_name} joined channel {after.voice.channel}')
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
                     try:
@@ -340,10 +340,10 @@ class Listeners(commands.Cog):
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{after.display_name} left channel {after.voice.channel}')
+                await self.sys_channel.send(f'{member.display_name} left channel {after.voice.channel}')
 
             elif before.channel is not None and after.channel is not None:
-                await self.sys_channel.send(f'{after.display_name} moved from {before.voice.channel} to {after.voice.channel}')
+                await self.sys_channel.send(f'{member.display_name} moved from {before.voice.channel} to {after.voice.channel}')
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
@@ -372,22 +372,10 @@ class Listeners(commands.Cog):
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
     @commands.Cog.listener()
-    async def on_member_update(self, before, after:discord.Member):
+    async def on_member_update(self, before:discord.Member, after:discord.Member):
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         if after.voice is not None:
-            async with self.pool.acquire() as db:
-                # убираем начисление времени для "жёлтого" статуса:
-                if str(before.status) != 'idle' and str(after.status) == 'idle':
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={after.id}')
-                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                                     datetime.datetime.now().replace(microsecond=0), gold, after.id)
-                elif str(before.status) == 'idle' and str(after.status) != 'idle':
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={after.id}')
-                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
-                                     after.id, datetime.datetime.now().replace(microsecond=0), gold)
-
             # Кикаем из голосовых каналов с учётом активности тех новичков, кто не поставил себе ник по форме
-
             if after.display_name == '[Ранг]Ник (Имя)[ТЕГ]' and any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain):
                 await after.edit(voice_channel=None)
@@ -714,7 +702,7 @@ class Games(commands.Cog):
         await ctx.message.delete()
 
     @commands.command()
-    async def next(self, ctx):
+    async def skip(self, ctx):
         vc = ctx.guild.voice_client
         if self.type == 'playlist':
             if vc.is_playing() or vc.is_paused():
