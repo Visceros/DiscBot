@@ -320,8 +320,8 @@ class Listeners(commands.Cog):
                 elif member.bot:
                     await self.if_one_in_voice(member=member, before=before, after=after)
 
-            if before.channel is None and after.voice is not None and not after.afk and not after.self_mute:
-                await self.sys_channel.send(f'{member.display_name} joined channel {after.voice.channel}')
+            if before.channel is None and after.voice is not None and not after.afk and not member.self_mute:
+                await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
                     try:
@@ -340,10 +340,10 @@ class Listeners(commands.Cog):
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{member.display_name} left channel {after.voice.channel}')
+                await self.sys_channel.send(f'{member.display_name} left channel {after.channel}')
 
             elif before.channel is not None and after.channel is not None:
-                await self.sys_channel.send(f'{member.display_name} moved from {before.voice.channel} to {after.voice.channel}')
+                await self.sys_channel.send(f'{member.display_name} moved from {before.channel} to {after.channel}')
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
