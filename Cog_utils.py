@@ -340,7 +340,7 @@ class Listeners(commands.Cog):
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{member.display_name} left channel {after.channel}')
+                await self.sys_channel.send(f'{member.display_name} left channel {before.channel}')
 
             elif before.channel is not None and after.channel is not None:
                 await self.sys_channel.send(f'{member.display_name} moved from {before.channel} to {after.channel}')
