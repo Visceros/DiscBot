@@ -320,7 +320,7 @@ class Listeners(commands.Cog):
                 elif member.bot:
                     await self.if_one_in_voice(member=member, before=before, after=after)
 
-            if before.channel is None and after.voice is not None and not after.afk and not member.self_mute:
+            if before.channel is None and after.channel is not None and not member.afk and not member.self_mute:
                 await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
