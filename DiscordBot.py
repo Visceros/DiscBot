@@ -554,7 +554,9 @@ async def u(ctx, member: discord.Member):
 
         part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
         part_2 = f"`{time_in_clan.days//7} недель`"
-        part_3 = f"\nАктивность за 7 дней: `{await count_result_activity(seven_days_activity_records, warns)}` час(ов)\nАктивность за 30 дней: `{await count_result_activity(thirty_days_activity_records, warns)}` час(ов)"
+        hours7d, minutes7d = await count_result_activity(seven_days_activity_records, warns)
+        hours30d, minutes30d = await count_result_activity(thirty_days_activity_records, warns)
+        part_3 = f"\nАктивность за 7 дней: {hours7d} час(ов) {minutes7d} минут\nАктивность за 30 дней: {hours30d} час(ов) {minutes30d} минут"
         embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
         embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
         embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
