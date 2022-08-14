@@ -184,7 +184,7 @@ async def daily_task():
                         json_data = json.loads(product['json_data'])
                         if current_profile_skin == json_data['image_name']:  #Если фон профиля не сменился
                             try:
-                                await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', 'default_profile_pic.png', 'c7c7c7', user.id)
+                                await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', 'default_profile_pic.png', '(199,199,199,255)', user.id)
                                 print('Вернул стандартный фон профиля пользователяю', user.display_name)
                             except Exception as e:
                                 await sys_channel.send(f'{guild.owner.mention} Произошла ошибка при возвращении стандартного фона профиля для пользователя {user.mention}:')
