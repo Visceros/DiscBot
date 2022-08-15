@@ -288,6 +288,13 @@ class Listeners(commands.Cog):
             if member.voice is not None:
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
+                    if member.display_name == '[Ранг]Ник (Имя)[ТЕГ]':
+                        await member.move_to(None)
+                        private_msg_channel = member.dm_channel
+                        if private_msg_channel is None:
+                            private_msg_channel = await member.create_dm()
+                        await private_msg_channel.send(
+                            f'Клановые каналы сервера {member.guild.name} недоступны, до тех пор, пока ваш ник не соответствует правилам сервера.')
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                         roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
@@ -373,16 +380,7 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before:discord.Member, after:discord.Member):
-        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-        if after.voice is not None:
-            # Кикаем из голосовых каналов с учётом активности тех новичков, кто не поставил себе ник по форме
-            if after.display_name == '[Ранг]Ник (Имя)[ТЕГ]' and any(item in after.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
-                await after.edit(voice_channel=None)
-                private_msg_channel = after.dm_channel
-                if private_msg_channel is None:
-                    private_msg_channel = await after.create_dm()
-                await private_msg_channel.send(f'Клановые каналы сервера {after.guild.name} недоступны, до тех пор, пока ваш ник не соответствует правилам сервера')
+        pass
 
     @commands.Cog.listener()
     async def on_member_join(self, member:discord.Member):
