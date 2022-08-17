@@ -288,13 +288,18 @@ class Listeners(commands.Cog):
             if member.voice is not None:
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
-                    if member.display_name == '[Ранг]Ник (Имя)[ТЕГ]':
+
+                    # Проверяем заполнен ли никнейм по форме, если нет - кикаем из войс чата.
+                    if member.display_name == '[Ранг] Nickname (ВашеИмя)':
                         await member.move_to(None)
                         private_msg_channel = member.dm_channel
                         if private_msg_channel is None:
                             private_msg_channel = await member.create_dm()
                         await private_msg_channel.send(
                             f'Клановые каналы сервера {member.guild.name} недоступны, до тех пор, пока ваш ник не соответствует правилам сервера.')
+                    # Конец предыдущего блока
+
+                    # При присоединении к голосовому каналу Если человека нет в базе данных - добавляем его и назначем роль
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                         roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
@@ -386,6 +391,40 @@ class Listeners(commands.Cog):
     async def on_member_join(self, member:discord.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
+            await member.guild.system_channel.send(f'{member.mention} приветствуем вас на нашем сервере, пожалуйста измените ник по форме')
+
+    # @commands.Cog.listener()
+    # async def on_reaction_add(self, reaction:discord.Reaction, member: discord.Member):
+    #     async with self.pool.acquire() as db:
+    #         msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
+    #         await reaction.message.channel.send(msg_ids)
+    #         for val in msg_ids:
+    #             if reaction.message.id in val
+    #
+    #
+    #                 data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
+    #                                          member.guild.id, reaction.message.id)
+    #                 data = json.loads(data)
+    #                 emoj = str(reaction.emoji)
+    #                 if emoj in data.keys():
+    #                     role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+    #                     await member.add_roles(role)
+    #
+    #
+    # async def on_reaction_remove(self, reaction:discord.Reaction, member: discord.Member):
+    #     async with self.pool.acquire() as db:
+    #         msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
+    #         for val in msg_ids:
+    #             if reaction.message.id in val
+    #
+    #
+    #                 data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
+    #                                          member.guild.id, reaction.message.id)
+    #                 data = json.loads(data)
+    #                 emoj = str(reaction.emoji)
+    #                 if emoj in data.keys():
+    #                     role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+    #                     await member.add_roles(role)
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
@@ -465,13 +504,6 @@ class Games(commands.Cog):
                         path = os.path.join(os.getcwd(), 'images', pic)
                         add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=discord.File(path, 'reward.png'))
                         del_messages.append(add_msg)
-                        # async with aiohttp.ClientSession() as session:
-                        #     async with session.get(path) as resp:
-                        #         if resp.status != 200 and resp.status != 301:
-                        #             return await channel.send('Error! Could not get the file...')
-                        #         data = io.BytesIO(await resp.read())
-                        #         add_msg = await channel.send(file=discord.File(data, 'reward.png'))
-                        #         del_messages.append(add_msg)
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         elif 'золотой ключ' in reward.lower():
@@ -498,13 +530,6 @@ class Games(commands.Cog):
                                 path = os.path.join(os.getcwd(), 'images', pic)
                                 add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=discord.File(path, 'gold-reward.png'))
                                 del_messages.append(add_msg)
-                                # async with aiohttp.ClientSession() as session:
-                                #     async with session.get(path) as resp:
-                                #         if resp.status != 200 and 301:
-                                #             return await channel.send('Error! Could not get the file...')
-                                #         data = io.BytesIO(await resp.read())
-                                #         add_msg = await channel.send(file=discord.File(data, 'gold-reward.png'))
-                                #         del_messages.append(add_msg)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                     # Через 15 секунд стираем все сообщения
                     await asyncio.sleep(15)

@@ -30,7 +30,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -746,5 +746,42 @@ async def roll(ctx, number:int=100):
     await ctx.message.delete()
     rnd = random.randint(1, number)
     await ctx.send(f"{ctx.message.author.display_name} rolled {rnd}")
+
+
+# a command for setting up a pick a role message.
+@bot.command()
+async def pickarole(ctx):
+    storage = {}
+
+    def pickarole_check(msg:discord.Message):
+        return msg.author == ctx.author and msg.channel == ctx.channel
+
+    gid = ctx.guild.id
+    mid = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+    await ctx.send('How many role-reaction pairs do you wish to make / Сколько пар реакция-роль хотите создать?')
+    num = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    for i in range(num):
+        await ctx.send(f'Enter the {i+1} reaction emoji / Введите {i+1} эмодзи реакции')
+        emoj = await bot.wait_for("message", check=pickarole_check, timeout=120)
+        emoj = str(emoj)
+        await ctx.send(emoj, str(emoj))
+        storage[emoj] = 0
+        await ctx.send('Enter the role id for this reaction / Введите id роли для этой реакции')
+        role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
+        role_id = int(role_id)
+        role = await discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+        while role is None:
+            await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
+            role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
+            role_id = int(role_id)
+            role = await discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+        storage[emoj] = role_id
+    await ctx.send(storage)
+    data_json = json.dumps(storage)
+
+    # async with pool.acquire() as db:
+    #     await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, mid, data_json)
+
+
 
 bot.run(token, reconnect=True)

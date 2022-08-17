@@ -52,6 +52,7 @@ async def db_connection():
             json_data json DEFAULT NULL,
             CONSTRAINT unique_id UNIQUE (product_id, name));''')
 
+            #Таблица слежения за покупками и их длительностью
             await db.execute('''CREATE TABLE IF NOT EXISTS ShopLog (
             record_id SERIAL PRIMARY KEY NOT NULL,
             product_id int NOT NULL,
@@ -63,6 +64,15 @@ async def db_connection():
             CONSTRAINT item_id FOREIGN KEY (product_id) REFERENCES Shop (product_id)
             );''')
             print('Shop is working.')
+
+            #Таблица для ролей по реакциям под сообщением.
+            await db.execute('''
+                CREATE TABLE IF NOT EXISTS PickaRole (
+                record_id SERIAL PRIMARY KEY NOT NULL,
+                guild_id BIGINT NOT NULL,
+                message_id BIGINT NOT NULL,
+                data json NOT NULL
+                );''')
         except Exception as e:
             print('Attempt to create database tables failed')
             print(e, e.args, e.__cause__, e.__context__)
