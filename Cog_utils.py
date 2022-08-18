@@ -391,16 +391,17 @@ class Listeners(commands.Cog):
     async def on_member_join(self, member:discord.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
-            await member.guild.system_channel.send(f'{member.mention} приветствуем вас на нашем сервере, пожалуйста измените ник по форме')
+            #await member.guild.system_channel.send(f'{member.mention} приветствуем вас на нашем сервере, пожалуйста измените ник по форме')
 
     @commands.Cog.listener()
-    async def on_reaction_add(self, reaction:discord.Reaction, member: discord.Member):
+    async def on_raw_reaction_add(self, reaction):
+        member = reaction.member
         async with self.pool.acquire() as db:
-            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
+            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
             for val in msg_ids:
-                if reaction.message.id == val['message_id']:
+                if reaction.message_id == val['message_id']:
                     data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-                                             member.guild.id, reaction.message.id)
+                                             reaction.guild_id, reaction.message_id)
                     data = json.loads(data)
                     emoj = str(reaction.emoji)
                     if emoj in data.keys():
@@ -408,14 +409,16 @@ class Listeners(commands.Cog):
                         if role not in member.roles:
                             await member.add_roles(role)
 
-
-    async def on_reaction_remove(self, reaction:discord.Reaction, member: discord.Member):
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, reaction:discord.RawReactionActionEvent):
+        guild = discord.utils.get(self.bot.guilds, id=reaction.guild_id)
+        member = discord.utils.get(guild.members, id=reaction.user_id)
         async with self.pool.acquire() as db:
-            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
+            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
             for val in msg_ids:
-                if reaction.message.id == val['message_id']:
+                if reaction.message_id == val['message_id']:
                     data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-                                             member.guild.id, reaction.message.id)
+                                             reaction.guild_id, reaction.message_id)
                     data = json.loads(data)
                     emoj = str(reaction.emoji)
                     if emoj in data.keys():
