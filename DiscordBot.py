@@ -752,35 +752,50 @@ async def roll(ctx, number:int=100):
 @bot.command()
 async def pickarole(ctx):
     storage = {}
+    messages_to_delete = []
+    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
 
     def pickarole_check(msg:discord.Message):
         return msg.author == ctx.author and msg.channel == ctx.channel
 
     gid = ctx.guild.id
-    mid = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-    await ctx.send('How many role-reaction pairs do you wish to make / Сколько пар реакция-роль хотите создать?')
+    mid = msg.id
+    temp_msg = await ctx.send('How many role-reaction pairs do you wish to make / Сколько пар реакция-роль хотите создать?')
     num = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    num = int(num.content)
+    messages_to_delete.append(temp_msg)
     for i in range(num):
-        await ctx.send(f'Enter the {i+1} reaction emoji / Введите {i+1} эмодзи реакции')
+        temp_msg = await ctx.send(f'Enter the {i+1} reaction emoji / Введите {i+1} эмодзи реакции')
         emoj = await bot.wait_for("message", check=pickarole_check, timeout=120)
-        emoj = str(emoj)
-        await ctx.send(emoj, str(emoj))
+        messages_to_delete.append(emoj)
+        emoj = str(emoj.content)
         storage[emoj] = 0
-        await ctx.send('Enter the role id for this reaction / Введите id роли для этой реакции')
+        messages_to_delete.append(temp_msg)
+        temp_msg = await ctx.send('Enter the role id for this reaction / Введите id роли для этой реакции')
         role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
-        role_id = int(role_id)
-        role = await discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+        messages_to_delete.append(temp_msg)
+        messages_to_delete.append(role_id)
+        role_id = int(role_id.content)
+        role = discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
         while role is None:
-            await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
+            temp_msg = await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
             role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
-            role_id = int(role_id)
+            messages_to_delete.append(role_id)
+            role_id = int(role_id.content)
             role = await discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
         storage[emoj] = role_id
-    await ctx.send(storage)
     data_json = json.dumps(storage)
 
-    # async with pool.acquire() as db:
-    #     await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, mid, data_json)
+    async with pool.acquire() as db:
+        await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, mid, data_json)
+
+    for emoji in storage.keys():
+        await msg.add_reaction(emoji=emoji)
+
+    final_msg = await ctx.send('Success!')
+    await ctx.channel.delete_messages(messages_to_delete)
+    await asyncio.sleep(5)
+    await final_msg.delete()
 
 
 

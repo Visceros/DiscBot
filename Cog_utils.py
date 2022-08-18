@@ -393,38 +393,35 @@ class Listeners(commands.Cog):
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
             await member.guild.system_channel.send(f'{member.mention} приветствуем вас на нашем сервере, пожалуйста измените ник по форме')
 
-    # @commands.Cog.listener()
-    # async def on_reaction_add(self, reaction:discord.Reaction, member: discord.Member):
-    #     async with self.pool.acquire() as db:
-    #         msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
-    #         await reaction.message.channel.send(msg_ids)
-    #         for val in msg_ids:
-    #             if reaction.message.id in val
-    #
-    #
-    #                 data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-    #                                          member.guild.id, reaction.message.id)
-    #                 data = json.loads(data)
-    #                 emoj = str(reaction.emoji)
-    #                 if emoj in data.keys():
-    #                     role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
-    #                     await member.add_roles(role)
-    #
-    #
-    # async def on_reaction_remove(self, reaction:discord.Reaction, member: discord.Member):
-    #     async with self.pool.acquire() as db:
-    #         msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
-    #         for val in msg_ids:
-    #             if reaction.message.id in val
-    #
-    #
-    #                 data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-    #                                          member.guild.id, reaction.message.id)
-    #                 data = json.loads(data)
-    #                 emoj = str(reaction.emoji)
-    #                 if emoj in data.keys():
-    #                     role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
-    #                     await member.add_roles(role)
+    @commands.Cog.listener()
+    async def on_reaction_add(self, reaction:discord.Reaction, member: discord.Member):
+        async with self.pool.acquire() as db:
+            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
+            for val in msg_ids:
+                if reaction.message.id == val['message_id']:
+                    data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
+                                             member.guild.id, reaction.message.id)
+                    data = json.loads(data)
+                    emoj = str(reaction.emoji)
+                    if emoj in data.keys():
+                        role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+                        if role not in member.roles:
+                            await member.add_roles(role)
+
+
+    async def on_reaction_remove(self, reaction:discord.Reaction, member: discord.Member):
+        async with self.pool.acquire() as db:
+            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', member.guild.id)
+            for val in msg_ids:
+                if reaction.message.id == val['message_id']:
+                    data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
+                                             member.guild.id, reaction.message.id)
+                    data = json.loads(data)
+                    emoj = str(reaction.emoji)
+                    if emoj in data.keys():
+                        role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+                        if role in member.roles:
+                            await member.remove_roles(role)
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
@@ -802,7 +799,7 @@ class Shop(commands.Cog):
                     messages_to_delete.append(msg)
                     product_name = await self.bot.wait_for("message", check=shop_adding_checks)
                     messages_to_delete.append(product_name)
-                    product_name = product_name.content
+                product_name = product_name.content
 
                 msg = await ctx.send('Укажите стоимость: ')
                 messages_to_delete.append(msg)
