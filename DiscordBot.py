@@ -121,6 +121,28 @@ async def auto_rainbowise():
 # функция сброса варнов у всех юзеров на 0 каждое первое число месяца (дописать очистку данных в LogTable старше 3 мес)
 @tasks.loop(hours=24)
 async def montly_task():
+
+    # События в первый день месяца
+    if datetime.datetime.now().day == 1:
+        async with pool.acquire() as db:
+            guild = bot.get_guild(198134036890255361)
+            for user in guild.members:
+                t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+                data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', user.id)
+                warns = int(data['warns'])
+                thirty_days_activity_records = await db.fetch(
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(), user.id)
+                hours, minutes = count_result_activity(thirty_days_activity_records, warns)
+                if minutes == 0:
+                    await db.execute('DELETE FROM LogTable WHERE user_id=$1;', user.id)
+                    await db.execute('DELETE FROM discord_users WHERE id=$1;', user.id)
+                    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), guild.roles)
+                    if checkrole in user.roles:
+                        await user.remove_roles(checkrole)
+
+
+
+    #События во второй день месяца
     if datetime.datetime.now().day == 2:
 
         #снятие варнов на 2 день месяца
@@ -407,9 +429,9 @@ async def show(ctx, member: discord.Member):
 
             try:
                 seven_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;", t_7days_ago, datetime.datetime.now(), member.id)
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_7days_ago, datetime.datetime.now(), member.id)
                 thirty_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;", t_30days_ago, datetime.datetime.now(), member.id)
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(), member.id)
                 # db_messages = await db.fetch(
                 #     "SELECT messages from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_30days_ago, datetime.datetime.now(), member.id)
                 # messages = 0
