@@ -30,7 +30,7 @@ class Listeners(commands.Cog):
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             # Запускаем проверку в случае, когда кто-то вышел из канала
-            if after.channel is None and any(
+            if after.channel is None and before.channel is not None and any(
                             item in before.channel.name.lower() for item in channel_groups_to_account_contain):
                 # Выдаём предупреждение, если человек один в канале, но сидит с ботом/ботами
                 if len(before.channel.members) > 1:
@@ -663,8 +663,8 @@ class Games(commands.Cog):
                 vc = await channel.connect(reconnect=True)
             else:
                 await vc.move_to(channel)
-            player_message = await ctx.send(f'Playing {song.title} for {ctx.author.display_name}.')
             vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+            player_message = await ctx.send(f'Playing {song.title} for {ctx.author.display_name}.')
             await asyncio.sleep(1)
             while vc.is_playing():
                 await asyncio.sleep(5)
