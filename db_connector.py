@@ -72,6 +72,7 @@ async def db_connection():
                 guild_id BIGINT NOT NULL,
                 message_id BIGINT NOT NULL,
                 data json NOT NULL
+                CONSTRAINT unique_msgs UNIQUE message_id)
                 );''')
         except Exception as e:
             print('Attempt to create database tables failed')
