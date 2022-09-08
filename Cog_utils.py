@@ -672,7 +672,7 @@ class Games(commands.Cog):
             vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
             player_message = await ctx.send(f'Playing {song.title} for {ctx.author.display_name}.')
             await asyncio.sleep(1)
-            while vc.is_playing():
+            while vc.is_playing() or vc.is_paused():
                 await asyncio.sleep(5)
             else:
                 await player_message.delete()

@@ -30,7 +30,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = discord.Intents.default()
 intents.members = True
 intents.presences = True
@@ -693,7 +693,7 @@ async def top(ctx, count: int = 10):
 
 
 @bot.command()
-async def antitop(ctx, count: int = 10):
+async def antitop(ctx, count: int = 15):
     result_list = []
     await ctx.message.delete()
     async with pool.acquire() as db:
