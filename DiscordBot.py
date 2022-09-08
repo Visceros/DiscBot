@@ -248,8 +248,7 @@ async def _increment_money(server: discord.Guild):
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         for member in server.members:
             if str(member.status) not in ['offline', 'idle'] and not member.bot and member.voice is not None:
-                if any(
-                        item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
+                if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
                     try:
                         gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                         if gold is not None:
@@ -864,6 +863,10 @@ async def pickarole(ctx):
     await asyncio.sleep(5)
     await final_msg.delete()
 
-
+@bot.command()
+async def giveaway(ctx, days:int, *args):
+    item = ''.join([arg for arg in args])
+    await ctx.send(item)
+    pass
 
 bot.run(token, reconnect=True)
