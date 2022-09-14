@@ -527,12 +527,12 @@ async def mmoney(ctx, member: discord.Member, gold):
 
 @bot.command()
 @commands.has_permissions(administrator=True)
-async def echo(ctx, msg: str):
+async def echo(ctx, *args):
     """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
-    message = "".join(ctx.message.content.split(' '))
+    message = ''.join([arg+' ' for arg in args])
     await ctx.message.delete()
     await ctx.send(message)
-    msg = ctx.message.author + ' using !echo sent: ' + msg
+    msg = ctx.message.author + ' using !echo sent: ' + message
     await sys_channel.send(msg)
 
 
@@ -864,9 +864,8 @@ async def pickarole(ctx):
     await final_msg.delete()
 
 @bot.command()
-async def giveaway(ctx, days:int, *args):
-    item = ''.join([arg for arg in args])
+async def giveaway(ctx, days:int=3, *args):
+    item = ''.join([arg+' ' for arg in args])
     await ctx.send(item)
-    pass
 
 bot.run(token, reconnect=True)
