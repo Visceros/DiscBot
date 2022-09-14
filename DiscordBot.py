@@ -863,9 +863,53 @@ async def pickarole(ctx):
     await asyncio.sleep(5)
     await final_msg.delete()
 
+
 @bot.command()
 async def giveaway(ctx, days:int=3, *args):
+    giveaway_message = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+    author = ctx.message.author
+    await ctx.message.delete()
+    channel = ctx.giveaway_message.channel
+    messages_to_delete = []
     item = ''.join([arg+' ' for arg in args])
-    await ctx.send(item)
+
+    def check_author(reaction, user):
+        return user == author
+
+    def checkS(msg):
+        return msg.author == author and msg.channel == channel
+
+    temp_msg = await ctx.send('Сколько победителей будет в розыгрыше?')
+    messages_to_delete.append(temp_msg)
+    winners_number = bot.wait_for('message', check=check_author)
+    winners_number = int(winners_number.content)
+    temp_msg = await ctx.send('Добавьте к сообщению реакцию для участников розыгрыша')
+    messages_to_delete.append(temp_msg)
+    emoj = bot.wait_for('reaction_add', check=check_author)
+    react_list = [r.emoji for r in giveaway_message.reactions]
+    if not emoj in react_list:
+        temp_msg = await ctx.send('Ошибка! Нет эмоции для розыгрыша в списке реакций! Перезапустите розыгрыш')
+        messages_to_delete.append(temp_msg)
+        for m in messages_to_delete:
+            await asyncio.sleep(5)
+            await m.delete()
+        return
+    await asyncio.sleep(60) #days*86400
+    participants_list = []
+    async for r in giveaway_message.reactions:
+        if r.emoji == emoj:
+            reaction = r
+    async for participant in reaction.users:
+        participants_list.append(participant)
+    random.shuffle(participants_list)
+    if winners_number > 1:
+        winners = []
+        for p in participants_list:
+            if not (p == author):
+                winners.append(p)
+        await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {(winner.mention for winner in winners)}')
+    else:
+        await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention if not participants_list[0] == author else participants_list[1]}')
+
 
 bot.run(token, reconnect=True)
