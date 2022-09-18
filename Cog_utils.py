@@ -309,16 +309,20 @@ class Listeners(commands.Cog):
                                     'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                     member.id, member.display_name, member.joined_at)
                                 await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
-                                role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
+                                #role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                                role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
                                 checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                                 if checkrole in member.roles and not any(role in roles_list for role in member.roles):
-                                    await member.add_roles(role_to_add)
+                                    try:
+                                        await member.add_roles(role_to_add)
+                                    except Exception as e:
+                                        await sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
                                     await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                                 elif role_to_add in member.roles and not checkrole in member.roles:
                                     await member.remove_roles(role_to_add)
                             except asyncpg.exceptions.UniqueViolationError:
                                 await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
-                        role_to_add = discord.utils.find(lambda r: ('КИН' in r.name.upper()), member.guild.roles)
+                        role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
                         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                         if checkrole in member.roles and not any(role in roles_list for role in member.roles):
                             print(any(role in roles_list for role in member.roles))
