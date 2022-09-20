@@ -281,8 +281,8 @@ class Listeners(commands.Cog):
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before, after):
-        sys_channel = self.sys_channel
+    async def on_voice_state_update(self, ctx, member: discord.Member, before, after):
+        sys_channel = discord.utils.get(ctx.guild.channels, name='system')
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
