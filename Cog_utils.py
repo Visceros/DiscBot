@@ -281,14 +281,15 @@ class Listeners(commands.Cog):
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
-    async def on_voice_state_update(self, ctx, member: discord.Member, before, after):
-        sys_channel = discord.utils.get(ctx.guild.channels, name='system')
+    async def on_voice_state_update(self, member: discord.Member, before, after):
+        sys_channel = discord.utils.get(member.guild.channels, name='system')
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
-
+                    print(any(item in after.channel.name.lower() for item in
+                       channel_groups_to_account_contain) and not member.bot)
                     # Проверяем заполнен ли никнейм по форме, если нет - кикаем из войс чата.
                     if member.display_name == '[Ранг] Nickname (ВашеИмя)':
                         await member.move_to(None)
@@ -322,7 +323,8 @@ class Listeners(commands.Cog):
                                     await member.remove_roles(role_to_add)
                             except asyncpg.exceptions.UniqueViolationError:
                                 await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
-                        role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                        #role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                        role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
                         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                         if checkrole in member.roles and not any(role in roles_list for role in member.roles):
                             print(any(role in roles_list for role in member.roles))
@@ -335,9 +337,9 @@ class Listeners(commands.Cog):
                         db = await self.pool.acquire()
                 elif member.bot:
                     await self.if_one_in_voice(member=member, before=before, after=after)
+                # конец блока добавления нового пользователя в базу данных
 
             if before.channel is None and after.channel is not None and not after.afk and not after.self_mute:
-                await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
                     try:
@@ -352,6 +354,7 @@ class Listeners(commands.Cog):
                             await sys_channel.send(f'user added to database {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:
                             await sys_channel.send(f'user {member.display_name} is already added')
+                    await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
 
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
@@ -359,13 +362,12 @@ class Listeners(commands.Cog):
                 await self.sys_channel.send(f'{member.display_name} left channel {before.channel}')
 
             elif before.channel is not None and after.channel is not None and after.channel != before.channel:
-                await self.sys_channel.send(f'{member.display_name} moved from {before.channel} to {after.channel}')
                 if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and not any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain):
                     gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                     await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
                         datetime.datetime.now().replace(microsecond=0), gold, member.id)
-
+                await self.sys_channel.send(f'{member.display_name} moved from {before.channel} to {after.channel}')
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
