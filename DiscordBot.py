@@ -756,9 +756,10 @@ async def warn(ctx, member: discord.Member, count=1):
 async def react(ctx, number:int=5):
     msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
     await ctx.message.delete()
+    emoji_list = ['👍', '👀','😍','🎉','🥳','🤔','❤']
     for i in range(number):
-        rnd = random.randint(0,len(ctx.guild.emojis)-1)
-        emoj = ctx.guild.emojis[rnd]
+        rnd = emojrandom.randint(0,len(emoji_list)-2)
+        emoj = emoji_list.pop(rnd)
         await msg.add_reaction(emoj)
 
 
