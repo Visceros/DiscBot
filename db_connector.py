@@ -60,8 +60,8 @@ async def db_connection():
             item_name text,
             buyer_name text,
             expiry_date timestamp with time zone,
-            CONSTRAINT customer_id FOREIGN KEY (buyer_id) REFERENCES discord_users (Id),
-            CONSTRAINT item_id FOREIGN KEY (product_id) REFERENCES Shop (product_id)
+            CONSTRAINT customer_id FOREIGN KEY (buyer_id) REFERENCES discord_users (Id) ON DELETE CASCADE,
+            CONSTRAINT item_id FOREIGN KEY (product_id) REFERENCES Shop (product_id) ON DELETE CASCADE
             );''')
             print('Shop is working.')
 

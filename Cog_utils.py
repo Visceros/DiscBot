@@ -282,14 +282,13 @@ class Listeners(commands.Cog):
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
     async def on_voice_state_update(self, member: discord.Member, before, after):
-        sys_channel = discord.utils.get(member.guild.channels, name='system')
+        self.sys_channel = discord.utils.get(member.guild.channels, name='system')
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
                 if any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain) and not member.bot:
-                    print(any(item in after.channel.name.lower() for item in
-                       channel_groups_to_account_contain) and not member.bot)
+
                     # Проверяем заполнен ли никнейм по форме, если нет - кикаем из войс чата.
                     if member.display_name == '[Ранг] Nickname (ВашеИмя)':
                         await member.move_to(None)
@@ -327,7 +326,6 @@ class Listeners(commands.Cog):
                         role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
                         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                         if checkrole in member.roles and not any(role in roles_list for role in member.roles):
-                            print(any(role in roles_list for role in member.roles))
                             await member.add_roles(role_to_add)
                         elif role_to_add in member.roles and not checkrole in member.roles:
                             await member.remove_roles(role_to_add)
@@ -688,7 +686,6 @@ class Games(commands.Cog):
             self.type = 'playlist'
             playlist = Playlist(url)
             if playlist.length <=0:
-                print('Error! Playlist length is 0')
                 await ctx.send('Playlist length is 0. Nothing to play')
                 return
             playlist_message = await ctx.send(
