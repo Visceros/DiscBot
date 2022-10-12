@@ -763,7 +763,7 @@ async def react(ctx, number:int=5):
     await ctx.message.delete()
     emoji_list = ['👍', '👀','😍','🎉','🥳','🤔','❤']
     for i in range(number):
-        rnd = emojrandom.randint(0,len(emoji_list)-2)
+        rnd = random.randint(0,len(emoji_list)-2)
         emoj = emoji_list.pop(rnd)
         await msg.add_reaction(emoj)
 
