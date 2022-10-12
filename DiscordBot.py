@@ -1,13 +1,13 @@
 # coding: utf8
 import json
 
-import discord
+import disnake
 import asyncio  # check if installed / проверьте, установлен ли модуль
 from Cog_utils import Games, Listeners, Shop
 import random
 import asyncpg  # check if installed / проверьте, установлен ли модуль
 import os
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 from dotenv import load_dotenv
 import datetime, time
 from operator import itemgetter
@@ -18,9 +18,9 @@ import ast
 import logging
 import csv
 
-# ds_logger = logging.getLogger('discord')
+# ds_logger = logging.getLogger('disnake')
 # ds_logger.setLevel(logging.DEBUG)
-# handler = logging.FileHandler(filename='discord.log', encoding='utf-8', mode='w')
+# handler = logging.FileHandler(filename='disnake.log', encoding='utf-8', mode='w')
 # ds_logger.addHandler(handler)
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -31,7 +31,7 @@ if token is None:
     exit(1)
 
 prefix = '!'
-intents = discord.Intents.default()
+intents = disnake.Intents.default()
 intents.members = True
 intents.presences = True
 intents.guild_messages = True
@@ -76,9 +76,9 @@ async def initial_db_fill():
                 current_members_list = []
                 crown = guild
                 global sys_channel
-                sys_channel = discord.utils.find(lambda r: (r.name.lower() == 'system'), guild.channels)
+                sys_channel = disnake.utils.find(lambda r: (r.name.lower() == 'system'), guild.channels)
                 if sys_channel is None:
-                    sys_channel = await guild.create_text_channel('system', position=len(guild.channels), overwrites={guild.default_role: discord.PermissionOverwrite(view_channel=False)})
+                    sys_channel = await guild.create_text_channel('system', position=len(guild.channels), overwrites={guild.default_role: disnake.PermissionOverwrite(view_channel=False)})
                 for member in crown.members:
                     if not member.bot:
                         current_members_list.append(member.id)
@@ -103,11 +103,11 @@ async def initial_db_fill():
 async def auto_rainbowise():
     for guild in bot.guilds:
         try:
-            role = discord.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
+            role = disnake.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
             clr = random.choice(rgb_colors)
             if role is not None:
-                await role.edit(color=discord.Colour(int(clr, 16)))
-        except discord.NotFound:
+                await role.edit(color=disnake.Colour(int(clr, 16)))
+        except disnake.NotFound:
             sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
         except Exception as e:
             print(
@@ -138,7 +138,7 @@ async def montly_task():
                     if minutes == 0 and time_in_clan.days//7 >= 8:
                         await db.execute('DELETE FROM LogTable CASCADE WHERE user_id=$1;', user.id)
                         await db.execute('DELETE FROM discord_users CASCADE WHERE id=$1;', user.id)
-                        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), guild.roles)
+                        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), guild.roles)
                         if checkrole in user.roles:
                             await user.remove_roles(checkrole)
                 else:
@@ -165,7 +165,7 @@ async def montly_task():
             salary_roles_ids = {651377975106732034, 449837752687656960} # ID ролей, которым начисляется зарплата
             async with pool.acquire() as db:
                 for id in salary_roles_ids:
-                    role = discord.utils.find(lambda r: (r.id == id), guild.roles)
+                    role = disnake.utils.find(lambda r: (r.id == id), guild.roles)
                     if role is not None:
                         for member in role.members:
                             gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
@@ -196,7 +196,7 @@ async def daily_task():
 
                     # Если это роль - снимаем роль
                     if product['product_type'] == 'role':
-                        role = discord.utils.find(lambda r: (r.name.lower() == record['item_name'].lower()), guild.roles)
+                        role = disnake.utils.find(lambda r: (r.name.lower() == record['item_name'].lower()), guild.roles)
                         if role is not None and role in user.roles:
                             try:
                                 await user.remove_roles(role)
@@ -248,7 +248,7 @@ async def on_ready():
 
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
 @tasks.loop(minutes=1)
-async def _increment_money(server: discord.Guild):
+async def _increment_money(server: disnake.Guild):
     async with pool.acquire() as db:
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         for member in server.members:
@@ -291,15 +291,15 @@ def subtract_time(time_arg):
 @bot.command()
 async def shutdown(ctx):
     async with pool.acquire() as db:
-        sys_channel = discord.utils.find(lambda r: (r.name.lower()=='system'), ctx.guild.channels)
+        sys_channel = disnake.utils.find(lambda r: (r.name.lower()=='system'), ctx.guild.channels)
         for member in ctx.guild.members:
             if member.voice is not None:
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute(
                     f"UPDATE LogTable SET logoff=NOW()::timestamptz(0), gold=$1 WHERE user_id=$2 AND logoff IS NULL;", int(gold), member.id)
                 await member.move_to(None)
-        clan_role = discord.utils.find(lambda r: 'соклан' in r.name.lower(),ctx.guild.roles)
-        chat_channel = discord.utils.find(lambda r: ('чат-сервера' in r.name.lower()), ctx.guild.channels)
+        clan_role = disnake.utils.find(lambda r: 'соклан' in r.name.lower(),ctx.guild.roles)
+        chat_channel = disnake.utils.find(lambda r: ('чат-сервера' in r.name.lower()), ctx.guild.channels)
         await chat_channel.send(f'{clan_role.mention} вы были автоматически отключены от голосовых каналов в связи с перезапуском бота, чтобы у вас корректно учитывалась активность. Просим переподключиться, спасибо.')
         await asyncio.sleep(2)
         await sys_channel.send('Shutdown complete')
@@ -308,7 +308,7 @@ async def shutdown(ctx):
 
 @bot.command()
 async def gchelp(ctx, arg:str=None):
-    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     basic_help = """    !me - посмотреть свой профиль\n
 !top - посмотреть топ пользователей по активности\n
 !antitop - посмотреть анти-топ пользователей по активности\n
@@ -373,7 +373,7 @@ async def user(ctx):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def add(ctx, member: discord.Member):
+async def add(ctx, member: disnake.Member):
     """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых приглашаешь на сервер)"""
     await ctx.message.delete()
     async with pool.acquire() as db:
@@ -387,7 +387,7 @@ async def add(ctx, member: discord.Member):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def delete(ctx, member: discord.Member):
+async def delete(ctx, member: disnake.Member):
     """Удаляем человека из базы бота. Введите команду и через пробел - ник, айди, или дискорд-тег участника."""
     await ctx.message.delete()
     async with pool.acquire() as db:
@@ -413,7 +413,7 @@ async def count_result_activity(activity_records_list, warns: int):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def show(ctx, member: discord.Member):
+async def show(ctx, member: disnake.Member):
     """Shows the info about user/ показываем данные пользователя"""
     global pool
     async with pool.acquire() as db:
@@ -425,7 +425,7 @@ async def show(ctx, member: discord.Member):
             for role in member.roles:
                 if 'ачивка' in role.name.lower():
                     achievments += 1
-                    if role.color == discord.Colour(int('ff4f4f', 16)):
+                    if role.color == disnake.Colour(int('ff4f4f', 16)):
                         negative_achievements += 1
             positive_achievements = achievments - negative_achievements
             t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
@@ -467,7 +467,7 @@ async def show(ctx, member: discord.Member):
             buffer = io.BytesIO()
             background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
-            await ctx.send(file=discord.File(buffer, 'profile.png'))
+            await ctx.send(file=disnake.File(buffer, 'profile.png'))
             buffer.close()
 
         else:
@@ -477,7 +477,7 @@ async def show(ctx, member: discord.Member):
 
 @user.command()
 @commands.has_permissions(administrator=True)
-async def clear(ctx, member: discord.Member):
+async def clear(ctx, member: disnake.Member):
     """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
     await ctx.message.delete()
     async with pool.acquire() as db:
@@ -490,7 +490,7 @@ async def clear(ctx, member: discord.Member):
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
 @bot.command()
-async def gmoney(ctx, member: discord.Member, gold):
+async def gmoney(ctx, member: disnake.Member, gold):
     """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
     author = ctx.message.author
     await ctx.message.delete()
@@ -518,7 +518,7 @@ async def gmoney(ctx, member: discord.Member, gold):
 
 @commands.has_permissions(administrator=True)
 @bot.command()
-async def mmoney(ctx, member: discord.Member, gold):
+async def mmoney(ctx, member: disnake.Member, gold):
     """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
     await ctx.message.delete()
     async with pool.acquire() as db:
@@ -555,7 +555,7 @@ async def me(ctx):
 
 # просмотр урезанного профиля пользователей для модерации
 @bot.command()
-async def u(ctx, member: discord.Member):
+async def u(ctx, member: disnake.Member):
     eligible_roles_ids = {651377975106732034, 449837752687656960}
     await ctx.message.delete()
     #if any(role.id in eligible_roles_ids for role in ctx.author.roles) or ctx.message.author.guild_permissions.administrator is True:
@@ -583,7 +583,7 @@ async def u(ctx, member: discord.Member):
         hours7d, minutes7d = await count_result_activity(seven_days_activity_records, warns)
         hours30d, minutes30d = await count_result_activity(thirty_days_activity_records, warns)
         part_3 = f"\nАктивность за 7 дней: {hours7d} час(ов) {minutes7d} минут\nАктивность за 30 дней: {hours30d} час(ов) {minutes30d} минут"
-        embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+        embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
         embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
         embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
         embed.add_field(name=f"Активность:", value=part_3, inline=False)
@@ -673,7 +673,7 @@ async def top(ctx, count: int = 10):
     result_list = []
     #await ctx.message.delete()
     users_count, users_ids = await initial_db_read()
-    checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
+    checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
     t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
     async with pool.acquire() as db:
         for member in ctx.guild.members:
@@ -691,7 +691,7 @@ async def top(ctx, count: int = 10):
     while len(output) > 1024:
         count -=1
         output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин.\n" for i in range(count))
-    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
     await ctx.send(embed=embed)
 
@@ -702,7 +702,7 @@ async def antitop(ctx, count: int = 15):
     await ctx.message.delete()
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
-        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
+        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
         for member in ctx.guild.members:
             if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
                 t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
@@ -720,7 +720,7 @@ async def antitop(ctx, count: int = 15):
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин., В клане: {res[i][3]} нед.;\n" for i in range(count))
-    embed = discord.Embed(color=discord.Colour(int('efff00', 16)))
+    embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
     await ctx.send(embed=embed)
 
@@ -732,7 +732,7 @@ async def salary(ctx, amount: int = 1000):
     salary_roles_ids = {651377975106732034, 449837752687656960}
     async with pool.acquire() as db:
         for id in salary_roles_ids:
-            role = discord.utils.find(lambda r: (r.id == id), ctx.guild.roles)
+            role = disnake.utils.find(lambda r: (r.id == id), ctx.guild.roles)
             for member in role.members:
                 gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 newgold = int(gold_was) + amount
@@ -741,7 +741,7 @@ async def salary(ctx, amount: int = 1000):
 
 
 @bot.command()
-async def warn(ctx, member: discord.Member, count=1):
+async def warn(ctx, member: disnake.Member, count=1):
     if member is not None:
         eligible_roles_ids = {651377975106732034, 449837752687656960}
         moderation_channel = bot.get_channel(773010375775485982)
@@ -763,7 +763,7 @@ async def react(ctx, number:int=5):
     await ctx.message.delete()
     emoji_list = ['👍', '👀','😍','🎉','🥳','🤔','❤']
     for i in range(number):
-        rnd = emojrandom.randint(0,len(emoji_list)-2)
+        rnd = random.randint(0,len(emoji_list)-2)
         emoj = emoji_list.pop(rnd)
         await msg.add_reaction(emoj)
 
@@ -782,7 +782,7 @@ async def pickarole(ctx):
     messages_to_delete = []
     msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
 
-    def pickarole_check(msg:discord.Message):
+    def pickarole_check(msg:disnake.Message):
         return msg.author == ctx.author and msg.channel == ctx.channel
 
     gid = ctx.guild.id
@@ -818,14 +818,14 @@ async def pickarole(ctx):
                     messages_to_delete.append(temp_msg)
                     messages_to_delete.append(role_id)
                     role_id = int(role_id.content)
-                    role = discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+                    role = disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
                     while role is None:
                         temp_msg = await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
                         messages_to_delete.append(temp_msg)
                         role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
                         messages_to_delete.append(role_id)
                         role_id = int(role_id.content)
-                        role = await discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+                        role = await disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
                     await msg.add_reaction(emoji=emoj)
                     storage[emoj] = role_id
                 data_json = json.dumps(storage)
@@ -848,13 +848,13 @@ async def pickarole(ctx):
         messages_to_delete.append(temp_msg)
         messages_to_delete.append(role_id)
         role_id = int(role_id.content)
-        role = discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+        role = disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
         while role is None:
             temp_msg = await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
             role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
             messages_to_delete.append(role_id)
             role_id = int(role_id.content)
-            role = await discord.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+            role = await disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
         storage[emoj] = role_id
     data_json = json.dumps(storage)
 
@@ -882,7 +882,7 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
     messages_to_delete = []
     item = ''.join([arg+' ' for arg in args])
     emoj = '🎁'
-    embed = discord.Embed(color=discord.Color(0xefff00))
+    embed = disnake.Embed(color=disnake.Color(0xefff00))
     embed.add_field(name='Новая раздача',
         value=f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.\nДля участия нажмите эмоцию {emoj}')
     giveaway_message = await ctx.send(embed=embed)
@@ -895,19 +895,19 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
         if r.emoji == emoj:
             reaction = r
     async for participant in reaction.users():
-        if not participant == author and not participant.bot:
+        if not participant.bot:
             participants_list.append(participant)
     random.shuffle(participants_list)
     if winners_number > 1:
         i = winners_number
-        winners = []
+        winners = ''
         for p in participants_list:
-                winners.append(p)
-                participants_list.remove(p)
-                i-=1
-                if len(participants_list) < i:
-                    break
-        await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {[winner.mention for winner in winners]}')
+            winners = winners +'\n'+ p.display_name
+            participants_list.remove(p)
+            i-=1
+            if len(participants_list) <i or len(participants_list) == 0:
+                break
+        await channel.send(f'{author.mention} розыгрыш "{item}" завершён.\nПобедители:\n{winners}')
     else:
         if len(participants_list) > 1:
             await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention if not participants_list[0] == author else participants_list[1].mention}')
