@@ -1,10 +1,8 @@
-from discord.ext import commands, tasks
+from disnake.ext import commands, tasks
 from chests_rewards import usual_reward, gold_reward
-import discord
+import disnake
 import asyncio
 import asyncpg
-import aiohttp
-import io
 import os
 import random
 import datetime
@@ -24,9 +22,9 @@ class Listeners(commands.Cog):
         self.sys_channel = self.bot.get_channel(749551019553325076)
         self.messaging_channel = self.bot.get_channel(442565510178013184)
 
-    async def if_one_in_voice(self, member: discord.Member, before, after):
+    async def if_one_in_voice(self, member: disnake.Member, before, after):
         """Проверяем, остался ли пользователь один в канале, если один - перекидываем в АФК-комнату"""
-        sys_channel = discord.utils.get(member.guild.channels, name='system')
+        sys_channel = disnake.utils.get(member.guild.channels, name='system')
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             # Запускаем проверку в случае, когда кто-то вышел из канала
@@ -60,7 +58,7 @@ class Listeners(commands.Cog):
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                            bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
+                            bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
                                                           member.guild.roles)
                             if user_warns >= 6 and not bad_role in member.roles:
                                 await member.add_roles(bad_role)
@@ -95,7 +93,7 @@ class Listeners(commands.Cog):
                                 await self.messaging_channel.send(
                                     '{} в данный момент вы единственный активный участник в комнате.'
                                     'Отключите микрофон на сервере для более точной статистики активности, иначе это будет рассматриваться как нарушение правил. Спасибо.'.format(
-                                        discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
+                                        disnake.utils.get(member.guild.members, id=unmuted_member_id).mention))
                                 await asyncio.sleep(60)
                                 if member.voice:
                                     muted_member_count = 0
@@ -133,7 +131,7 @@ class Listeners(commands.Cog):
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                            bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
+                            bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
                             if user_warns >= 6 and not bad_role in member.roles:
                                 await member.add_roles(bad_role)
                             await sys_channel.send(
@@ -172,7 +170,7 @@ class Listeners(commands.Cog):
                             if user_warns % 3 == 0:
                                 await self.moderation_channel.send(
                                     f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                            bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
+                            bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
                                                           member.guild.roles)
                             if user_warns >= 6 and not bad_role in member.roles:
                                 await member.add_roles(bad_role)
@@ -198,7 +196,7 @@ class Listeners(commands.Cog):
                                 if user_warns % 3 == 0:
                                     await self.moderation_channel.send(
                                         f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                                bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
+                                bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
                                 if user_warns >= 6 and not bad_role in member.roles:
                                     await member.add_roles(bad_role)
                                 await sys_channel.send(
@@ -236,7 +234,7 @@ class Listeners(commands.Cog):
                                     await self.messaging_channel.send(
                                         '{} в данный момент вы единственный активный участник в комнате.'
                                         ' Рекомендуем временно отключить микрофон на сервере для более точной статистики активности. Спасибо.'.format(
-                                            discord.utils.get(member.guild.members, id=unmuted_member_id).mention))
+                                            disnake.utils.get(member.guild.members, id=unmuted_member_id).mention))
                                     await asyncio.sleep(60)
                                     if member.voice:
                                         muted_member_count = 0
@@ -271,7 +269,7 @@ class Listeners(commands.Cog):
                                 if user_warns % 3 == 0:
                                     await self.moderation_channel.send(
                                         f'Пользователь {member.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                                bad_role = discord.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
+                                bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
                                                               member.guild.roles)
                                 if user_warns >= 6 and not bad_role in member.roles:
                                     await member.add_roles(bad_role)
@@ -281,8 +279,8 @@ class Listeners(commands.Cog):
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
-    async def on_voice_state_update(self, member: discord.Member, before, after):
-        self.sys_channel = discord.utils.get(member.guild.channels, name='system')
+    async def on_voice_state_update(self, member: disnake.Member, before, after):
+        self.sys_channel = disnake.utils.get(member.guild.channels, name='system')
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
@@ -308,23 +306,23 @@ class Listeners(commands.Cog):
                                 await db.execute(
                                     'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                     member.id, member.display_name, member.joined_at)
-                                await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
-                                #role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
-                                role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
-                                checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
+                                await self.sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
+                                #role_to_add = disnake.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                                role_to_add = disnake.utils.get(member.guild.roles, id=613298562926903307)
+                                checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                                 if checkrole in member.roles and not any(role in roles_list for role in member.roles):
                                     try:
                                         await member.add_roles(role_to_add)
                                     except Exception as e:
-                                        await sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
-                                    await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
+                                        await self.sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
+                                    await self.sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                                 elif role_to_add in member.roles and not checkrole in member.roles:
                                     await member.remove_roles(role_to_add)
                             except asyncpg.exceptions.UniqueViolationError:
-                                await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
-                        #role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
-                        role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
-                        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
+                                await self.sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
+                        #role_to_add = disnake.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                        role_to_add = disnake.utils.get(member.guild.roles, id=613298562926903307)
+                        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
                         if checkrole in member.roles and not any(role in roles_list for role in member.roles):
                             await member.add_roles(role_to_add)
                         elif role_to_add in member.roles and not checkrole in member.roles:
@@ -344,14 +342,14 @@ class Listeners(commands.Cog):
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
-                        await sys_channel.send(f'Caught error: {e}.')
+                        await self.sys_channel.send(f'Caught error: {e}.')
                         try:
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
-                            await sys_channel.send(f'user added to database {member.display_name}')
+                            await self.sys_channel.send(f'user added to database {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:
-                            await sys_channel.send(f'user {member.display_name} is already added')
+                            await self.sys_channel.send(f'user {member.display_name} is already added')
                     await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
 
             elif before.channel is not None and after.channel is None:
@@ -388,17 +386,17 @@ class Listeners(commands.Cog):
         await self.if_one_in_voice(member=member, before=before, after=after)
 
     @commands.Cog.listener()
-    async def on_member_remove(self, member:discord.Member):
+    async def on_member_remove(self, member:disnake.Member):
         async with self.pool.acquire() as db:
             await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
     @commands.Cog.listener()
-    async def on_member_update(self, before:discord.Member, after:discord.Member):
+    async def on_member_update(self, before:disnake.Member, after:disnake.Member):
         pass
 
     @commands.Cog.listener()
-    async def on_member_join(self, member:discord.Member):
+    async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
             #await member.guild.system_channel.send(f'{member.mention} приветствуем вас на нашем сервере, пожалуйста измените ник по форме')
@@ -415,14 +413,14 @@ class Listeners(commands.Cog):
                     data = json.loads(data)
                     emoj = str(reaction.emoji)
                     if emoj in data.keys():
-                        role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+                        role = disnake.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
                         if role not in member.roles:
                             await member.add_roles(role)
 
     @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, reaction:discord.RawReactionActionEvent):
-        guild = discord.utils.get(self.bot.guilds, id=reaction.guild_id)
-        member = discord.utils.get(guild.members, id=reaction.user_id)
+    async def on_raw_reaction_remove(self, reaction:disnake.RawReactionActionEvent):
+        guild = disnake.utils.get(self.bot.guilds, id=reaction.guild_id)
+        member = disnake.utils.get(guild.members, id=reaction.user_id)
         async with self.pool.acquire() as db:
             msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
             for val in msg_ids:
@@ -432,14 +430,14 @@ class Listeners(commands.Cog):
                     data = json.loads(data)
                     emoj = str(reaction.emoji)
                     if emoj in data.keys():
-                        role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+                        role = disnake.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
                         if role in member.roles:
                             await member.remove_roles(role)
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     # @commands.Cog.listener()
-    # async def on_message(self, message:discord.Message):
+    # async def on_message(self, message:disnake.Message):
     #     #guild = message.author.guild
     #     if not message.content.startswith('!'):
     #         db = await self.pool.acquire()
@@ -463,7 +461,7 @@ class Games(commands.Cog):
         channel = ctx.message.channel
         await ctx.message.delete()
         del_messages = []
-        checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), author.guild.roles)
+        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), author.guild.roles)
         # Check if it's the right channel to write to and if user have relevant role
         if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
             quit_msg = await ctx.send('```Error! Извините, эта команда работает только в специальном канале.```')
@@ -489,7 +487,7 @@ class Games(commands.Cog):
                     del_messages.append(add_msg)
                     # begin pasting the picture with usual chests
                     path = os.path.join(os.getcwd(), 'images', 'Normal-chests.png')
-                    start_message = await channel.send(file=discord.File(path, 'Normal-chests.png'))
+                    start_message = await channel.send(file=disnake.File(path, 'Normal-chests.png'))
                     del_messages.append(start_message)
                     # end of pasting the picture with usual chests
                     for react in reactions:
@@ -512,7 +510,7 @@ class Games(commands.Cog):
                     else:
                         reward, pic = usual_reward()
                         path = os.path.join(os.getcwd(), 'images', pic)
-                        add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=discord.File(path, 'reward.png'))
+                        add_msg = await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'))
                         del_messages.append(add_msg)
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
@@ -522,7 +520,7 @@ class Games(commands.Cog):
                             del_messages.append(add_msg)
                             # Begin pasting the picture with Gold chests
                             path = os.path.join(os.getcwd(), 'images', 'Golden-chests.png')
-                            start_message = await channel.send(file=discord.File(path, 'Golden-chests.png'))
+                            start_message = await channel.send(file=disnake.File(path, 'Golden-chests.png'))
                             del_messages.append(start_message)
                             # End of pasting the picture with Gold chests
                             for react in reactions[0:3]:
@@ -538,7 +536,7 @@ class Games(commands.Cog):
                             else:
                                 reward, pic = gold_reward()
                                 path = os.path.join(os.getcwd(), 'images', pic)
-                                add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=discord.File(path, 'gold-reward.png'))
+                                add_msg = await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'))
                                 del_messages.append(add_msg)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                     # Через 15 секунд стираем все сообщения
@@ -638,13 +636,13 @@ class Games(commands.Cog):
                     user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', ctx.author.id)
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold + prize, ctx.author.id)
                     if prize > record:
-                        embed = discord.Embed()
+                        embed = disnake.Embed()
                         embed.add_field(name='Внимание!', value=f'**Поздравляем, {ctx.author.mention} побил рекорд сервера в игре казино, новый рекорд: {prize}** :coin:')
                         await self.messaging_channel.send(embed=embed)
                         new_record = f'Текущий рекордный выигрыш: {prize}. Рекорд поставил {ctx.author.display_name}'
                         await record_msg.edit(content=new_record)
                     elif prize >= 500:
-                        embed = discord.Embed()
+                        embed = disnake.Embed()
                         embed.add_field(name='Внимание!', value=f'Поздравляем, {ctx.author.mention} выиграл крупный приз **{prize}** :coin: в игре Казино!')
                         await self.messaging_channel.send(embed=embed)
 
@@ -668,12 +666,12 @@ class Games(commands.Cog):
             self.type = 'song'
             song = pafy.new(url)
             song = song.getbestaudio() #получаем аудиодорожку с хорошим качеством.
-            vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+            vc = disnake.utils.get(self.bot.voice_clients, guild=ctx.guild)
             if vc is None:
                 vc = await channel.connect(reconnect=True)
             else:
                 await vc.move_to(channel)
-            vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+            vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
             player_message = await ctx.send(f'Playing {song.title} for {ctx.author.display_name}.')
             await asyncio.sleep(1)
             while vc.is_playing() or vc.is_paused():
@@ -690,18 +688,18 @@ class Games(commands.Cog):
                 return
             playlist_message = await ctx.send(
                 f"Now playing {playlist.title} of {playlist.length} tracks for {ctx.author.display_name}.")
-            vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+            vc = disnake.utils.get(self.bot.voice_clients, guild=ctx.guild)
             for item in playlist:
                 song = pafy.new(item)
                 song = song.getbestaudio()
-                vc = discord.utils.get(self.bot.voice_clients, guild=ctx.guild)
+                vc = disnake.utils.get(self.bot.voice_clients, guild=ctx.guild)
                 if vc is None:
                     vc = await channel.connect(reconnect=True)
                 elif vc.channel != channel:
                     await vc.move_to(channel)
                 player_message = await ctx.send(f"Сейчас играет {song.title}")
                 await asyncio.sleep(1)
-                vc.play(discord.FFmpegPCMAudio(song.url, executable='ffmpeg'))  # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+                vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg'))  # needs to download ffmpeg application!! or /usr/bin/ffmpeg
                 while vc.is_playing():
                     await asyncio.sleep(5)
                 else:
@@ -806,7 +804,7 @@ class Shop(commands.Cog):
                 messages_to_delete.append(msg)
                 product_name = await self.bot.wait_for("message", check=shop_name_adding_check, timeout=150)
                 messages_to_delete.append(product_name)
-                while discord.utils.find(lambda r: (product_name.content.lower() in r.name.lower()), ctx.guild.roles) is None:
+                while disnake.utils.find(lambda r: (product_name.content.lower() in r.name.lower()), ctx.guild.roles) is None:
                     msg = await ctx.send('Ошибка! Роль с таким названием не найдена на вашем сервере.\n Уточните название роли:')
                     messages_to_delete.append(msg)
                     product_name = await self.bot.wait_for("message", check=shop_adding_checks)
@@ -925,7 +923,7 @@ class Shop(commands.Cog):
 
     @commands.command()
     async def buy(self, ctx, arg=None, num=1):
-        shoplog_channel = discord.utils.find(lambda r: (r.name.lower() == 'market_log'), ctx.guild.channels)
+        shoplog_channel = disnake.utils.find(lambda r: (r.name.lower() == 'market_log'), ctx.guild.channels)
         if arg is None:
             msg = await ctx.send('Для покупки введите команду и номер товара.')
             await asyncio.sleep(5)
@@ -949,7 +947,7 @@ class Shop(commands.Cog):
                             await temp_msg.delete()
                             return
                         if product['product_type'] == 'role':
-                            role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
+                            role = disnake.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
                             if role is None:
                                 temp_msg = await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
                                 await asyncio.sleep(5)
@@ -962,7 +960,7 @@ class Shop(commands.Cog):
                                 vip_roles_list.append(_role['name'])
                             # При покупке нового цвета ника убираем старый, если был
                             for viprole in vip_roles_list:
-                                viprole = discord.utils.find(lambda r: r.name.lower() == viprole.lower(), ctx.guild.roles)
+                                viprole = disnake.utils.find(lambda r: r.name.lower() == viprole.lower(), ctx.guild.roles)
                                 if viprole in ctx.author.roles and viprole != role:
                                     await ctx.author.remove_roles(viprole)
 
@@ -1010,7 +1008,7 @@ class Shop(commands.Cog):
                             await temp_msg.delete()
                             return
                         if product['product_type'] == 'role':
-                            role = discord.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
+                            role = disnake.utils.find(lambda r: (r.name.lower() == product['name'].lower()), ctx.guild.roles)
                             if role is None:
                                 temp_msg = await ctx.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.')
                                 await asyncio.sleep(5)
@@ -1056,9 +1054,8 @@ class Shop(commands.Cog):
                         await asyncio.sleep(5)
                         await msg.delete()
 
-        def author_check(m: discord.Message):
+        def author_check(m: disnake.Message):
             return m.author.bot or m.author == ctx.author
 
         await asyncio.sleep(5)
         await ctx.message.delete()
-        #await ctx.channel.purge(check=author_check, around=datetime.datetime.now())
