@@ -308,7 +308,7 @@ class Listeners(commands.Cog):
                                 await db.execute(
                                     'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                     member.id, member.display_name, member.joined_at)
-                                await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
+                                await self.sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
                                 #role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
                                 role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
                                 checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
@@ -316,12 +316,12 @@ class Listeners(commands.Cog):
                                     try:
                                         await member.add_roles(role_to_add)
                                     except Exception as e:
-                                        await sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
-                                    await sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
+                                        await self.sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
+                                    await self.sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                                 elif role_to_add in member.roles and not checkrole in member.roles:
                                     await member.remove_roles(role_to_add)
                             except asyncpg.exceptions.UniqueViolationError:
-                                await sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
+                                await self.sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
                         #role_to_add = discord.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
                         role_to_add = discord.utils.get(member.guild.roles, id=613298562926903307)
                         checkrole = discord.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), member.guild.roles)
@@ -344,14 +344,14 @@ class Listeners(commands.Cog):
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
-                        await sys_channel.send(f'Caught error: {e}.')
+                        await self.sys_channel.send(f'Caught error: {e}.')
                         try:
                             await db.execute(
                                 'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                 member.id, member.display_name, member.joined_at)
-                            await sys_channel.send(f'user added to database {member.display_name}')
+                            await self.sys_channel.send(f'user added to database {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:
-                            await sys_channel.send(f'user {member.display_name} is already added')
+                            await self.sys_channel.send(f'user {member.display_name} is already added')
                     await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
 
             elif before.channel is not None and after.channel is None:
@@ -423,18 +423,22 @@ class Listeners(commands.Cog):
     async def on_raw_reaction_remove(self, reaction:discord.RawReactionActionEvent):
         guild = discord.utils.get(self.bot.guilds, id=reaction.guild_id)
         member = discord.utils.get(guild.members, id=reaction.user_id)
-        async with self.pool.acquire() as db:
-            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
-            for val in msg_ids:
-                if reaction.message_id == val['message_id']:
-                    data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-                                             reaction.guild_id, reaction.message_id)
-                    data = json.loads(data)
-                    emoj = str(reaction.emoji)
-                    if emoj in data.keys():
-                        role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
-                        if role in member.roles:
-                            await member.remove_roles(role)
+        if member is not None:
+            async with self.pool.acquire() as db:
+                msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
+                for val in msg_ids:
+                    if reaction.message_id == val['message_id']:
+                        data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
+                                                 reaction.guild_id, reaction.message_id)
+                        data = json.loads(data)
+                        emoj = str(reaction.emoji)
+                        print('on_raw_reaction_remove: data[emoj] = ', data[emoj])
+                        if emoj in data.keys():
+                            role = discord.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
+                            if role in member.roles:
+                                await member.remove_roles(role)
+        else:
+            return
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
