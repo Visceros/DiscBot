@@ -316,7 +316,7 @@ class Listeners(commands.Cog):
                                     try:
                                         await member.add_roles(role_to_add)
                                     except Exception as e:
-                                        await self.sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
+                                        await self.sys_channel.send(f'Got Error trying to add {role_to_add} role to {member.display_name}\n{e}')
                                     await self.sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
                                 elif role_to_add in member.roles and not checkrole in member.roles:
                                     await member.remove_roles(role_to_add)
