@@ -1,22 +1,22 @@
 # coding: utf8
 import json
-
-import disnake
-import asyncio  # check if installed / проверьте, установлен ли модуль
-from Cog_utils import Games, Listeners, Shop
-import random
-import asyncpg  # check if installed / проверьте, установлен ли модуль
-import os
-from disnake.ext import commands, tasks
-from dotenv import load_dotenv
-import datetime, time
-from operator import itemgetter
-from db_connector import db_connection
-from PIL import Image, ImageDraw, ImageFont
 import io
 import ast
 import logging
 import csv
+import disnake
+import asyncio  # check if installed / проверьте, установлен ли модуль
+import random
+import asyncpg  # check if installed / проверьте, установлен ли модуль
+import os
+import datetime
+from disnake.ext import commands, tasks
+from dotenv import load_dotenv
+from PIL import Image, ImageDraw, ImageFont
+from operator import itemgetter
+from db_connector import db_connection
+from Cog_utils import Games, Listeners, Shop
+from buttons import Giveaway
 
 # ds_logger = logging.getLogger('disnake')
 # ds_logger.setLevel(logging.DEBUG)
@@ -34,6 +34,7 @@ prefix = '!'
 intents = disnake.Intents.default()
 intents.members = True
 intents.presences = True
+intents.message_content = True
 intents.guild_messages = True
 intents.voice_states = True
 intents.reactions = True
@@ -880,23 +881,18 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
     winners_number = int(winners_number)
     channel = ctx.message.channel
     messages_to_delete = []
+    participants_list = []
     item = ''.join([arg+' ' for arg in args])
-    emoj = '🎁'
     embed = disnake.Embed(color=disnake.Color(0xefff00))
     embed.add_field(name='Новая раздача',
-        value=f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.\nДля участия нажмите эмоцию {emoj}')
-    giveaway_message = await ctx.send(embed=embed)
-    id = giveaway_message.id
-    await giveaway_message.add_reaction(emoj)
+        value=f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.')
+
+    async def on_button_click(inter=disnake.MessageInteraction):
+        if inter.author not in participants_list:
+            participants_list.append(inter.author)
+
+    giveaway_message = await ctx.send(embed=embed, view=Giveaway)
     await asyncio.sleep(hours*3600)
-    giveaway_message = await ctx.channel.fetch_message(id)
-    participants_list = []
-    for r in giveaway_message.reactions:
-        if r.emoji == emoj:
-            reaction = r
-    async for participant in reaction.users():
-        if not participant == author and not participant.bot:
-            participants_list.append(participant)
     random.shuffle(participants_list)
     if winners_number > 1:
         i = winners_number
@@ -910,7 +906,7 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
         await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {[winner.mention for winner in winners]}')
     else:
         if len(participants_list) > 1:
-            await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention if not participants_list[0] == author else participants_list[1].mention}')
+            await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention}')
         else:
             await channel.send(f'В розыгрыше "{item}" от {author.display_name} недостаточно участников. Победителя нет.')
 
