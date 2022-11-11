@@ -30,11 +30,10 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+prefix = '>'
 intents = disnake.Intents.default()
 intents.members = True
 intents.presences = True
-intents.message_content = True
 intents.guild_messages = True
 intents.voice_states = True
 intents.reactions = True
@@ -874,7 +873,9 @@ async def pickarole(ctx):
 @bot.command()
 async def giveaway(ctx, hours=None, winners_number=None, *args):
     if hours is None or winners_number is None:
-        await ctx.send('Для запуска розыгрыша введите !giveaway <кол-во часов> <кол-во победителей> <товар>.')
+        msg = await ctx.send('Для запуска розыгрыша введите !giveaway <кол-во часов> <кол-во победителей> <товар>.')
+        await asyncio.sleep(15)
+        await msg.delete()
     author = ctx.message.author
     await ctx.message.delete()
     hours = int(hours)
@@ -884,14 +885,22 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
     participants_list = []
     item = ''.join([arg+' ' for arg in args])
     embed = disnake.Embed(color=disnake.Color(0xefff00))
-    embed.add_field(name='Новая раздача',
-        value=f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.')
+    #embed_text = f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.\n**Участвует** {len(participants_list)} человек.'
+    embed_text = f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.\n**Окончание:** {datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(hours=hours)}'
+    embed.add_field(name='Новая раздача', value=embed_text)
 
+    @bot.event
     async def on_button_click(inter=disnake.MessageInteraction):
-        if inter.author not in participants_list:
-            participants_list.append(inter.author)
+        if inter.component.custom_id == 'participate':
+            if inter.author not in participants_list:
+                participants_list.append(inter.author)
+                await inter.response.send_message('Теперь вы учавствуете в раздаче!', ephemeral=True)
+            else:
+                await inter.response.send_message('Вы уже участвуете в раздаче', ephemeral=True)
+            #await inter.edit_original_message(embed=embed_text)
 
-    giveaway_message = await ctx.send(embed=embed, view=Giveaway)
+    view = Giveaway()
+    giveaway_message = await ctx.send(embed=embed, view=view)
     await asyncio.sleep(hours*3600)
     random.shuffle(participants_list)
     if winners_number > 1:
@@ -905,7 +914,7 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
                     break
         await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {[winner.mention for winner in winners]}')
     else:
-        if len(participants_list) > 1:
+        if len(participants_list) >= 1:
             await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention}')
         else:
             await channel.send(f'В розыгрыше "{item}" от {author.display_name} недостаточно участников. Победителя нет.')
