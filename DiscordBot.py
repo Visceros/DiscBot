@@ -885,8 +885,7 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
     participants_list = []
     item = ''.join([arg+' ' for arg in args])
     embed = disnake.Embed(color=disnake.Color(0xefff00))
-    #embed_text = f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.\n**Участвует** {len(participants_list)} человек.'
-    embed_text = f'Внимание, проводится раздача "**{item}**" от **{author.display_name}**\n**Победителей:** {winners_number},\n**Длительность:** {hours} часов.\n**Окончание:** {datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(hours=hours)}'
+    embed_text = f'Внимание, новая раздача!\n\n **🎁 Награда:** "{item}"\n🏆 **Количество победителей:** {winners_number},\n**⏰Время раздачи:** {hours} часов,\n**Длительность:** {hours}\n**Окончание:** {datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(hours=hours)}\n**🕵️Раздает:** {author.mention}'
     embed.add_field(name='Новая раздача', value=embed_text)
 
     @bot.event
