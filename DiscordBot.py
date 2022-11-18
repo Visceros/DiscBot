@@ -31,6 +31,7 @@ if token is None:
     exit(1)
 
 prefix = '!'
+tz = datetime.timezone(datetime.timedelta(hours=3))
 intents = disnake.Intents.default()
 intents.members = True
 intents.presences = True
@@ -396,6 +397,7 @@ async def delete(ctx, member: disnake.Member):
 
 
 async def count_result_activity(activity_records_list, warns: int):
+    '''Высчитываем количество минут "активности" пользователей в голосовых каналах. Возвращает значение типа integer'''
     activity = datetime.datetime(1, 1, 1, hour=0, minute=0, second=0)
     for item in activity_records_list:
         if item[1] is None:
@@ -406,9 +408,12 @@ async def count_result_activity(activity_records_list, warns: int):
     if warns >= 3:
         result_activity = result_activity - datetime.timedelta(minutes=(3 * warns))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
-    result_hours = int(result_activity.total_seconds()) // 3600
-    result_minutes = (int(result_activity.total_seconds()) % 3600) // 60
-    return result_hours, result_minutes
+    result_minutes = int(result_activity.total_seconds() //60)
+    # result_hours = int(result_activity.total_seconds()) // 3600
+    # result_minutes = (int(result_activity.total_seconds()) % 3600) // 60
+
+    # Теперь возвращает количество минут для более корректной сортировки в top и antitop
+    return result_minutes
 
 
 @user.command()
@@ -445,11 +450,11 @@ async def show(ctx, member: disnake.Member):
                 pool = await db_connection()
 
                 # профиль картинкой
-            hours7, minutes7 = await count_result_activity(seven_days_activity_records, warns)
-            hours30, minutes30 = await count_result_activity(thirty_days_activity_records, warns)
+            activity7d = await count_result_activity(seven_days_activity_records, warns)
+            activity30d = await count_result_activity(thirty_days_activity_records, warns)
             part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
             part_2 = f"\nРЕПУТАЦИЯ:\nПозитивных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
-            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {hours7} ч. {minutes7} мин.\nАктивность за 30 дней: {hours30} ч. {minutes30} мин."
+            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {activity7d//60} час(ов) {activity7d%60} минут\nАктивность за 30 дней: {activity30d//60} час(ов) {activity30d%60} минут"
             part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
             path = os.path.join('images', 'profile', data['profile_pic'])
             background = Image.open(path).convert('RGBA')
@@ -549,8 +554,7 @@ async def me(ctx):
         await show(ctx, usr)
     else:
         msg = await ctx.send('Command is accessible only in predefined channel / Команда доступна только в специальном канале.')
-        await asyncio.sleep(10)
-        await msg.delete()
+        await msg.delete(delay=10)
 
 
 # просмотр урезанного профиля пользователей для модерации
@@ -576,13 +580,13 @@ async def u(ctx, member: disnake.Member):
                     t_30days_ago, datetime.datetime.now(), member.id)
             except asyncpg.InterfaceError:
                 pool = await db_connection()
-        time_in_clan = datetime.datetime.now() - member.joined_at
+        time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
 
         part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
         part_2 = f"`{time_in_clan.days//7} недель`"
-        hours7d, minutes7d = await count_result_activity(seven_days_activity_records, warns)
-        hours30d, minutes30d = await count_result_activity(thirty_days_activity_records, warns)
-        part_3 = f"\nАктивность за 7 дней: {hours7d} час(ов) {minutes7d} минут\nАктивность за 30 дней: {hours30d} час(ов) {minutes30d} минут"
+        activity7d = await count_result_activity(seven_days_activity_records, warns)
+        activity30d = await count_result_activity(thirty_days_activity_records, warns)
+        part_3 = f"\nАктивность за 7 дней: {activity7d//60} час(ов) {activity7d%60} минут\nАктивность за 30 дней: {activity30d//60} час(ов) {activity30d%60} минут"
         embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
         embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
         embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
@@ -676,21 +680,22 @@ async def top(ctx, count: int = 10):
     checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
     t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
     async with pool.acquire() as db:
-        for member in ctx.guild.members:
-            if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-                gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
-                if int(gold) > 0:
-                    warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
-                    thirty_days_activity_records = await db.fetch(
-                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
-                    activity = await count_result_activity(thirty_days_activity_records, warns)
-                    result_list.append((member.mention, activity[0], activity[1]))
+        async with ctx.channel.typing():
+            for member in ctx.guild.members:
+                if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+                    gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
+                    if int(gold) > 0:
+                        warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
+                        thirty_days_activity_records = await db.fetch(
+                            "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                        activity = await count_result_activity(thirty_days_activity_records, warns)
+                        result_list.append((member.mention, activity))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
     count = len(res) if count > len(res) else count
-    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин.;\n" for i in range(count))
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин.;\n" for i in range(count))
     while len(output) > 1024:
         count -=1
-        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин.\n" for i in range(count))
+        output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин.\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
     await ctx.send(embed=embed)
@@ -703,23 +708,24 @@ async def antitop(ctx, count: int = 15):
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
         checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
-        for member in ctx.guild.members:
-            if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-                t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
-                warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
-                thirty_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
-                activity = await count_result_activity(thirty_days_activity_records, warns)
-                time_in_clan = datetime.datetime.now() - member.joined_at
-                if time_in_clan.days//14 > 0:
-                    if time_in_clan.days//7 <= 4:
-                        if activity[0]/(time_in_clan.days//7) < 10:
-                            result_list.append((member.mention, activity[0], activity[1], time_in_clan.days//7))
-                    elif time_in_clan.days//7 >= 4 and activity[0] < 40:
-                        result_list.append((member.mention, activity[0], activity[1], '4+'))
+        async with ctx.channel.typing(): # анимация долгих вычислений в виде печатания
+            for member in ctx.guild.members:
+                if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+                    t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+                    warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
+                    thirty_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                    activity = await count_result_activity(thirty_days_activity_records, warns)
+                    time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
+                    if time_in_clan.days//14 > 0:
+                        if time_in_clan.days//7 <= 4:
+                            if activity/(time_in_clan.days//7) < 10:
+                                result_list.append((member.mention, activity, time_in_clan.days//7))
+                        elif time_in_clan.days//7 >= 4 and activity//60 < 40:
+                            result_list.append((member.mention, activity, '4+'))
     res = sorted(result_list, key=itemgetter(1), reverse=False)
     count = len(res) if count > len(res) else count
-    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]} ч. {res[i][2]} мин., В клане: {res[i][3]} нед.;\n" for i in range(count))
+    output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин., В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
     await ctx.send(embed=embed)
@@ -877,7 +883,7 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
         await asyncio.sleep(15)
         await msg.delete()
     author = ctx.message.author
-    await ctx.message.delete()
+    await ctx.message.delete(delay=30)
     hours = int(hours)
     winners_number = int(winners_number)
     channel = ctx.message.channel
@@ -885,15 +891,18 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
     participants_list = []
     item = ''.join([arg+' ' for arg in args])
     embed = disnake.Embed(color=disnake.Color(0xefff00))
-    embed_text = f'Внимание, новая раздача!\n\n **🎁 Награда:** "{item}"\n🏆 **Количество победителей:** {winners_number},\n**⏰Время раздачи:** {hours} часов,\n**Длительность:** {hours}\n**Окончание:** {datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(hours=hours)}\n**🕵️Раздает:** {author.mention}'
-    embed.add_field(name='Новая раздача', value=embed_text)
+    embed_text = f'\n**🎁 Награда:** "{item}"\n🏆 **Количество победителей:** {winners_number},\n**⏰Время раздачи:** {hours} часов,\n🗓️**Окончание:** {datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(hours=hours)}\n**🕵️Раздает:** {author.mention}'
+    embed.add_field(name='Внимание, новая раздача!', value=embed_text)
 
     @bot.event
     async def on_button_click(inter=disnake.MessageInteraction):
         if inter.component.custom_id == 'participate':
             if inter.author not in participants_list:
-                participants_list.append(inter.author)
-                await inter.response.send_message('Теперь вы учавствуете в раздаче!', ephemeral=True)
+                if inter.author == author:
+                    await inter.response.send_message('Автор не может участвовать в раздаче!', ephemeral=True)
+                else:
+                    participants_list.append(inter.author)
+                    await inter.response.send_message('Теперь вы учавствуете в раздаче!', ephemeral=True)
             else:
                 await inter.response.send_message('Вы уже участвуете в раздаче', ephemeral=True)
             #await inter.edit_original_message(embed=embed_text)
@@ -913,10 +922,10 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
                     break
         await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {[winner.mention for winner in winners]}')
     else:
-        if len(participants_list) >= 1:
+        if len(participants_list) > 1:
             await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention}')
         else:
-            await channel.send(f'В розыгрыше "{item}" от {author.display_name} недостаточно участников. Победителя нет.')
+            await channel.send(f'В розыгрыше "{item}" от {author.display_name} слишком мало участников, победителя нет. Ждем вас в следующих раздачах. 👋')
 
 
 bot.run(token, reconnect=True)
