@@ -918,9 +918,9 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
                 winners.append(p)
                 participants_list.remove(p)
                 i-=1
-                if len(participants_list) < i:
+                if len(participants_list) < i or i == 0:
                     break
-        await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {[winner.mention for winner in winners]}')
+        await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {(winner.mention for winner in winners)}')
     else:
         if len(participants_list) > 1:
             await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention}')
