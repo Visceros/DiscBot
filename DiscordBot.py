@@ -15,7 +15,7 @@ from dotenv import load_dotenv
 from PIL import Image, ImageDraw, ImageFont
 from operator import itemgetter
 from db_connector import db_connection
-from Cog_utils import Games, Listeners, Shop
+from Cog_utils import Listeners, Games, Player, Shop
 from buttons import Giveaway
 
 # ds_logger = logging.getLogger('disnake')
@@ -38,10 +38,12 @@ intents.presences = True
 intents.guild_messages = True
 intents.voice_states = True
 intents.reactions = True
-des = 'GoldenBot for Golden Crown discord.'
+intents.message_content = True
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff',
               '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
-bot = commands.Bot(description=des, command_prefix=prefix, intents=intents)
+command_sync_flags = commands.CommandSyncFlags.default()
+command_sync_flags.sync_commands_debug = True
+bot = commands.Bot(description='GoldenBot for Golden Crown discord.', command_prefix=prefix, intents=intents, command_sync_flags=command_sync_flags)
 
 
 # считываем количество записей в базе данных - получаем не только кол-во записей, но и айдишники.
@@ -66,7 +68,7 @@ async def initial_db_read():
 # функция для изначального заполнения базы данных пользователями сервера. Работает раз в сутки
 @tasks.loop(hours=24.0)
 async def initial_db_fill():
-    """проверяет, все ли пользователи занесены в ДБ, если нет - дозаписывает недостающих"""
+    # checks if all the users added to the database. If not - adds them
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
         print('Database reading done.')
@@ -103,13 +105,15 @@ async def initial_db_fill():
 @tasks.loop(minutes=5.0)
 async def auto_rainbowise():
     for guild in bot.guilds:
+        global sys_channel
         try:
+            sys_channel = disnake.utils.find(lambda r: ('SYSTEM' in r.name.upper()), guild.channels)
             role = disnake.utils.find(lambda r: ('РАДУЖНЫЙ НИК' in r.name.upper()), guild.roles)
             clr = random.choice(rgb_colors)
             if role is not None:
                 await role.edit(color=disnake.Colour(int(clr, 16)))
         except disnake.NotFound:
-            sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
+            await sys_channel.send('no role for rainbow nick found. See if you have the role with "радужный ник" in its name')
         except Exception as e:
             print(
                 f'Sorry. Could not rainbowise the role. Check my permissions please, or that my role is higher than "{role}" role')
@@ -205,7 +209,6 @@ async def daily_task():
                             except:
                                 await sys_channel.send(f'Ошибка при снятии купленной роли {product["name"]} с пользователя {user.display_name}, id {user.id}. Не удалось найти соответствующую роль на сервере.')
 
-            # ПРОВЕРИТЬ КАК РАБОТАЕТ
                     #Если это скин профиля - меняем скин на дефолтный (если только не был куплен другой)
                     elif product['product_type'] == 'profile_skin':
                         current_profile_skin = await db.fetchval('SELECT profile_pic from discord_users WHERE id=$1', user.id)
@@ -238,11 +241,12 @@ async def on_ready():
     except RuntimeError:
         montly_task.restart()
     daily_task.start()
-    await accounting()
+    #await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
     bot.add_cog(Listeners(bot, connection=pool))
     bot.add_cog(Shop(bot, connection=pool))
+    bot.add_cog(Player(bot))
 
 
 
@@ -250,6 +254,13 @@ async def on_ready():
 # -------------------- Функция ежедневного начисления клановой валюты  --------------------
 @tasks.loop(minutes=1)
 async def _increment_money(server: disnake.Guild):
+    """
+    Give money to users
+
+    Parameters
+    ----------
+    server: a discord Server
+    """
     async with pool.acquire() as db:
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         for member in server.members:
@@ -267,15 +278,12 @@ async def _increment_money(server: disnake.Guild):
                         await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
                         await sys_channel.send(content=ex)
 
-
+# Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту
 async def accounting():
-    """Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту"""
     try:
         async for guild in bot.fetch_guilds():
             if 'golden crown' in guild.name.lower():
                 crown = bot.get_guild(guild.id)
-            # if 'free zone' in guild.name.lower():
-            #     crown = bot.get_guild(guild.id)
     except Exception as e:
         print(e)
     else:
@@ -284,31 +292,68 @@ async def accounting():
 # -------------------- Конец функции ежедневного начисления клановой валюты --------------------
 
 def subtract_time(time_arg):
+    """
+    deals with timezones
+
+    Parameters
+    ----------
+    time_arg: time to subtract from
+    """
     _tmp = time_arg.replace(microsecond=0) - datetime.datetime.now(tz=datetime.timezone.utc).replace(microsecond=0)
     ret = str(abs(_tmp)).replace('days', 'дней')
     return ret
 
 
-@bot.command()
-async def shutdown(ctx):
+@bot.slash_command(dm_permission=True)
+async def shutdown(inter:disnake.ApplicationCommandInteraction):
+    """
+    shuts the bot down
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction object
+    """
     async with pool.acquire() as db:
-        sys_channel = disnake.utils.find(lambda r: (r.name.lower()=='system'), ctx.guild.channels)
-        for member in ctx.guild.members:
+        sys_channel = disnake.utils.find(lambda r: (r.name.lower()=='system'), inter.guild.channels)
+        for member in inter.guild.members:
             if member.voice is not None:
                 gold = await db.fetchval(f'SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute(
                     f"UPDATE LogTable SET logoff=NOW()::timestamptz(0), gold=$1 WHERE user_id=$2 AND logoff IS NULL;", int(gold), member.id)
                 await member.move_to(None)
-        clan_role = disnake.utils.find(lambda r: 'соклан' in r.name.lower(),ctx.guild.roles)
-        chat_channel = disnake.utils.find(lambda r: ('чат-сервера' in r.name.lower()), ctx.guild.channels)
+        clan_role = disnake.utils.find(lambda r: 'соклан' in r.name.lower(), inter.guild.roles)
+        chat_channel = disnake.utils.find(lambda r: ('чат-сервера' in r.name.lower()), inter.guild.channels)
         await chat_channel.send(f'{clan_role.mention} вы были автоматически отключены от голосовых каналов в связи с перезапуском бота, чтобы у вас корректно учитывалась активность. Просим переподключиться, спасибо.')
         await asyncio.sleep(2)
         await sys_channel.send('Shutdown complete')
         exit(1)
 
 
-@bot.command()
-async def gchelp(ctx, arg:str=None):
+@bot.slash_command()
+async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname:str, name:str):
+    """
+    Команда переименует вас по шаблону [Ранг] Никнейм (Имя)
+
+    Parameters
+    ----------
+    inter: autofilled
+    rank: Ваш ранг - 2 цифры, если он ниже 10 добавьте 0 в начале.
+    nickname: Ваш ник в игре
+    name: Ваше имя, как к вам обращаться
+    """
+    await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
+
+
+@bot.slash_command(dm_permission=False)
+async def gchelp(inter:disnake.ApplicationCommandInteraction, helptype:str=None):
+    """
+    A standard help command
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    helptype: пустой, "mod" или "admin"
+    """
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     basic_help = """    !me - посмотреть свой профиль\n
 !top - посмотреть топ пользователей по активности\n
@@ -347,57 +392,77 @@ clear - Сбрасывает статистику пользователя, ка
 !shop add <тип> <название> <цена> <длительность> - добавить товар (только администраторы) - укажите тип товара, название,  
 его цену и длительность (если продаётся время использования)
 !shop delete <название> или <ID>- удалить товар из магазина (только администраторы)"""
-    if arg==None:
+    if helptype==None:
         embed.add_field(name='Справка пользователя', value=basic_help)
-        await ctx.send(embed=embed)
-    elif arg=="mod":
-        await ctx.send(mod_help)
-    elif arg=="admin":
-        if ctx.message.author.guild_permissions.administrator:
-            await ctx.send(admin_help)
+        await inter.send(embed=embed)
+    elif helptype=="mod":
+        await inter.send(mod_help, ephemeral=True)
+    elif helptype=="admin":
+        if inter.author.guild_permissions.administrator:
+            await inter.send(admin_help, ephemeral=True)
         else:
-            await ctx.send('Этот раздел доступен только администраторам.')
+            await inter.send(f'{inter.author.mention}. Этот раздел доступен только администраторам.')
 
 
 # -------------НАЧАЛО БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
-@bot.group()
+@bot.slash_command()
 @commands.has_permissions(administrator=True)
-async def user(ctx):
-    """ "user" - меню-функция для админа - аргументы "add" "del" "show" "clear" """
-    if ctx.message.author.guild_permissions.administrator:
-        if ctx.invoked_subcommand is None:
-            await ctx.send('You didn\'t specify any subcommand / Вы не указали, что делать с пользователем')
-            await ctx.message.delete()
-    else:
-        await user.show(ctx, ctx.message.author)
+async def user(inter:disnake.ApplicationCommandInteraction):
+    """
+    User grouping command
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    """
+    pass
 
 
-@user.command()
+@user.sub_command()
 @commands.has_permissions(administrator=True)
-async def add(ctx, member: disnake.Member):
-    """Adds the user to database / Добавляем пользователя в базу данных (для новых людей, которых приглашаешь на сервер)"""
-    await ctx.message.delete()
+async def add(inter, member: disnake.Member):
+    """
+    Adds the user to database | Добавляем пользователя в базу данных
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    member: Участник дискорд сервера
+    """
     async with pool.acquire() as db:
         try:
             await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
                              member.id, member.display_name, member.joined_at)
-            await ctx.send('user added to database')
+            await inter.send('user added to database', ephemeral=True)
         except asyncpg.exceptions.UniqueViolationError:
-            await ctx.send('user is already added')
+            await inter.send('user is already added', ephemeral=True)
 
 
-@user.command()
+@user.sub_command()
 @commands.has_permissions(administrator=True)
-async def delete(ctx, member: disnake.Member):
-    """Удаляем человека из базы бота. Введите команду и через пробел - ник, айди, или дискорд-тег участника."""
-    await ctx.message.delete()
+async def delete(inter:disnake.ApplicationCommandInteraction, member: disnake.Member):
+    """
+    Delete the person from the bot database.
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    member: Участник дискорд сервера
+    """
     async with pool.acquire() as db:
         await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
         await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
 
 
 async def count_result_activity(activity_records_list, warns: int):
-    '''Высчитываем количество минут "активности" пользователей в голосовых каналах. Возвращает значение типа integer'''
+    """
+    Counts the time of activeness in voice chats of a Member
+
+    Parameters
+    ----------
+    activity_records_list: Набор записей из базы данных
+    warns: Количество предупреждений юзера. Получается автоматически
+    """
     activity = datetime.datetime(1, 1, 1, hour=0, minute=0, second=0)
     for item in activity_records_list:
         if item[1] is None:
@@ -409,17 +474,22 @@ async def count_result_activity(activity_records_list, warns: int):
         result_activity = result_activity - datetime.timedelta(minutes=(3 * warns))
     result_activity = result_activity - datetime.timedelta(microseconds=result_activity.microseconds)
     result_minutes = int(result_activity.total_seconds() //60)
-    # result_hours = int(result_activity.total_seconds()) // 3600
-    # result_minutes = (int(result_activity.total_seconds()) % 3600) // 60
 
     # Теперь возвращает количество минут для более корректной сортировки в top и antitop
     return result_minutes
 
 
-@user.command()
+@user.sub_command()
 @commands.has_permissions(administrator=True)
-async def show(ctx, member: disnake.Member):
-    """Shows the info about user/ показываем данные пользователя"""
+async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Member):
+    """
+    Shows the info about user | показываем данные пользователя
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    member: Чей профиль показать
+    """
     global pool
     async with pool.acquire() as db:
         data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
@@ -441,11 +511,6 @@ async def show(ctx, member: disnake.Member):
                     "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_7days_ago, datetime.datetime.now(), member.id)
                 thirty_days_activity_records = await db.fetch(
                     "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(), member.id)
-                # db_messages = await db.fetch(
-                #     "SELECT messages from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",t_30days_ago, datetime.datetime.now(), member.id)
-                # messages = 0
-                # for msg_count in range(len(db_messages)):    ПЕРЕПИСАТЬ
-                #     messages += int(msg_count)
             except asyncpg.InterfaceError:
                 pool = await db_connection()
 
@@ -472,44 +537,56 @@ async def show(ctx, member: disnake.Member):
             buffer = io.BytesIO()
             background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
-            await ctx.send(file=disnake.File(buffer, 'profile.png'))
+            await inter.send(file=disnake.File(buffer, 'profile.png'))
             buffer.close()
 
         else:
-            await ctx.send('Не найдена информация по вашему профилю.\n'
+            await inter.send('Не найдена информация по вашему профилю.\n'
                            'Функция "Профиль", "Валюта" и "Репутация" доступна только игрокам с активностью в голосовых каналах.')
 
 
-@user.command()
+@user.sub_command()
 @commands.has_permissions(administrator=True)
-async def clear(ctx, member: disnake.Member):
-    """Use this to clear the data about user to default and 0 values / Сбросить данные пользователя в базе"""
-    await ctx.message.delete()
+async def clear(inter: disnake.ApplicationCommandInteraction, member: disnake.Member):
+    """
+    Reset user info to default values | Сбросить данные пользователя в базе
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction
+    member: Участник дискорд сервера (ID, имя, упоминание)
+    """
     async with pool.acquire() as db:
         await db.execute('DELETE CASCADE FROM discord_users WHERE id=$1;', member.id)
         await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
                          member.id, member.display_name, member.joined_at)
-        # await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
 
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
 
-@bot.command()
-async def gmoney(ctx, member: disnake.Member, gold):
-    """This command used to give someone your coins / Эта команда позволяет передать кому-то вашу валюту"""
-    author = ctx.message.author
-    await ctx.message.delete()
+@bot.slash_command(dm_permission=False)
+async def gmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Member, gold:int):
+    """
+    Передать кому-то валюту | Give someone your coins
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction
+    member: Участник сервера (айди, имя или упоминание)
+    gold: Сколько денег дать
+    """
+    author = inter.author
     gold = abs(int(gold))
     async with pool.acquire() as db:
-        if ctx.message.author.guild_permissions.administrator:
+        if inter.author.guild_permissions.administrator:
             gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
             newgold = int(gold_was) + gold
             await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-            await ctx.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
+            await inter.channel.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
         else:
             user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', author.id)
             if gold > int(user_gold):
-                await ctx.channel.send('У вас нет столько денег.')
+                await inter.send('У вас нет столько денег.', ephemeral=True)
                 return
             else:
                 newgold = int(user_gold) - gold
@@ -517,52 +594,76 @@ async def gmoney(ctx, member: disnake.Member, gold):
                 target_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 newtargetgold = int(target_gold) + gold
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newtargetgold, member.id)
-                await ctx.send(
-                    f'Пользователь {ctx.message.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
+                await sys_channel.send(
+                    f'Пользователь {inter.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
 
 
 @commands.has_permissions(administrator=True)
-@bot.command()
-async def mmoney(ctx, member: disnake.Member, gold):
-    """This command takes the coins from selected user / Этой командой забираем у пользователя валюту."""
-    await ctx.message.delete()
+@bot.slash_command(dm_permission=False)
+async def mmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Member, gold:int):
+    """
+    Забираем у пользователя валюту | Take the money from a selected user.
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction
+    member: Участник сервера (айди, имя или упоминание)
+    gold: Сколько денег забрать
+    """
     async with pool.acquire() as db:
         gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
         newgold = int(gold_was) - int(gold)
         if newgold < 0:
             newgold = 0
         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-        await ctx.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.')
+        await inter.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.')
 
 
-@bot.command()
+@bot.slash_command(dm_permission=False)
 @commands.has_permissions(administrator=True)
-async def echo(ctx, *args):
-    """ prints your message like a bot said it / Бот пишет ваше сообщение так, будто это он сказал."""
-    message = ''.join([arg+' ' for arg in args])
-    await ctx.message.delete()
-    await ctx.send(message)
-    msg = str(ctx.message.author) + ' using !echo sent: ' + message
+async def echo(inter:disnake.ApplicationCommandInteraction, text:str):
+    """prints your message like a bot said it | Бот отправит сообщение от своего имени.
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction
+    text: output message text
+    """
+    await inter.send(text)
+    msg = str(inter.author.display_name) + ' using /echo sent: ' + text
     await sys_channel.send(msg)
 
 
-@bot.command()
-async def me(ctx):
-    """Command to see your profile / Этой командой можно увидеть ваш профиль"""
-    if "клан-профиль" in ctx.channel.name or "system" in ctx.channel.name:
-        usr = ctx.message.author
-        await show(ctx, usr)
+@bot.slash_command(dm_permission=False)
+async def me(inter:disnake.ApplicationCommandInteraction):
+    """
+    Command to see your profile generated by bot
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction
+    """
+
+    if "клан-профиль" in inter.channel.name or "system" in inter.channel.name:
+        usr = inter.author
+        await show(inter, usr)
     else:
-        msg = await ctx.send('Command is accessible only in predefined channel / Команда доступна только в специальном канале.')
-        await msg.delete(delay=10)
+        msg = await inter.send('Команда доступна только в специальном канале / Command is accessible only in predefined channel.', ephemeral=True)
 
 
 # просмотр урезанного профиля пользователей для модерации
-@bot.command()
-async def u(ctx, member: disnake.Member):
+@bot.slash_command(dm_permission=False)
+async def u(inter, member: disnake.Member):
+    """
+    shortened user profile show for moderators
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    member: Участник дискорд сервера (ID, имя, упоминание)
+    """
     eligible_roles_ids = {651377975106732034, 449837752687656960}
-    await ctx.message.delete()
-    #if any(role.id in eligible_roles_ids for role in ctx.author.roles) or ctx.message.author.guild_permissions.administrator is True:
+    #if any(role.id in eligible_roles_ids for role in inter.author.roles) or inter.message.author.guild_permissions.administrator is True:
     global pool
     async with pool.acquire() as db:
         data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
@@ -591,21 +692,24 @@ async def u(ctx, member: disnake.Member):
         embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
         embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
         embed.add_field(name=f"Активность:", value=part_3, inline=False)
-        await ctx.send(embed=embed)
+        await inter.send(embed=embed)
     #else:
-        #await ctx.send('Вы не являетесь модератором или администратором.')
+        #await inter.send('Вы не являетесь модератором или администратором.')
 
 
-@bot.command()
+@bot.slash_command(dm_permission=False)
 @commands.has_permissions(administrator=True)
-async def danet(ctx, polltime=60):
-    """resends the replied message and adds 👍 and 👎 emoji reactions to it - making it look like a poll
-    and after provided number of minutes counts the result and sends a message about it mentioning you
+async def danet(inter, polltime=60):
+    """Resends the replied message, adds 👍 and 👎 reactions so it looks like a poll
+
+    Parameters
+    ----------
+    inter: Context
+    polltime: длительность в Минутах.
     """
     start_time = datetime.datetime.now().replace(microsecond=0)
-    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-    await ctx.message.delete()
-    poll_msg = await ctx.send(f'Стартовал опрос:\n\n{msg.content}')
+    msg = await inter.channel.fetch_message(inter.message.reference.message_id)
+    poll_msg = await inter.send(f'Стартовал опрос:\n\n{msg.content}')
     await poll_msg.add_reaction('👍')
     await poll_msg.add_reaction('👎')
     end_time = start_time + datetime.timedelta(minutes=polltime)
@@ -614,7 +718,7 @@ async def danet(ctx, polltime=60):
             break
         else:
             await asyncio.sleep(5)
-    poll_msg = await ctx.channel.fetch_message(poll_msg.id)
+    poll_msg = await inter.channel.fetch_message(poll_msg.id)
     for reaction in poll_msg.reactions:
         if str(reaction.emoji) == '👍':
             yes = reaction.count
@@ -622,38 +726,47 @@ async def danet(ctx, polltime=60):
             no = reaction.count
         elif not yes or not no or yes == 0 or no == 0:
             await sys_channel.send(
-                f'{ctx.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+                f'{inter.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
         else:
             pass
     if yes > no:
-        await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "За"')
-        await sys_channel.send(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "За"')
+        await poll_msg.reply(content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "За"')
+        await sys_channel.send(content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "За"')
     elif no > yes:
-        await poll_msg.reply(content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+        await poll_msg.reply(content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "Против"')
         await sys_channel.send(
-            content=f'{ctx.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+            content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "Против"')
     elif yes == no:
         await poll_msg.reply(
-            content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
+            content=f'{inter.message.author.mention} участники голосования не смогли определиться с выбором')
         await sys_channel.send(
-            content=f'{ctx.message.author.mention} участники голосования не смогли определиться с выбором')
+            content=f'{inter.message.author.mention} участники голосования не смогли определиться с выбором')
 
 
-@bot.command()
-async def poll(ctx, options: int, time=60, arg=None):
+@bot.slash_command(dm_permission=False)
+async def poll(inter, options: int, time=60, arg=None):
+    """
+    Makes a poll
+
+    Parameters
+    ----------
+    inter: Context autofilled
+    options: Количество вариантов
+    time: Сколько минут длится опрос
+    arg: напишите help, если хотите получить инструкцию по команде
+    """
     if arg=='help':
-        await ctx.send(
-            '''Как использовать: команда пишется, используя функцию "ответить" на сообщение из которого хотите сделать \
-            опрос (в нём заранее пропишите для людей опции голосования). Сообщение, на которое вы отвечаете, дублируется\
-             и к нему назначаются реакции для голосования (до 9). Базовая длительность - час.''')
+        return await inter.send(
+            '''Как использовать: команда пишется, сразу после сообщения, из которого хотите сделать \
+            опрос (в нём заранее пропишите для людей опции голосования). Это сообщение, дублируется\
+             и к нему назначаются реакции для голосования (до 9). Длительность по умолчанию - час.''')
     if options > 9:
-        await ctx.send(
-            content=f"{ctx.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
-        return
-    await ctx.message.delete()
-    messages = await ctx.channel.history(limit=2).flatten()
+        return await inter.send(
+            content=f"{inter.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
+
+    messages = await inter.channel.history(limit=2).flatten()
     reactions = ['1️⃣', '2️⃣', '3️⃣', '4️⃣', '5️⃣', '6️⃣', '7️⃣', '8️⃣', '9️⃣']
-    message = await ctx.channel.fetch_message(messages[0].id)
+    message = await inter.channel.fetch_message(messages[0].id)
     for num in range(options):
         await message.add_reaction(reactions[num])
     start_time = datetime.datetime.now()
@@ -663,25 +776,33 @@ async def poll(ctx, options: int, time=60, arg=None):
             break
         else:
             await asyncio.sleep(20)
-    message = await ctx.channel.fetch_message(messages[0].id)
+    message = await inter.channel.fetch_message(messages[0].id)
     reactions_count_list = []
     for reaction in message.reactions:
         reactions_count_list.append((str(reaction.emoji), reaction.count))
     sort_reactions = sorted(reactions_count_list, key=itemgetter(1), reverse=True)
-    await ctx.channel.send(
-        content=f"{ctx.message.author.mention}, опрос завершён:\n ```{message.content}```\n Победил вариант № {sort_reactions[0][0]}")
+    await inter.channel.send(
+        content=f"{inter.message.author.mention}, опрос завершён:\n ```{message.content}```\n Победил вариант № {sort_reactions[0][0]}")
 
 
-@bot.command()
-async def top(ctx, count: int = 10):
+@bot.slash_command(dm_permission=False)
+async def top(inter, count: int = 10):
+    """
+    Displays top active players.
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    count: сколько позиций показать, по умолчанию = 10
+    """
+
     result_list = []
-    #await ctx.message.delete()
     users_count, users_ids = await initial_db_read()
-    checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
+    checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles)
     t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
     async with pool.acquire() as db:
-        async with ctx.channel.typing():
-            for member in ctx.guild.members:
+        async with inter.channel.typing():
+            for member in inter.guild.members:
                 if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
                     gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
                     if int(gold) > 0:
@@ -698,18 +819,25 @@ async def top(ctx, count: int = 10):
         output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин.\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
-    await ctx.send(embed=embed)
+    await inter.send(embed=embed)
 
 
-@bot.command()
-async def antitop(ctx, count: int = 15):
+@bot.slash_command(dm_permission=False)
+async def antitop(inter, count: int = 15):
+    """
+    Displays Least active players.
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    count: сколько позиций показывать, по умолчанию - 15
+    """
     result_list = []
-    await ctx.message.delete()
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
-        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), ctx.guild.roles)
-        async with ctx.channel.typing(): # анимация долгих вычислений в виде печатания
-            for member in ctx.guild.members:
+        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles)
+        async with inter.channel.typing(): # анимация долгих вычислений в виде печатания
+            for member in inter.guild.members:
                 if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
                     t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
                     warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
@@ -728,45 +856,71 @@ async def antitop(ctx, count: int = 15):
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин., В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
-    await ctx.send(embed=embed)
+    await inter.send(embed=embed)
 
 
-@bot.command()
+@bot.slash_command(dm_permission=False)
 @commands.has_permissions(administrator=True)
-async def salary(ctx, amount: int = 1000):
-    await ctx.message.delete()
+async def salary(inter:disnake.ApplicationCommandInteraction, amount: int = 1000):
+    """
+    Gives currency to moderation team with selected roles
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    amount: Сумма зарплаты, обычно 1000
+    """
     salary_roles_ids = {651377975106732034, 449837752687656960}
     async with pool.acquire() as db:
         for id in salary_roles_ids:
-            role = disnake.utils.find(lambda r: (r.id == id), ctx.guild.roles)
+            role = disnake.utils.find(lambda r: (r.id == id), inter.guild.roles)
             for member in role.members:
                 gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 newgold = int(gold_was) + amount
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-                await ctx.send(f'Модератору {member.display_name} выдана зарплата: {amount} :coin:')
+                await inter.send(f'Модератору {member.display_name} выдана зарплата: {amount} :coin:')
 
 
-@bot.command()
-async def warn(ctx, member: disnake.Member, count=1):
+@bot.slash_command(dm_permission=False)
+async def warn(inter, member: disnake.Member, count=1):
+    """
+    Command to warn activity rules violators
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    member: кому выдаём предупреждение
+    count: сколько
+    """
     if member is not None:
         eligible_roles_ids = {651377975106732034, 449837752687656960}
         moderation_channel = bot.get_channel(773010375775485982)
         chat_channel = bot.get_channel(442565510178013184)
-        await ctx.message.delete()
-        for role in ctx.author.roles:
-            if role.id in eligible_roles_ids or ctx.message.author.guild_permissions.administrator is True:
+        for role in inter.author.roles:
+            if role.id in eligible_roles_ids or inter.author.guild_permissions.administrator is True:
                 async with pool.acquire() as db:
                     user_warns = await db.fetchval('SELECT warns FROM discord_users WHERE id=$1', member.id)
                     user_warns+=count
                     await db.execute('UPDATE discord_users SET warns=$1 WHERE id=$2', user_warns, member.id)
-                await moderation_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива ({3*count} минут(ы).')
-                return await chat_channel.send(f'Модератор {ctx.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива.')
+                await moderation_channel.send(f'Модератор {inter.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива ({3*count} минут(ы).')
+                return await chat_channel.send(f'Модератор {inter.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива.')
 
 
-@bot.command()
-async def react(ctx, number:int=5):
-    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
-    await ctx.message.delete()
+# @message_command Это очень крутая штука, описанную функцию можно применить к любому сообщению, просто нажав
+# ПКМ и выбрав, какую именно функцию к нему применить
+
+@bot.message_command(dm_permission=False)
+async def react(inter, msg:disnake.Message, number:int=5):
+    """
+    Бот добавит реакции под указанное сообщение. ПКМ по сообщению -> Apps -> react.
+
+    Parameters
+    ----------
+    inter: autofilled  argument
+    msg: the message object
+    number: сколько реакций поставить
+    """
+
     emoji_list = ['👍', '👀','😍','🎉','🥳','🤔','❤']
     for i in range(number):
         rnd = random.randint(0,len(emoji_list)-2)
@@ -774,128 +928,164 @@ async def react(ctx, number:int=5):
         await msg.add_reaction(emoj)
 
 
-@bot.command()
-async def roll(ctx, number:int=100):
-    await ctx.message.delete()
+@bot.slash_command(dm_permission=False)
+async def roll(inter:disnake.ApplicationCommandInteraction, number:int=100):
+    """
+    Roll a dice. Бросьте кости.
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    number: от 1 и до этого числа
+    """
     rnd = random.randint(1, number)
-    await ctx.send(f"{ctx.message.author.display_name} rolled {rnd}")
+    await inter.send(f"{inter.author.display_name} rolled {rnd}")
 
 
 # a command for setting up a pick a role message.
 @bot.command()
-async def pickarole(ctx):
+async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int):
+    """
+    Creates message with roles to select from
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    num: Количество добавляемых ролей на выбор
+    """
     storage = {}
     messages_to_delete = []
-    msg = await ctx.channel.fetch_message(ctx.message.reference.message_id)
+    author = inter.author
+    channel = inter.channel
 
     def pickarole_check(msg:disnake.Message):
-        return msg.author == ctx.author and msg.channel == ctx.channel
+        """
+        checks if the answering person is the one who entered the command
 
-    gid = ctx.guild.id
-    mid = msg.id
+        Parameters
+        ----------
+        msg: message whose author to check
+        """
+        return msg.author == author and msg.channel == channel
+
+    gid = inter.guild.id
 
     #checking if the message already has roles associated with it / Проверяем, если сообщение уже имеет прикрепленные к нему роли
-    async with pool.acquire() as db:
-        data = await db.fetchval('SELECT data from PickaRole WHERE guild_id=$1, message_id=$2', gid, mid)
-        storage = json.loads(data)
-        if len(storage)>0:
-            temp_msg = await ctx.send('Do you want to add more roles to this message? / Хотите добавить роли к этому сообщению?\nyes/no')
-            answer = await bot.wait_for("message", check=pickarole_check, timeout=120)
-            messages_to_delete.append(temp_msg)
-
-            if answer.content.lower() == 'yes' or answer.content.lower().startswith('y'):
-                temp_msg = await ctx.send('How many reaction-role pairs do you wish to add / Сколько пар реакция-роль хотите добавить?')
-                messages_to_delete.append(temp_msg)
-                num = await bot.wait_for("message", check=pickarole_check, timeout=120)
-                try:
-                    num = int(num.content)
-                except ValueError:
-                    temp_msg = await ctx.send('Error: you should send a digit / Ошибка: нужно отправить цифру')
-                    messages_to_delete.append(temp_msg)
-                for i in range(num):
-                    temp_msg = await ctx.send(f'Enter the {i + 1} reaction emoji / Введите {i + 1} эмодзи реакции')
-                    emoj = await bot.wait_for("message", check=pickarole_check, timeout=120)
-                    messages_to_delete.append(emoj)
-                    emoj = str(emoj.content)
-                    storage[emoj] = 0
-                    messages_to_delete.append(temp_msg)
-                    temp_msg = await ctx.send('Enter the role id for this reaction / Введите id роли для этой реакции')
-                    role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
-                    messages_to_delete.append(temp_msg)
-                    messages_to_delete.append(role_id)
-                    role_id = int(role_id.content)
-                    role = disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
-                    while role is None:
-                        temp_msg = await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
-                        messages_to_delete.append(temp_msg)
-                        role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
-                        messages_to_delete.append(role_id)
-                        role_id = int(role_id.content)
-                        role = await disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
-                    await msg.add_reaction(emoji=emoj)
-                    storage[emoj] = role_id
-                data_json = json.dumps(storage)
-                await db.execute('UPDATE PickaRole SET data=$1 WHERE guild_id=$2, message_id=$3', data_json, gid, mid,)
+    # async with pool.acquire() as db:
+    #     data = await db.fetchval('SELECT data from PickaRole WHERE guild_id=$1, message_id=$2', gid, mid)
+    #     storage = json.loads(data)
+    #     if len(storage)>0:
+    #         temp_msg = await inter.send('Do you want to add more roles to this message? / Хотите добавить роли к этому сообщению?\nyes/no')
+    #         answer = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    #         messages_to_delete.append(temp_msg)
+    #
+    #         if answer.content.lower() == 'yes' or answer.content.lower().startswith('y'):
+    #             temp_msg = await inter.send('How many reaction-role pairs do you wish to add / Сколько пар реакция-роль хотите добавить?')
+    #             messages_to_delete.append(temp_msg)
+    #             num = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    #             try:
+    #                 num = int(num.content)
+    #             except ValueError:
+    #                 temp_msg = await inter.send('Error: you should send a digit / Ошибка: нужно отправить цифру')
+    #                 messages_to_delete.append(temp_msg)
+    #             for i in range(num):
+    #                 temp_msg = await inter.send(f'Enter the {i + 1} reaction emoji / Введите {i + 1} эмодзи реакции')
+    #                 emoj = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    #                 messages_to_delete.append(emoj)
+    #                 emoj = str(emoj.content)
+    #                 storage[emoj] = 0
+    #                 messages_to_delete.append(temp_msg)
+    #                 temp_msg = await inter.send('Enter the role id for this reaction / Введите id роли для этой реакции')
+    #                 role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    #                 messages_to_delete.append(temp_msg)
+    #                 messages_to_delete.append(role_id)
+    #                 role_id = int(role_id.content)
+    #                 role = disnake.utils.find(lambda r: (role_id == r.id), inter.guild.roles)
+    #                 while role is None:
+    #                     temp_msg = await inter.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
+    #                     messages_to_delete.append(temp_msg)
+    #                     role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
+    #                     messages_to_delete.append(role_id)
+    #                     role_id = int(role_id.content)
+    #                     role = await disnake.utils.find(lambda r: (role_id == r.id), inter.guild.roles)
+    #                 await msg.add_reaction(emoji=emoj)
+    #                 storage[emoj] = role_id
+    #             data_json = json.dumps(storage)
+    #             await db.execute('UPDATE PickaRole SET data=$1 WHERE guild_id=$2, message_id=$3', data_json, gid, mid,)
 
     #creating a new message with roles / создаём новое сообщение с ролями
-    temp_msg = await ctx.send('How many reaction-role pairs do you wish to make / Сколько пар реакция-роль хотите создать?')
-    messages_to_delete.append(temp_msg)
-    num = await bot.wait_for("message", check=pickarole_check, timeout=120)
-    num = int(num.content)
     for i in range(num):
-        temp_msg = await ctx.send(f'Enter the {i+1} reaction emoji / Введите {i+1} эмодзи реакции')
-        emoj = await bot.wait_for("message", check=pickarole_check, timeout=120)
-        messages_to_delete.append(emoj)
-        emoj = str(emoj.content)
-        storage[emoj] = 0
+        temp_msg = await channel.send(f'Введите {i+1} название для роли / Enter the {i+1} role label')
+        label = await bot.wait_for("message", check=pickarole_check, timeout=120)
+        messages_to_delete.append(label)
+        label = label.content
+        storage[label] = 0
         messages_to_delete.append(temp_msg)
-        temp_msg = await ctx.send('Enter the role id for this reaction / Введите id роли для этой реакции')
+        temp_msg = await channel.send('Введите id роли, которую прикрепить к этому названию / Enter the id of role matching this label')
         role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
         messages_to_delete.append(temp_msg)
         messages_to_delete.append(role_id)
         role_id = int(role_id.content)
-        role = disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
+        role = disnake.utils.find(lambda r: (role_id == r.id), inter.guild.roles)
         while role is None:
-            temp_msg = await ctx.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
+            temp_msg = await channel.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
             role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
             messages_to_delete.append(role_id)
             role_id = int(role_id.content)
-            role = await disnake.utils.find(lambda r: (role_id == r.id), ctx.guild.roles)
-        storage[emoj] = role_id
+            role = disnake.utils.find(lambda r: (role_id == r.id), inter.guild.roles)
+        storage[label] = role_id
     data_json = json.dumps(storage)
 
+    # generate some id for the custom_id of component
+    cid = ''.join((map(str,(random.randint(0,9) for i in range(6)))))
+
+    RoleList = disnake.ui.StringSelect(custom_id=cid)
+    for lab, val in storage.items():
+        RoleList.add_option(label=lab, value=val)
+
+
     async with pool.acquire() as db:
-        await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, mid, data_json)
+        await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, cid, data_json)
 
-    for emoji in storage.keys():
-        await msg.add_reaction(emoji=emoji)
-
-    final_msg = await ctx.send('Success!')
-    await ctx.channel.delete_messages(messages_to_delete)
+    final_msg = await channel.send('Success! Сообщение успешно создано.')
+    await inter.channel.delete_messages(messages_to_delete)
     await asyncio.sleep(5)
     await final_msg.delete()
 
 
-@bot.command()
-async def giveaway(ctx, hours=None, winners_number=None, *args):
-    if hours is None or winners_number is None:
-        msg = await ctx.send('Для запуска розыгрыша введите !giveaway <кол-во часов> <кол-во победителей> <товар>.')
-        await asyncio.sleep(15)
-        await msg.delete()
-    author = ctx.message.author
-    await ctx.message.delete(delay=30)
+@bot.slash_command(dm_permission=False)
+async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, winners:int, prize:str):
+    """
+    Организовать раздачу чего-то с выбором победителей из числа участников
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction
+    hours: Длительность раздачи в часах
+    winners: Количество победителей
+    prize: Приз, что раздаём
+    """
+    if hours is None or winners is None:
+        return await inter.send('Для запуска розыгрыша введите !giveaway <кол-во часов> <кол-во победителей> <товар>.', ephemeral=True)
+    author = inter.author
     hours = int(hours)
-    winners_number = int(winners_number)
-    channel = ctx.message.channel
+    winners_number = int(winners)
+    channel = inter.channel
     messages_to_delete = []
     participants_list = []
-    item = ''.join([arg+' ' for arg in args])
-    embed = disnake.Embed(color=disnake.Color(0xefff00))
-    embed_text = f'\n**🎁 Награда:** "{item}"\n🏆 **Количество победителей:** {winners_number},\n**⏰Время раздачи:** {hours} часов,\n🗓️**Окончание:** {datetime.datetime.now().replace(microsecond=0) + datetime.timedelta(hours=hours)}\n**🕵️Раздает:** {author.mention}'
+    embed = disnake.Embed(color=disnake.Colour.from_rgb(255,191,0))
+    embed_text = f'\n**🎁 Награда:** "{prize}"\n🏆 **Количество победителей:** {winners_number},\n**⏰Время раздачи:** {hours} часов,\n**🕵️Раздает:** {author.mention}'
     embed.add_field(name='Внимание, новая раздача!', value=embed_text)
 
     @bot.event
     async def on_button_click(inter=disnake.MessageInteraction):
+        """
+        button click processor
+
+        Parameters
+        ----------
+        inter: parameter is autofilled
+        """
         if inter.component.custom_id == 'participate':
             if inter.author not in participants_list:
                 if inter.author == author:
@@ -905,10 +1095,9 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
                     await inter.response.send_message('Теперь вы учавствуете в раздаче!', ephemeral=True)
             else:
                 await inter.response.send_message('Вы уже участвуете в раздаче', ephemeral=True)
-            #await inter.edit_original_message(embed=embed_text)
 
     view = Giveaway()
-    giveaway_message = await ctx.send(embed=embed, view=view)
+    await inter.send(embed=embed, view=view)
     await asyncio.sleep(hours*3600)
     random.shuffle(participants_list)
     if winners_number > 1:
@@ -920,12 +1109,18 @@ async def giveaway(ctx, hours=None, winners_number=None, *args):
                 i-=1
                 if len(participants_list) < i:
                     break
-        await channel.send(f'{author.mention} розыгрыш "{item}" завершён. Победители: {[winner.mention for winner in winners]}')
+        win_emb = disnake.Embed(color=disnake.Colour.from_rgb(255,191,0))
+        win_emb_fld = '\n'.join([winner.mention for winner in winners])
+        win_emb.add_field(name='Победители:', value=win_emb_fld)
+        await channel.send(f'{author.mention} розыгрыш "{prize}" завершён.', embed=win_emb)
     else:
         if len(participants_list) > 1:
-            await channel.send(f'Розыгрыш "{item}" от {author.mention} завершён. Победитель: {participants_list[0].mention}')
+            await channel.send(f'Розыгрыш "{prize}" от {author.mention} завершён. Победитель: {participants_list[0].mention}')
         else:
-            await channel.send(f'В розыгрыше "{item}" от {author.display_name} слишком мало участников, победителя нет. Ждем вас в следующих раздачах. 👋')
+            await channel.send(f'В розыгрыше "{prize}" от {author.display_name} слишком мало участников, победителя нет. Ждем вас в следующих раздачах. 👋')
 
+#production bot
+#bot.run(token, reconnect=True)
 
-bot.run(token, reconnect=True)
+#test bot
+bot.run('ODcwNTI0ODYxODcxNzA2MTky.Gc3mLy.Rt_BmGj1yFaDL-ba0UQmH0UjkoKjcZahq7VhK4', reconnect=True)
