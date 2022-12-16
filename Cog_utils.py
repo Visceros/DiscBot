@@ -372,15 +372,17 @@ class Listeners(commands.Cog):
             if member.voice is not None:
                 if before.self_mute is False and after.self_mute is True:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    if not gold:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
-                        return
-                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                    if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
+                        pass
+                    else:
+                        await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
                                      datetime.datetime.now().replace(microsecond=0), gold, member.id)
                 elif before.self_mute is True and after.self_mute is False:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    if not gold:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
-                        return
-                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
+                    if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
+                        pass
+                    else:
+                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
                                      member.id, datetime.datetime.now().replace(microsecond=0), gold)
 
 
