@@ -339,9 +339,13 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
     inter: autofilled
     rank: Ваш ранг - 2 цифры, если он ниже 10 добавьте 0 в начале.
     nickname: Ваш ник в игре
-    name: Ваше имя, как к вам обращаться
+    name: Ваше имя, как к вам обращаться. Кириллицей
     """
     await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
+
+    btn = disnake.ui.Button(label='Я переименовался', style=disnake.enums.ButtonStyle.primary)
+
+    await inter.send()
 
 
 @bot.slash_command(dm_permission=False)
@@ -944,7 +948,7 @@ async def roll(inter:disnake.ApplicationCommandInteraction, number:int=100):
 
 # a command for setting up a pick a role message.
 @bot.command()
-async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int):
+async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:str='Выберите свою роль под этим сообщением'):
     """
     Creates message with roles to select from
 
@@ -952,6 +956,7 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int):
     ----------
     inter: autofilled ApplicationCommandInteraction argument
     num: Количество добавляемых ролей на выбор
+    text: Сообщение под которым будет выбор роли.
     """
     storage = {}
     messages_to_delete = []
@@ -1037,20 +1042,19 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int):
     data_json = json.dumps(storage)
 
     # generate some id for the custom_id of component
-    cid = ''.join((map(str,(random.randint(0,9) for i in range(6)))))
+    cid = 'roleMsg_'+''.join((map(str,(random.randint(0,9) for i in range(6)))))
 
     RoleList = disnake.ui.StringSelect(custom_id=cid)
     for lab, val in storage.items():
-        RoleList.add_option(label=lab, value=val)
+        RoleList.add_option(label=lab, value=str(val))
 
+        await channel.send(content=text, components=RoleList)
 
     async with pool.acquire() as db:
         await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, cid, data_json)
 
-    final_msg = await channel.send('Success! Сообщение успешно создано.')
-    await inter.channel.delete_messages(messages_to_delete)
-    await asyncio.sleep(5)
-    await final_msg.delete()
+    final_msg = await channel.send('Success! Сообщение успешно создано.', delete_after=5)
+    await channel.delete_messages(messages_to_delete)
 
 
 @bot.slash_command(dm_permission=False)

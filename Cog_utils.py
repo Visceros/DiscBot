@@ -439,6 +439,18 @@ class Listeners(commands.Cog):
                             await member.remove_roles(role)
 
 
+    # Для сообщений с выбором ролей - обработка выбора роли.
+    @commands.Cog.listener()
+    async def on_dropdown(self, inter:disnake.MessageInteraction):
+
+        if 'roleMsg' in inter.component.custom_id:
+            role = disnake.utils.get(inter.guild.roles, id=inter.values[0])
+            if role is not None:
+                await inter.author.add_roles(role)
+            else:
+                await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
+
+
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     # @commands.Cog.listener()
     # async def on_message(self, message:disnake.Message):
