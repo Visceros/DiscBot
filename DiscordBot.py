@@ -343,9 +343,20 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
     """
     await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
 
-    btn = disnake.ui.Button(label='Я переименовался', style=disnake.enums.ButtonStyle.primary)
+    btn = disnake.ui.Button(label='Я переименовался', custom_id='rename', style=disnake.enums.ButtonStyle.primary)
 
-    await inter.send()
+    async def on_button_click(inter):
+        if inter.component.custom_id == 'rename':
+            if not inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
+                role = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  #replace placeholder with correct id
+                await inter.author.add_roles(role)
+            else:
+                await inter.channel.send('Вы НЕ переименовались! Доступ к клану запрещен!', delete_after=5)
+                role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
+                if not role in inter.author.roles:
+                    await inter.author.add_roles(role)
+
+    await inter.send('Подтвердите, что вы переименовались', components=btn, ephemeral=True)
 
 
 @bot.slash_command(dm_permission=False)

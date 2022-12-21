@@ -397,13 +397,15 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before:disnake.Member, after:disnake.Member):
-        pass
+        if before.pending is True and after.pending is False:
+            role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
+            await after.add_roles(role)
 
     @commands.Cog.listener()
     async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
-            #await member.guild.system_channel.send(f'{member.mention} приветствуем вас на нашем сервере, пожалуйста измените ник по форме')
+
 
     @commands.Cog.listener()
     async def on_raw_reaction_add(self, reaction):
