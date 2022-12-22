@@ -97,8 +97,8 @@ async def initial_db_fill():
                     except Exception as e:
                         print('Got error while trying to add missing users to database', e)
                     print('Данные пользователей в базе обновлены')
-            if _crown is False:
-                print('Golden Crown guild not found')
+        if _crown is False:
+            print('Golden Crown guild not found')
         print('database fill cycle ended')
 
 
@@ -348,7 +348,8 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
     async def on_button_click(inter):
         if inter.component.custom_id == 'rename':
             if not inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
-                role = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  #replace placeholder with correct id
+                await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
+                role = disnake.utils.get(inter.guild.roles, id=1055096120264626216)
                 await inter.author.add_roles(role)
             else:
                 await inter.channel.send('Вы НЕ переименовались! Доступ к клану запрещен!', delete_after=5)
@@ -912,7 +913,7 @@ async def warn(inter, member: disnake.Member, count=1):
         moderation_channel = bot.get_channel(773010375775485982)
         chat_channel = bot.get_channel(442565510178013184)
         for role in inter.author.roles:
-            if role.id in eligible_roles_ids or inter.author.guild_permissions.administrator is True:
+            if (role.id in eligible_roles_ids) or inter.author.guild_permissions.administrator:
                 async with pool.acquire() as db:
                     user_warns = await db.fetchval('SELECT warns FROM discord_users WHERE id=$1', member.id)
                     user_warns+=count

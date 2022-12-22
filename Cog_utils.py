@@ -35,7 +35,7 @@ class Listeners(commands.Cog):
                 if len(before.channel.members) > 1:
                     bot_counter = 0
                     for someone in before.channel.members:
-                        if someone.bot is True:
+                        if someone.bot:
                             bot_counter+=1
                         else:
                             member = someone
@@ -45,7 +45,7 @@ class Listeners(commands.Cog):
                         #Перепроверяем, что это один и тот же человек
                         bot_counter = 0
                         for someone in before.channel.members:
-                            if someone.bot is True:
+                            if someone.bot:
                                 bot_counter += 1
                         if len(before.channel.members) - bot_counter == 1 and member in before.channel.members \
                                 and not member.voice.self_mute and not member.voice.mute and not member.bot:
@@ -144,7 +144,7 @@ class Listeners(commands.Cog):
                 if len(after.channel.members) > 1:
                     bot_counter = 0
                     for someone in after.channel.members:
-                        if someone.bot is True:
+                        if someone.bot:
                             bot_counter += 1
                         else:
                             member = someone
@@ -155,7 +155,7 @@ class Listeners(commands.Cog):
                         # Перепроверяем, что это один и тот же человек
                         bot_counter = 0
                         for someone in after.channel.members:
-                            if someone.bot is True:
+                            if someone.bot:
                                 bot_counter += 1
                         if len(after.channel.members) - bot_counter == 1 and member in after.channel.members \
                                 and not member.voice.self_mute and not member.voice.mute and not member.bot:
@@ -257,7 +257,7 @@ class Listeners(commands.Cog):
                             #Перепроверяем, что это один и тот же человек
                             bot_counter = 0
                             for someone in member.voice.channel.members:
-                                if someone.bot is True:
+                                if someone.bot:
                                     bot_counter += 1
                             if len(member.voice.channel.members) - bot_counter == 1 and not member.voice.self_mute and not member.voice.mute and not member.bot:
                                 await member.move_to(member.guild.afk_channel) #Переносим в AFK-канал
@@ -370,14 +370,14 @@ class Listeners(commands.Cog):
 
             # убираем начисление времени для пользователя с выключенным микрофоном
             if member.voice is not None:
-                if before.self_mute is False and after.self_mute is True:
+                if not before.self_mute and after.self_mute:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
                         pass
                     else:
                         await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
                                      datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                elif before.self_mute is True and after.self_mute is False:
+                elif before.self_mute and not after.self_mute:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
                         pass
@@ -397,7 +397,7 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_update(self, before:disnake.Member, after:disnake.Member):
-        if before.pending is True and after.pending is False:
+        if before.pending and not after.pending:
             role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
             await after.add_roles(role)
 
