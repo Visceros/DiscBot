@@ -666,8 +666,7 @@ class Player(commands.Cog):
                 self.vc = await channel.connect(reconnect=True)
             else:
                 await self.vc.move_to(channel)
-            #self.vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
-            self.vc.play(disnake.FFmpegPCMAudio(song.url, executable=r'C:\Program Files (x86)\ffmpeg-2022-12-25\ffmpeg\bin\ffmpeg.exe'))
+            self.vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
             await inter.edit_original_response(content='done')
             player_message = await inter.channel.send(f'Playing {song.title} for {inter.author.display_name}.')
             await asyncio.sleep(1)
