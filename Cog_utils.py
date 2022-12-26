@@ -589,7 +589,7 @@ class Games(commands.Cog):
                 await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, inter.author.id)
                 slot_msg = await inter.channel.send(random.choice(screens['roll']))
                 for _ in range(3):
-                    await inter.edit_original_response(content=random.choice(screens['roll']))
+                    await slot_msg.edit(content=random.choice(screens['roll']))
                     await asyncio.sleep(0.5)
                 win_lose = randbelow(100)
                 await slot_msg.delete()
