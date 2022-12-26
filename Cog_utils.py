@@ -14,6 +14,7 @@ from secrets import randbelow
 from db_connector import db_connection
 from buttons import NormalRow, GoldRow
 
+tz = datetime.timezone(datetime.timedelta(hours=3))
 
 class Listeners(commands.Cog):
     def __init__(self, bot: commands.Bot, connection):
@@ -342,7 +343,7 @@ class Listeners(commands.Cog):
                        channel_groups_to_account_contain) and not member.bot:
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
                     except asyncpg.exceptions.ForeignKeyViolationError as e:
                         await self.sys_channel.send(f'Caught error: {e}.')
                         try:
@@ -352,20 +353,20 @@ class Listeners(commands.Cog):
                             await self.sys_channel.send(f'user added to database {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:
                             await self.sys_channel.send(f'user {member.display_name} is already added')
-                    await self.sys_channel.send(f'{member.display_name} joined channel {after.channel}')
+                    await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).time()}\n{member.display_name} joined channel {after.channel}')
 
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
-                await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{member.display_name} left channel {before.channel}')
+                await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
+                await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).time()}\n{member.display_name} left channel {before.channel}')
 
             elif before.channel is not None and after.channel is not None and after.channel != before.channel:
                 if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and not any(item in after.channel.name.lower() for item in
                        channel_groups_to_account_contain):
                     gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                     await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                        datetime.datetime.now().replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{member.display_name} moved from {before.channel} to {after.channel}')
+                        datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
+                await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).time()}\n{member.display_name} moved from {before.channel} to {after.channel}')
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
@@ -376,14 +377,14 @@ class Listeners(commands.Cog):
                         pass
                     else:
                         await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                                     datetime.datetime.now().replace(microsecond=0), gold, member.id)
+                                     datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
                 elif before.self_mute and not after.self_mute:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
                         pass
                     else:
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
-                                     member.id, datetime.datetime.now().replace(microsecond=0), gold)
+                                     member.id, datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
 
 
         #launching a check for one in a voice channel
@@ -401,44 +402,11 @@ class Listeners(commands.Cog):
             role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
             await after.add_roles(role)
 
+
     @commands.Cog.listener()
     async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
-
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_add(self, reaction):
-        member = reaction.member
-        async with self.pool.acquire() as db:
-            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
-            for val in msg_ids:
-                if reaction.message_id == val['message_id']:
-                    data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-                                             reaction.guild_id, reaction.message_id)
-                    data = json.loads(data)
-                    emoj = str(reaction.emoji)
-                    if emoj in data.keys():
-                        role = disnake.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
-                        if role not in member.roles:
-                            await member.add_roles(role)
-
-    @commands.Cog.listener()
-    async def on_raw_reaction_remove(self, reaction:disnake.RawReactionActionEvent):
-        guild = disnake.utils.get(self.bot.guilds, id=reaction.guild_id)
-        member = disnake.utils.get(guild.members, id=reaction.user_id)
-        async with self.pool.acquire() as db:
-            msg_ids = await db.fetch('SELECT message_id FROM PickaRole WHERE guild_id=$1', reaction.guild_id)
-            for val in msg_ids:
-                if reaction.message_id == val['message_id']:
-                    data = await db.fetchval('SELECT data FROM PickaRole WHERE guild_id=$1 AND message_id=$2',
-                                             reaction.guild_id, reaction.message_id)
-                    data = json.loads(data)
-                    emoj = str(reaction.emoji)
-                    if emoj in data.keys():
-                        role = disnake.utils.find(lambda r: (r.id == data[emoj]), member.guild.roles)
-                        if role in member.roles:
-                            await member.remove_roles(role)
 
 
     # Для сообщений с выбором ролей - обработка выбора роли.
@@ -566,7 +534,7 @@ class Games(commands.Cog):
                # ------------- ИГРА БИНГО -----------
 
     @commands.slash_command(pass_context=True)
-    async def bingo(self, inter:disnake.ApplicationCommandInteraction, count=3):
+    async def bingo(self, inter:disnake.ApplicationCommandInteraction, count:int=3):
         """
         Сыграть в игру - угадай число.
 
@@ -599,7 +567,7 @@ class Games(commands.Cog):
         bid: ставка (мин 50)
         """
         if not 'казино' in inter.channel.name.lower():
-            return await inter.send('```Error! Извините, эта команда работает только в канале #казино_777.```', ephemeral=True)
+            return await inter.send('```Error! Извините, эта команда работает только в канале казино.```', ephemeral=True)
         channel = inter.channel
         pins = await channel.pins()
         if bid < 50:
@@ -682,6 +650,7 @@ class Player(commands.Cog):
         inter: autofilled ApplicationCommandInteraction argument
         url: youtube link
         """
+        await inter.response.defer(ephemeral=True)
         if not url.startswith(('https', 'http')):
             return await inter.send('Мне кажется, в адресе ссылки ошибка, ссылка должна начинаться с https/http.', ephemeral=True)
         try:
@@ -697,8 +666,10 @@ class Player(commands.Cog):
                 self.vc = await channel.connect(reconnect=True)
             else:
                 await self.vc.move_to(channel)
-            self.vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
-            player_message = await inter.send(f'Playing {song.title} for {inter.author.display_name}.')
+            #self.vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg')) # needs to download ffmpeg application!! or /usr/bin/ffmpeg
+            self.vc.play(disnake.FFmpegPCMAudio(song.url, executable=r'C:\Program Files (x86)\ffmpeg-2022-12-25\ffmpeg\bin\ffmpeg.exe'))
+            await inter.edit_original_response(content='done')
+            player_message = await inter.channel.send(f'Playing {song.title} for {inter.author.display_name}.')
             await asyncio.sleep(1)
             while self.vc.is_playing() or self.vc.is_paused():
                 await asyncio.sleep(5)
@@ -711,7 +682,7 @@ class Player(commands.Cog):
             playlist = Playlist(url)
             if playlist.length <=0:
                 return await inter.send('Playlist length is 0. Nothing to play, give me another link.')
-            playlist_message = await inter.send(
+            playlist_message = await inter.channel.send(
                 f"Now playing {playlist.title} of {playlist.length} tracks for {inter.author.display_name}.")
             self.vc = disnake.utils.get(self.bot.voice_clients, guild=inter.guild)
             for item in playlist:
@@ -722,7 +693,7 @@ class Player(commands.Cog):
                     self.vc = await channel.connect(reconnect=True)
                 elif self.vc.channel != channel:
                     await self.vc.move_to(channel)
-                player_message = await inter.send(f"Сейчас играет {song.title}")
+                player_message = await inter.channel.send(f"Сейчас играет {song.title}")
                 await asyncio.sleep(1)
                 self.vc.play(disnake.FFmpegPCMAudio(song.url, executable='ffmpeg'))  # needs to download ffmpeg application!! or /usr/bin/ffmpeg
                 while self.vc.is_playing():
@@ -743,12 +714,14 @@ class Player(commands.Cog):
         inter: autofilled ApplicationCommandInteraction argument
         """
         self.vc = inter.guild.voice_client
+        await inter.response.defer(ephemeral=True)
         if self.vc.is_playing():
             self.vc.pause()
         elif self.vc.is_paused():
             self.vc.resume()
         else:
             await inter.send('Нечего ставить на паузу')
+        await inter.edit_original_response(content='done')
 
 
     @commands.slash_command()
@@ -761,6 +734,7 @@ class Player(commands.Cog):
         inter: autofilled ApplicationCommandInteraction argument
         """
         self.vc = inter.guild.voice_client
+        await inter.response.defer(ephemeral=True)
         if self.vc.is_playing() or self.vc.is_paused():
             if self.type=='playlist':
                 await self.vc.disconnect(force=True)
@@ -768,6 +742,7 @@ class Player(commands.Cog):
                 self.vc.stop()
         else:
             await inter.send("I am silent already/ Я и так уже молчу!", ephemeral=True)
+        await inter.edit_original_response(content='done')
 
     @commands.slash_command()
     async def skip(self, inter):
@@ -779,9 +754,11 @@ class Player(commands.Cog):
         inter: autofilled ApplicationCommandInteraction argument
         """
         self.vc = inter.guild.voice_client
+        await inter.response.defer(ephemeral=True)
         if self.type == 'playlist':
             if self.vc.is_playing() or self.vc.is_paused():
                 self.vc.stop()
+        await inter.edit_original_response(content='done')
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
 class Shop(commands.Cog):
@@ -949,16 +926,17 @@ class Shop(commands.Cog):
         inter: ApplicationCommandInteraction
         arg: айди или название товара.
         """
+        await inter.response.defer(ephemeral=True)
         if arg.isdigit():
             async with self.pool.acquire() as db:
                 await db.execute(f'DELETE FROM SHOP WHERE product_id=$1;', arg)
-                await inter.send('Товар успешно удалён', ephemeral=True)
+                await inter.edit_original_response('Товар успешно удалён')
         elif arg is not None:
             async with self.pool.acquire() as db:
                 await db.execute(f'DELETE FROM SHOP WHERE product_name=$1;', arg)
-                await inter.send('Товар успешно удалён', ephemeral=True)
+                await inter.edit_original_response('Товар успешно удалён')
         else:
-            await inter.send('Вы не ввели какой товар удалить. Укажите id или название товара.', ephemeral=True)
+            await inter.edit_original_response('Вы не ввели какой товар удалить. Укажите id или название товара.')
 
     @shop.sub_command()
     async def help(self, inter:disnake.ApplicationCommandInteraction):
@@ -988,18 +966,24 @@ class Shop(commands.Cog):
         num: количество (если применимо), по умолчанию = 1
         
         """
+        await inter.response.defer(ephemeral=True)
         shoplog_channel = disnake.utils.find(lambda r: (r.name.lower() == 'market_log'), inter.guild.channels)
-        # Если человек ввёл цифры, считаем, что он ввёл ID товара
+        if shoplog_channel == None:
+            shoplog_channel = await inter.guild.create_text_channel('market_log', position=len(inter.guild.channels), overwrites={inter.guild.default_role: disnake.PermissionOverwrite(view_channel=False)})
 
-        if arg.isdigit():
+        def author_check(m: disnake.Message):
+            return m.author.bot or m.author == inter.author
+
+        # Если человек ввёл цифры, считаем, что он ввёл ID товара
+        if arg.isdigit() or isinstance(arg, int):
             product_id = int(arg)
             async with self.pool.acquire() as db:
-                product = await db.fetchrow('SELECT * FROM SHOP WHERE product_id=$1', product_id)
+                product = await db.fetchrow('SELECT * FROM Shop WHERE product_id=$1', product_id)
                 if product is not None:
                     cost = product['price']
                     user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
                     if int(user_gold) < int(cost):
-                        await inter.send('Извините, у вас недостаточно валюты для этой покупки!', ephemeral=True)
+                        await inter.edit_original_response('Извините, у вас недостаточно валюты для этой покупки!')
                         return
                     if product['product_type'] == 'role':
                         role = disnake.utils.find(lambda r: (r.name.lower() == product['name'].lower()), inter.guild.roles)
@@ -1021,7 +1005,7 @@ class Shop(commands.Cog):
                             user_gold = user_gold - cost
                             await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, inter.author.id)
                             await inter.author.add_roles(role)
-                            await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, inter.author.id, product['name'], inter.author.display_name, datetime.datetime.now().date()+datetime.timedelta(days=30))
+                            await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, inter.author.id, product['name'], inter.author.display_name, datetime.datetime.now(tz=tz).date()+datetime.timedelta(days=30))
                             await inter.send('Спасибо за покупку!', delete_after=10)
                             await shoplog_channel.send(f'Пользователь {inter.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                         else:
@@ -1030,7 +1014,7 @@ class Shop(commands.Cog):
                     elif product['product_type'] == 'profile_skin':
                         user_gold = user_gold - cost
                         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, inter.author.id)
-                        await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, inter.author.id, product['name'], inter.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
+                        await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product_id, inter.author.id, product['name'], inter.author.display_name, datetime.datetime.now(tz=tz).date() + datetime.timedelta(days=30))
                         await shoplog_channel.send(f'Пользователь {inter.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                         json_data = json.loads(product['json_data'])
                         await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', json_data['image_name'], json_data['text_color'], inter.author.id)
@@ -1038,7 +1022,7 @@ class Shop(commands.Cog):
 
                 else:
                     await inter.send('Извините, товар с таким номером не найден.', delete_after=5)
-
+            await inter.edit_original_response('done')
         # Если человек ввёл слова, считаем это названием товара
         elif isinstance(arg, str):
             product_name = arg
@@ -1048,19 +1032,19 @@ class Shop(commands.Cog):
                     cost = product['price']
                     user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
                     if int(user_gold) < int(cost):
-                        return await inter.send('Извините, у вас недостаточно валюты для этой покупки!', ephemeral=True)
+                        return await inter.edit_original_response('Извините, у вас недостаточно валюты для этой покупки!')
                     if product['product_type'] == 'role':
                         role = disnake.utils.find(lambda r: (r.name.lower() == product['name'].lower()), inter.guild.roles)
                         if role is None:
                             return await inter.send('Что-то пошло не так! Товар не найден, проверьте правильно ли указали название.', ephemeral=True)
 
 
-                        vip_roles_list = []  # Получаем список VIP-ролей из магазина
+                        roles_list = []  # Получаем список ролей из магазина
                         roles_records = await db.fetch("SELECT * FROM Shop WHERE product_type='role';")
                         for _role in roles_records:
-                            vip_roles_list.append(_role['name'])
+                            roles_list.append(_role['name'])
                         # При покупке нового цвета ника убираем старый, если был
-                        for viprole in vip_roles_list:
+                        for viprole in roles_list:
                             if viprole in inter.author.roles and viprole != role:
                                 await inter.author.remove_roles(viprole)
 
@@ -1068,7 +1052,7 @@ class Shop(commands.Cog):
                             user_gold = user_gold - cost
                             await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, inter.author.id)
                             await inter.author.add_roles(role)
-                            await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], inter.author.id, product_name, inter.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
+                            await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], inter.author.id, product_name, inter.author.display_name, datetime.datetime.now(tz=tz).date() + datetime.timedelta(days=30))
                             await shoplog_channel.send(f'Пользователь {inter.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                             msg = await inter.send('Спасибо за покупку!', delete_after=10)
                         else:
@@ -1077,7 +1061,7 @@ class Shop(commands.Cog):
                     elif product['product_type'] == 'profile_skin':
                         user_gold = user_gold - cost
                         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2', user_gold, inter.author.id)
-                        await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], inter.author.id, product['name'], inter.author.display_name, datetime.datetime.now().date() + datetime.timedelta(days=30))
+                        await db.execute('INSERT INTO ShopLog (product_id, buyer_id, item_name, buyer_name, expiry_date) VALUES($1, $2, $3, $4, $5)', product['product_id'], inter.author.id, product['name'], inter.author.display_name, datetime.datetime.now(tz=tz).date() + datetime.timedelta(days=30))
                         await shoplog_channel.send(f'Пользователь {inter.author.mention} купил {product["name"]}, дата покупки: {datetime.date.today()}')
                         json_data = json.loads(product['json_data'])
                         await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', json_data['image_name'], json_data['text_color'], inter.author.id)
@@ -1085,6 +1069,5 @@ class Shop(commands.Cog):
 
                 else:
                     msg = await inter.send('Извините, товар с таким названием не найден.', delete_after=5)
+            await inter.edit_original_response('done')
 
-        def author_check(m: disnake.Message):
-            return m.author.bot or m.author == inter.author

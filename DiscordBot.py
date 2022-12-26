@@ -30,7 +30,7 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-prefix = '!'
+#prefix = '!'
 tz = datetime.timezone(datetime.timedelta(hours=3))
 intents = disnake.Intents.default()
 intents.members = True
@@ -42,8 +42,8 @@ intents.message_content = True
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff',
               '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 command_sync_flags = commands.CommandSyncFlags.default()
-command_sync_flags.sync_commands_debug = True
-bot = commands.Bot(description='GoldenBot for Golden Crown discord.', command_prefix=prefix, intents=intents, command_sync_flags=command_sync_flags)
+#command_sync_flags.sync_commands_debug = True  #uncomment to debug commands sync
+bot = commands.Bot(description='GoldenBot for Golden Crown discord.', intents=intents, command_sync_flags=command_sync_flags)
 
 
 # считываем количество записей в базе данных - получаем не только кол-во записей, но и айдишники.
@@ -128,18 +128,18 @@ async def auto_rainbowise():
 async def montly_task():
 
     # События в первый день месяца
-    if datetime.datetime.now().day == 1:
+    if datetime.datetime.now(tz=tz).day == 1:
         async with pool.acquire() as db:
             guild = bot.get_guild(198134036890255361)
             for user in guild.members:
-                t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+                t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
                 data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', user.id)
                 if data is not None and data['warns'] is not None:
                     warns = int(data['warns'])
                     thirty_days_activity_records = await db.fetch(
                         "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(), user.id)
                     hours, minutes = await count_result_activity(thirty_days_activity_records, warns)
-                    time_in_clan = datetime.datetime.now() - user.joined_at
+                    time_in_clan = datetime.datetime.now(tz=tz) - user.joined_at
                     if minutes == 0 and time_in_clan.days//7 >= 8:
                         await db.execute('DELETE FROM LogTable CASCADE WHERE user_id=$1;', user.id)
                         await db.execute('DELETE FROM discord_users CASCADE WHERE id=$1;', user.id)
@@ -153,7 +153,7 @@ async def montly_task():
 
 
     #События во второй день месяца
-    if datetime.datetime.now().day == 2:
+    if datetime.datetime.now(tz=tz).day == 2:
 
         #снятие варнов на 2 день месяца
         async with pool.acquire() as db:
@@ -180,7 +180,7 @@ async def montly_task():
 
 @tasks.loop(hours=24)
 async def daily_task():
-    while not (datetime.datetime.now().hour == 0 and datetime.datetime.now().minute == 0):
+    while not (datetime.datetime.now(tz=tz).hour == 0 and datetime.datetime.now(tz=tz).minute == 0):
         await asyncio.sleep(10)
     else:
         global sys_channel
@@ -519,14 +519,14 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
                     if role.color == disnake.Colour(int('ff4f4f', 16)):
                         negative_achievements += 1
             positive_achievements = achievments - negative_achievements
-            t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
-            t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+            t_7days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=7)
+            t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
 
             try:
                 seven_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_7days_ago, datetime.datetime.now(), member.id)
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_7days_ago, datetime.datetime.now(tz=tz), member.id)
                 thirty_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(), member.id)
+                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(tz=tz), member.id)
             except asyncpg.InterfaceError:
                 pool = await db_connection()
 
@@ -598,7 +598,7 @@ async def gmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Me
             gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
             newgold = int(gold_was) + gold
             await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-            await inter.channel.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
+            await inter.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
         else:
             user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', author.id)
             if gold > int(user_gold):
@@ -685,16 +685,16 @@ async def u(inter, member: disnake.Member):
         data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
         if data is not None:
             warns = int(data['warns'])
-            t_7days_ago = datetime.datetime.now() - datetime.timedelta(days=7)
-            t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+            t_7days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=7)
+            t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
 
             try:
                 seven_days_activity_records = await db.fetch(
                     "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
-                    t_7days_ago, datetime.datetime.now(), member.id)
+                    t_7days_ago, datetime.datetime.now(tz=tz), member.id)
                 thirty_days_activity_records = await db.fetch(
                     "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
-                    t_30days_ago, datetime.datetime.now(), member.id)
+                    t_30days_ago, datetime.datetime.now(tz=tz), member.id)
             except asyncpg.InterfaceError:
                 pool = await db_connection()
         time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
@@ -713,50 +713,47 @@ async def u(inter, member: disnake.Member):
         #await inter.send('Вы не являетесь модератором или администратором.')
 
 
-@bot.slash_command(dm_permission=False)
+@bot.message_command(dm_permission=False)
 @commands.has_permissions(administrator=True)
-async def danet(inter, polltime=60):
-    """Resends the replied message, adds 👍 and 👎 reactions so it looks like a poll
+async def danet(inter:disnake.ApplicationCommandInteraction, msg:disnake.Message, polltime:int=60):
+    """Отправляет сообщение и добавляет под него,👍 и 👎 чтобы провести голосование.
 
     Parameters
     ----------
-    inter: Context
+    inter: autofilled ApplicationCommandInteraction argument
+    msg: Сообщение
     polltime: длительность в Минутах.
     """
-    start_time = datetime.datetime.now().replace(microsecond=0)
-    msg = await inter.channel.fetch_message(inter.message.reference.message_id)
-    poll_msg = await inter.send(f'Стартовал опрос:\n\n{msg.content}')
-    await poll_msg.add_reaction('👍')
-    await poll_msg.add_reaction('👎')
+    start_time = datetime.datetime.now(tz=tz).replace(microsecond=0)
+    await inter.response.defer(ephemeral=True)
+    await msg.add_reaction('👍')
+    await msg.add_reaction('👎')
     end_time = start_time + datetime.timedelta(minutes=polltime)
-    while True:
-        if datetime.datetime.now() > end_time:
-            break
-        else:
-            await asyncio.sleep(5)
-    poll_msg = await inter.channel.fetch_message(poll_msg.id)
-    for reaction in poll_msg.reactions:
+    await inter.edit_original_response('done')
+    await asyncio.sleep(60*polltime)
+    msg = await inter.channel.fetch_message(msg.id)
+    for reaction in msg.reactions:
         if str(reaction.emoji) == '👍':
             yes = reaction.count
         elif str(reaction.emoji) == '👎':
             no = reaction.count
         elif not yes or not no or yes == 0 or no == 0:
             await sys_channel.send(
-                f'{inter.message.author.mention} Опрос на сообщении {poll_msg.content} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
+                f'Опрос от {inter.author.display_name}, начатый в {start_time} выполнен с ошибками, отсутствует один из обязательных эмодзи - 👍 или 👎')
         else:
             pass
     if yes > no:
-        await poll_msg.reply(content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "За"')
-        await sys_channel.send(content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "За"')
+        await inter.channel.send(content=f'{inter.author.mention} опрос завершён, большинство проголосовало "За"')
+        await sys_channel.send(content=f'Опрос от {inter.author.display_name}, начатый в {start_time} завершён, большинство проголосовало "За"')
     elif no > yes:
-        await poll_msg.reply(content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+        await inter.channel.send(content=f'{inter.author.mention} опрос завершён, большинство проголосовало "Против"')
         await sys_channel.send(
-            content=f'{inter.message.author.mention} опрос завершён, большинство проголосовало "Против"')
+            content=f'Опрос от {inter.author.display_name}, начатый в {start_time} завершён, большинство проголосовало "Против"')
     elif yes == no:
-        await poll_msg.reply(
-            content=f'{inter.message.author.mention} участники голосования не смогли определиться с выбором')
+        await inter.channel.send(
+            content=f'{inter.author.mention} участники голосования не смогли определиться с выбором')
         await sys_channel.send(
-            content=f'{inter.message.author.mention} участники голосования не смогли определиться с выбором')
+            content=f'Участники голосования от {inter.author.display_name}, начатого в {start_time} не смогли определиться с выбором')
 
 
 @bot.slash_command(dm_permission=False)
@@ -785,20 +782,15 @@ async def poll(inter, options: int, time=60, arg=None):
     message = await inter.channel.fetch_message(messages[0].id)
     for num in range(options):
         await message.add_reaction(reactions[num])
-    start_time = datetime.datetime.now()
-    end_time = start_time + datetime.timedelta(minutes=time)
-    while True:
-        if datetime.datetime.now() > end_time:
-            break
-        else:
-            await asyncio.sleep(20)
+    start_time = datetime.datetime.now(tz=tz)
+    await asyncio.sleep(60*time)
     message = await inter.channel.fetch_message(messages[0].id)
     reactions_count_list = []
     for reaction in message.reactions:
         reactions_count_list.append((str(reaction.emoji), reaction.count))
     sort_reactions = sorted(reactions_count_list, key=itemgetter(1), reverse=True)
     await inter.channel.send(
-        content=f"{inter.message.author.mention}, опрос завершён:\n ```{message.content}```\n Победил вариант № {sort_reactions[0][0]}")
+        content=f"{inter.message.author.mention}, опрос, стартовавший {start_time} завершён:\n ```{message.content}```\n Победил вариант № {sort_reactions[0][0]}")
 
 
 @bot.slash_command(dm_permission=False)
@@ -812,10 +804,11 @@ async def top(inter, count: int = 10):
     count: сколько позиций показать, по умолчанию = 10
     """
 
+    await inter.response.defer(ephemeral=True)
     result_list = []
     users_count, users_ids = await initial_db_read()
     checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles)
-    t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+    t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
     async with pool.acquire() as db:
         async with inter.channel.typing():
             for member in inter.guild.members:
@@ -824,7 +817,7 @@ async def top(inter, count: int = 10):
                     if int(gold) > 0:
                         warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
                         thirty_days_activity_records = await db.fetch(
-                            "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                            "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now(tz=tz))
                         activity = await count_result_activity(thirty_days_activity_records, warns)
                         result_list.append((member.mention, activity))
     res = sorted(result_list, key=itemgetter(1), reverse=True)
@@ -835,6 +828,7 @@ async def top(inter, count: int = 10):
         output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин.\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
+    await inter.edit_original_response(content='done')
     await inter.send(embed=embed)
 
 
@@ -848,6 +842,8 @@ async def antitop(inter, count: int = 15):
     inter: autofilled ApplicationCommandInteraction argument
     count: сколько позиций показывать, по умолчанию - 15
     """
+
+    await inter.response.defer(ephemeral=True)
     result_list = []
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
@@ -855,10 +851,10 @@ async def antitop(inter, count: int = 15):
         async with inter.channel.typing(): # анимация долгих вычислений в виде печатания
             for member in inter.guild.members:
                 if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
-                    t_30days_ago = datetime.datetime.now() - datetime.timedelta(days=30)
+                    t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
                     warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
                     thirty_days_activity_records = await db.fetch(
-                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now())
+                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;", member.id, t_30days_ago, datetime.datetime.now(tz=tz))
                     activity = await count_result_activity(thirty_days_activity_records, warns)
                     time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
                     if time_in_clan.days//14 > 0:
@@ -872,6 +868,7 @@ async def antitop(inter, count: int = 15):
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин., В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
+    await inter.edit_original_response(content='done')
     await inter.send(embed=embed)
 
 
@@ -887,14 +884,18 @@ async def salary(inter:disnake.ApplicationCommandInteraction, amount: int = 1000
     amount: Сумма зарплаты, обычно 1000
     """
     salary_roles_ids = {651377975106732034, 449837752687656960}
+    await inter.response.defer()
     async with pool.acquire() as db:
+        got_salary = []
         for id in salary_roles_ids:
             role = disnake.utils.find(lambda r: (r.id == id), inter.guild.roles)
             for member in role.members:
+                got_salary.append(member)
                 gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 newgold = int(gold_was) + amount
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-                await inter.send(f'Модератору {member.display_name} выдана зарплата: {amount} :coin:')
+    result = '\n'.join(_user.display_name for _user in got_salary)
+    await inter.edit_original_response(f'Выдана зарплата: {amount} :coin: следующим Участникам:\n+{result}')
 
 
 @bot.slash_command(dm_permission=False)
@@ -959,7 +960,7 @@ async def roll(inter:disnake.ApplicationCommandInteraction, number:int=100):
 
 
 # a command for setting up a pick a role message.
-@bot.command()
+@bot.slash_command()
 async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:str='Выберите свою роль под этим сообщением'):
     """
     Creates message with roles to select from
@@ -1032,13 +1033,13 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:s
 
     #creating a new message with roles / создаём новое сообщение с ролями
     for i in range(num):
-        temp_msg = await channel.send(f'Введите {i+1} название для роли / Enter the {i+1} role label')
+        temp_msg = await channel.send(f'Введите {i+1} подпись для роли / Enter the {i+1} role label')
         label = await bot.wait_for("message", check=pickarole_check, timeout=120)
         messages_to_delete.append(label)
         label = label.content
         storage[label] = 0
         messages_to_delete.append(temp_msg)
-        temp_msg = await channel.send('Введите id роли, которую прикрепить к этому названию / Enter the id of role matching this label')
+        temp_msg = await channel.send('Введите id роли, которую прикрепить к этой подписи / Enter the id of role matching this label')
         role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
         messages_to_delete.append(temp_msg)
         messages_to_delete.append(role_id)
@@ -1082,12 +1083,11 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
     prize: Приз, что раздаём
     """
     if hours is None or winners is None:
-        return await inter.send('Для запуска розыгрыша введите !giveaway <кол-во часов> <кол-во победителей> <товар>.', ephemeral=True)
+        return await inter.send('Для запуска розыгрыша введите /giveaway <кол-во часов> <кол-во победителей> <товар>.', ephemeral=True)
     author = inter.author
     hours = int(hours)
     winners_number = int(winners)
     channel = inter.channel
-    messages_to_delete = []
     participants_list = []
     embed = disnake.Embed(color=disnake.Colour.from_rgb(255,191,0))
     embed_text = f'\n**🎁 Награда:** "{prize}"\n🏆 **Количество победителей:** {winners_number},\n**⏰Время раздачи:** {hours} часов,\n**🕵️Раздает:** {author.mention}'
@@ -1139,4 +1139,4 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
 #bot.run(token, reconnect=True)
 
 #test bot
-bot.run('ODcwNTI0ODYxODcxNzA2MTky.Gc3mLy.Rt_BmGj1yFaDL-ba0UQmH0UjkoKjcZahq7VhK4', reconnect=True)
+bot.run('ODcwNTI0ODYxODcxNzA2MTky.G5U-5-.n5Pfs7yqrqzIGXKky7W58PUYfWbjmnhWAahico', reconnect=True)
