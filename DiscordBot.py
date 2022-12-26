@@ -1136,7 +1136,4 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
             await channel.send(f'В розыгрыше "{prize}" от {author.display_name} слишком мало участников, победителя нет. Ждем вас в следующих раздачах. 👋')
 
 #production bot
-#bot.run(token, reconnect=True)
-
-#test bot
-bot.run('ODcwNTI0ODYxODcxNzA2MTky.G5U-5-.n5Pfs7yqrqzIGXKky7W58PUYfWbjmnhWAahico', reconnect=True)
+bot.run(token, reconnect=True)
