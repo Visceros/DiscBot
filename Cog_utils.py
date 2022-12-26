@@ -570,6 +570,7 @@ class Games(commands.Cog):
             return await inter.send('```Error! Извините, эта команда работает только в канале казино.```', ephemeral=True)
         channel = inter.channel
         pins = await channel.pins()
+        bid = int(bid)
         if bid < 50:
             return await inter.send('Минимальная ставка: 50', ephemeral=True)
         record_msg = None
@@ -586,11 +587,12 @@ class Games(commands.Cog):
                 return await inter.send('Недостаточно :coin: для такой ставки.', ephemeral=True)
             else:
                 await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, inter.author.id)
-                slot_msg = await inter.send(random.choice(screens['roll']))
+                slot_msg = await inter.channel.send(random.choice(screens['roll']))
                 for _ in range(3):
                     await inter.edit_original_response(content=random.choice(screens['roll']))
                     await asyncio.sleep(0.5)
                 win_lose = randbelow(100)
+                await slot_msg.delete()
                 # после <= стоит шанс проигрыша
                 if win_lose <= 60:
                     await channel.send(random.choice(screens['lose']))
