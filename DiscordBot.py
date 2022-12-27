@@ -535,7 +535,7 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             activity30d = await count_result_activity(thirty_days_activity_records, warns)
             part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
             part_2 = f"\nРЕПУТАЦИЯ:\nПозитивных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
-            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {activity7d//60} час(ов) {activity7d%60} минут\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин."
+            part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {activity7d//60} ч. {activity7d%60} мин.\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин."
             part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
             path = os.path.join('images', 'profile', data['profile_pic'])
             background = Image.open(path).convert('RGBA')
