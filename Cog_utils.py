@@ -353,12 +353,12 @@ class Listeners(commands.Cog):
                             await self.sys_channel.send(f'user added to database {member.display_name}')
                         except asyncpg.exceptions.UniqueViolationError:
                             await self.sys_channel.send(f'user {member.display_name} is already added')
-                    await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).time()}\n{member.display_name} joined channel {after.channel}')
+                    await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} joined channel {after.channel}')
 
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).time()}\n{member.display_name} left channel {before.channel}')
+                await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} left channel {before.channel}')
 
             elif before.channel is not None and after.channel is not None and after.channel != before.channel:
                 if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and not any(item in after.channel.name.lower() for item in
@@ -366,7 +366,7 @@ class Listeners(commands.Cog):
                     gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                     await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
                         datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
-                await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).time()}\n{member.display_name} moved from {before.channel} to {after.channel}')
+                await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} moved from {before.channel} to {after.channel}')
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
