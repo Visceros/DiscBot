@@ -138,7 +138,7 @@ async def montly_task():
                     warns = int(data['warns'])
                     thirty_days_activity_records = await db.fetch(
                         "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_30days_ago, datetime.datetime.now(), user.id)
-                    hours, minutes = await count_result_activity(thirty_days_activity_records, warns)
+                    minutes = await count_result_activity(thirty_days_activity_records, warns)
                     time_in_clan = datetime.datetime.now(tz=tz) - user.joined_at
                     if minutes == 0 and time_in_clan.days//7 >= 8:
                         await db.execute('DELETE FROM LogTable CASCADE WHERE user_id=$1;', user.id)
