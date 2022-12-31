@@ -349,8 +349,11 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
         if inter.component.custom_id == 'rename':
             if not inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
                 await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
-                role = disnake.utils.get(inter.guild.roles, id=1055096120264626216)
-                await inter.author.add_roles(role)
+                idlist = [688070033569742909, 653683016912338955, 742057453562101870,
+                          742056254721228817, 688066382348419200, 654005044815069186,
+                          651377953271185409]  # list of roles ids for basic achievements (lines)
+                basic_achievement_roles = [role for role in inter.guild.roles if role.id in idlist]
+                await inter.author.add_roles(basic_achievement_roles)
             else:
                 await inter.channel.send('Вы НЕ переименовались! Доступ к клану запрещен!', delete_after=5)
                 role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
