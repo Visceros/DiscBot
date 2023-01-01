@@ -421,12 +421,12 @@ class Listeners(commands.Cog):
             if 'roleMsg' in inter.component.custom_id:
                 role = disnake.utils.get(inter.guild.roles,
                                          id=int(inter.values[0])) # из inter.values передаётся строка, приводим её к int
-                if role:
+                if role is None:
+                    await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
+                else:
                     await inter.author.add_roles(role) # assign the chosen role from roles list
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
                     await inter.author.remove_roles(checkrole) # remove the role to see the channel with roles message.
-                else:
-                    await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
 
 
 
