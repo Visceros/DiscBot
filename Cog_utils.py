@@ -419,7 +419,8 @@ class Listeners(commands.Cog):
         basic_achievement_roles = [role for role in inter.guild.roles if role.id in idlist]
         if checkrole in inter.author.roles:
             if 'roleMsg' in inter.component.custom_id:
-                role = disnake.utils.get(inter.guild.roles, id=inter.values[0])
+                role = disnake.utils.get(inter.guild.roles,
+                                         id=int(inter.values[0])) # из inter.values передаётся строка, приводим её к int
                 if role is not None:
                     await inter.author.add_roles(role) # assign the chosen role from roles list
                     await inter.author.add_roles(basic_achievement_roles) #additionally assing achievement roles

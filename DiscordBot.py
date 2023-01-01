@@ -353,7 +353,7 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
             if not (inter.author.display_name == '[Ранг] Nickname (ВашеИмя)'):
                 newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
                 await inter.author.add_roles(newrole) # Назначаем роль переименованному человеку
-                await inter.send('Авторизация успешна, теперь, выберите роль, Эта комната закроется через 10 сек', ephemeral=True)
+                await inter.send('Авторизация успешна, теперь, в открывшемся канале, выберите роль, Эта комната закроется через 10 сек', ephemeral=True, delete_after=11)
                 await asyncio.sleep(10)
                 await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
             elif inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
@@ -362,7 +362,7 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
                 if role not in inter.author.roles:
                     await inter.author.add_roles(role)
 
-    await inter.send('Подтвердите, что вы переименовались', components=btn, ephemeral=True)
+    await inter.send('Подтвердите, что вы переименовались', components=btn, ephemeral=True, delete_after=60)
 
 
 @bot.slash_command(dm_permission=False)
