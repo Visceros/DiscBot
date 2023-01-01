@@ -412,13 +412,21 @@ class Listeners(commands.Cog):
     # Для сообщений с выбором ролей - обработка выбора роли.
     @commands.Cog.listener()
     async def on_dropdown(self, inter:disnake.MessageInteraction):
+        checkrole = disnake.utils.get(inter.guild.roles, name='Не выбрал роль')
+        idlist = [688070033569742909, 653683016912338955, 742057453562101870,
+                  742056254721228817, 688066382348419200, 654005044815069186,
+                  651377953271185409]  # list of roles ids for basic achievements (lines)
+        basic_achievement_roles = [role for role in inter.guild.roles if role.id in idlist]
+        if checkrole in inter.author.roles:
+            if 'roleMsg' in inter.component.custom_id:
+                role = disnake.utils.get(inter.guild.roles, id=inter.values[0])
+                if role is not None:
+                    await inter.author.add_roles(role) # assign the chosen role from roles list
+                    await inter.author.add_roles(basic_achievement_roles) #additionally assing achievement roles
+                    await inter.author.remove_roles(checkrole) # remove the role to see the channel with roles message.
+                else:
+                    await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
 
-        if 'roleMsg' in inter.component.custom_id:
-            role = disnake.utils.get(inter.guild.roles, id=inter.values[0])
-            if role is not None:
-                await inter.author.add_roles(role)
-            else:
-                await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.

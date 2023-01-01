@@ -341,25 +341,25 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
     nickname: Ваш ник в игре
     name: Ваше имя, как к вам обращаться. Кириллицей
     """
+    if rank in range(1, 10):
+        rank = '0'+str(rank)
     await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
 
     btn = disnake.ui.Button(label='Я переименовался', custom_id='rename', style=disnake.enums.ButtonStyle.primary)
 
+    @bot.event
     async def on_button_click(inter):
         if inter.component.custom_id == 'rename':
-            if not inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
-                idlist = [688070033569742909, 653683016912338955, 742057453562101870,
-                          742056254721228817, 688066382348419200, 654005044815069186,
-                          651377953271185409]  # list of roles ids for basic achievements (lines)
-                basic_achievement_roles = [role for role in inter.guild.roles if role.id in idlist]
-                await inter.author.add_roles(basic_achievement_roles)
+            if not (inter.author.display_name == '[Ранг] Nickname (ВашеИмя)'):
+                newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
+                await inter.author.add_roles(newrole) # Назначаем роль переименованному человеку
                 await inter.send('Авторизация успешна, теперь, выберите роль, Эта комната закроется через 10 сек', ephemeral=True)
                 await asyncio.sleep(10)
                 await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
-            else:
-                await inter.channel.send('Вы НЕ переименовались! Доступ к клану запрещен!', delete_after=5)
+            elif inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
+                await inter.channel.send('Вы НЕ переименовались! Доступ к клану не получен!', delete_after=5)
                 role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
-                if not role in inter.author.roles:
+                if role not in inter.author.roles:
                     await inter.author.add_roles(role)
 
     await inter.send('Подтвердите, что вы переименовались', components=btn, ephemeral=True)
@@ -1066,7 +1066,7 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:s
     for lab, val in storage.items():
         RoleList.add_option(label=lab, value=str(val))
 
-        await channel.send(content=text, components=RoleList)
+    await channel.send(content=text, components=RoleList)
 
     async with pool.acquire() as db:
         await db.execute('INSERT INTO PickaRole (guild_id, message_id, data) VALUES ($1, $2, $3)', gid, cid, data_json)
