@@ -424,10 +424,16 @@ class Listeners(commands.Cog):
                 if role is None:
                     await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
                 else:
-                    await inter.author.add_roles(role) # assign the chosen role from roles list
+                    await inter.author.add_roles(role) #assign the chosen role from roles list
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
-                    await inter.author.remove_roles(checkrole) # remove the role to see the channel with roles message.
+                    await inter.author.remove_roles(checkrole) #remove the role to see the channel with roles message.
 
+    @commands.Cog.listener()
+    async def on_message(self, msg:disnake.Message):
+        if '⏩' in msg.channel.name:
+            await asyncio.sleep(2)
+            if not msg.pinned:
+                await msg.delete(delay=2)
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
