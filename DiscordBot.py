@@ -341,8 +341,14 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
     nickname: Ваш ник в игре
     name: Ваше имя, как к вам обращаться. Кириллицей
     """
+    cyrillic_symbols = ['а','б','в','г','д','е','ё','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','э','ю','я']
+    if not all(chr in cyrillic_symbols for chr in name):
+        await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.', ephemeral=True)
+        return
     if rank in range(1, 10):
         rank = '0'+str(rank)
+
+
     await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
 
     btn = disnake.ui.Button(label='Я переименовался', custom_id='rename', style=disnake.enums.ButtonStyle.primary)
@@ -353,7 +359,7 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
             if not (inter.author.display_name == '[Ранг] Nickname (ВашеИмя)'):
                 newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
                 await inter.author.add_roles(newrole) # Назначаем роль переименованному человеку
-                await inter.send('Авторизация успешна, теперь, в открывшемся канале, выберите роль, Эта комната закроется через 10 сек', ephemeral=True, delete_after=11)
+                await inter.send('Авторизация успешна, теперь, выберите роль в открывшемся канале.', ephemeral=True, delete_after=5)
                 await asyncio.sleep(10)
                 await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
             elif inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
