@@ -241,7 +241,7 @@ async def on_ready():
     except RuntimeError:
         montly_task.restart()
     daily_task.start()
-    #await accounting()
+    await accounting()
     print('I\'m ready to serve.')
     bot.add_cog(Games(bot, connection=pool))
     bot.add_cog(Listeners(bot, connection=pool))
