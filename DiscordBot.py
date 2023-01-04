@@ -342,7 +342,7 @@ async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname
     name: Ваше имя, как к вам обращаться. Кириллицей
     """
     cyrillic_symbols = ['а','б','в','г','д','е','ё','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','э','ю','я']
-    if not all(chr in cyrillic_symbols for chr in name):
+    if not all(chr in cyrillic_symbols for chr in name.lower()):
         await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.', ephemeral=True)
         return
     if rank in range(1, 10):
