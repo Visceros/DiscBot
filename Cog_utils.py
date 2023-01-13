@@ -68,10 +68,9 @@ class Listeners(commands.Cog):
                                 f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
 
                 # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
-                elif len(before.channel.members) > 1:
                     muted_member_count = 0
                     unmuted_member_count = 0
-                    for user in before.voice.channel.members:
+                    for user in before.members:
                         if not user.bot:  # Отсекаем ботов
                             if user.voice.self_mute or user.self_deaf:
                                 muted_member_count += 1
@@ -79,9 +78,9 @@ class Listeners(commands.Cog):
                                 unmuted_member_count += 1
                                 unmuted_member_id = member.id
                                 member = user
-                    if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id:
-                        await asyncio.sleep(90)
-                        if member.voice:
+                    if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and unmuted_member_id == member.id:
+                        await asyncio.sleep(60)
+                        if not member.voice.self_mute and not member.self_deaf:
                             muted_member_count = 0
                             unmuted_member_count = 0
                             for user in member.voice.channel.members:
@@ -94,7 +93,8 @@ class Listeners(commands.Cog):
                             if unmuted_member_count == 1 and muted_member_count >= unmuted_member_count and new_unmuted_member_id == unmuted_member_id:
                                 await self.messaging_channel.send(
                                     '{} в данный момент вы единственный активный участник в комнате.'
-                                    'Отключите микрофон на сервере для более точной статистики активности, иначе это будет рассматриваться как нарушение правил. Спасибо.'.format(
+                                    'Отключите микрофон на сервере для более точной статистики активности, иначе это '
+                                    'будет рассматриваться как нарушение правил. Спасибо.'.format(
                                         disnake.utils.get(member.guild.members, id=unmuted_member_id).mention))
                                 await asyncio.sleep(60)
                                 if member.voice:
@@ -370,7 +370,6 @@ class Listeners(commands.Cog):
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
-            if member.voice is not None:
                 if not before.self_mute and after.self_mute:
                     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
                     if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
@@ -407,6 +406,7 @@ class Listeners(commands.Cog):
     async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
             await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
+            #ch = disnake.utils.find(lambda c: 'присоединился' in c.name.lower(), member.guild.channels)
 
 
     # Для сообщений с выбором ролей - обработка выбора роли.
