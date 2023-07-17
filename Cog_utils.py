@@ -12,7 +12,7 @@ from pytube import Playlist
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
-from buttons import NormalRow, GoldRow
+from buttons import NormalRow, GoldRow, RenameModal
 
 tz = datetime.timezone(datetime.timedelta(hours=3))
 
@@ -428,6 +428,29 @@ class Listeners(commands.Cog):
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
                     await inter.author.remove_roles(checkrole) #remove the role to see the channel with roles message.
                     await inter.send('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', ephemeral=True, delete_after=15)
+
+    @commands.Cog.listener()
+    async def on_button_click(self, inter:disnake.MessageInteraction):
+        #if inter.author  TODO проверка, есть ли у человека роль, требующая переименоваться
+        #    return inter.response.send_message('Вам не нужно переименовываться.')
+        if inter.component.custom_id == 'rename':
+            await inter.response.send_modal(RenameModal("Введите ваши данные"))
+
+        try:
+            modal_inter = await self.bot.wait_for(
+                'modal_submit',
+                check=lambda i: i.author.id == inter.author.id and i.custom_id == 'modal_custom_id',
+                timeout=120)
+        except asyncio.TimeoutError:
+            return
+
+        name = modal_inter.text_values['name']
+        cyrillic_symbols = ['а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
+                            'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'э', 'ю', 'я']
+        if not all(letter in cyrillic_symbols for letter in name.lower()):
+            await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.',
+                             ephemeral=True)
+            return
 
     @commands.Cog.listener()
     async def on_message(self, msg:disnake.Message):

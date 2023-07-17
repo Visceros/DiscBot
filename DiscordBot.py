@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 from operator import itemgetter
 from db_connector import db_connection
 from Cog_utils import Listeners, Games, Player, Shop
-from buttons import Giveaway
+from buttons import Giveaway, RenameModal
 
 # ds_logger = logging.getLogger('disnake')
 # ds_logger.setLevel(logging.DEBUG)
@@ -152,10 +152,10 @@ async def montly_task():
 
 
 
-    #События во второй день месяца
+    # События во второй день месяца
     if datetime.datetime.now(tz=tz).day == 2:
 
-        #снятие варнов на 2 день месяца
+        # снятие варнов на 2 день месяца
         async with pool.acquire() as db:
             await db.execute('UPDATE discord_users SET warns=0;')
 
@@ -164,7 +164,7 @@ async def montly_task():
             for role in user.roles:
                 if role.name.lower() == 'накрутчик': await user.remove_role(role)
 
-        #раздача зарплаты верховному совету на 2 день месяца
+        # раздача зарплаты верховному совету на 2 день месяца
         for guild in bot.guilds:
             amount = 1000  # количество заработной платы
             salary_roles_ids = {651377975106732034, 449837752687656960} # ID ролей, которым начисляется зарплата
@@ -184,7 +184,7 @@ async def daily_task():
         await asyncio.sleep(10)
     else:
         global sys_channel
-        #Проверяем не истёк ли срок каких-либо покупок из списка в Логе покупок
+        # Проверяем не истёк ли срок каких-либо покупок из списка в Логе покупок
         async with pool.acquire() as db:
             records_list = await db.fetch("SELECT * FROM ShopLog WHERE date_trunc('day', expiry_date)=CURRENT_DATE")
             for record in records_list:
@@ -219,7 +219,7 @@ async def daily_task():
                                 print('Вернул стандартный фон профиля пользователяю', user.display_name)
                             except Exception as e:
                                 await sys_channel.send(f'{guild.owner.mention} Произошла ошибка при возвращении стандартного фона профиля для пользователя {user.mention}:')
-                                await sys_channel.send(e)
+                                await sys_channel.send(str(e))
 
 
 @bot.event
@@ -276,7 +276,7 @@ async def _increment_money(server: disnake.Guild):
                             await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
                     except Exception as ex:
                         await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
-                        await sys_channel.send(content=ex)
+                        await sys_channel.send(content=str(ex))
 
 # Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту
 async def accounting():
@@ -327,6 +327,15 @@ async def shutdown(inter:disnake.ApplicationCommandInteraction):
         await asyncio.sleep(2)
         await sys_channel.send('Shutdown complete')
         exit(1)
+
+
+@bot.slash_command()
+async def set_rename(inter:disnake.ApplicationCommandInteraction):
+    channel = inter.channel
+    the_msg = await channel.history(limit=1).flatten()[0]
+    btn_rename = disnake.ui.Button(label='Rename', custom_id='rename', style=disnake.ButtonStyle.primary)
+    await the_msg.edit(components=btn_rename)
+
 
 
 @bot.slash_command()

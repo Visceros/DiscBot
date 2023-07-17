@@ -28,3 +28,31 @@ class GoldRow(disnake.ui.ActionRow):
         self.add_button(label="1", custom_id="1", style=ButtonStyle.primary)
         self.add_button(label="2", custom_id="2", style=ButtonStyle.primary)
         self.add_button(label="3", custom_id="3", style=ButtonStyle.primary)
+
+
+class RenameModal(disnake.ui.Modal):
+    def __init__(self, title: str):
+        components = [
+            disnake.ui.TextInput(
+                label="Ранг",
+                placeholder="Ваш ранг",
+                value='00',
+                custom_id="rank",
+                max_length=2,
+            ),
+            disnake.ui.TextInput(
+                label="Никнейм",
+                placeholder="Ваш никнейм",
+                custom_id="nick",
+                min_length=3,
+                max_length=16
+            ),
+            disnake.ui.TextInput(
+                label="Имя",
+                placeholder="Ваше Имя",
+                custom_id="name",
+                min_length=3,
+                max_length=16
+            )
+        ]
+        super(RenameModal, self).__init__(title=title, components=components)
