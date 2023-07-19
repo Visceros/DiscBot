@@ -31,6 +31,7 @@ class GoldRow(disnake.ui.ActionRow):
 
 
 class RenameModal(disnake.ui.Modal):
+    """A Modal window with Text Inputs for renaming server user to the standard patter of [Rank] Nick (Name)"""
     def __init__(self, title: str):
         components = [
             disnake.ui.TextInput(

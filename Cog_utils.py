@@ -401,7 +401,6 @@ class Listeners(commands.Cog):
             role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
             await after.add_roles(role)
 
-
     @commands.Cog.listener()
     async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
@@ -431,26 +430,34 @@ class Listeners(commands.Cog):
 
     @commands.Cog.listener()
     async def on_button_click(self, inter:disnake.MessageInteraction):
-        #if inter.author  TODO проверка, есть ли у человека роль, требующая переименоваться
-        #    return inter.response.send_message('Вам не нужно переименовываться.')
         if inter.component.custom_id == 'rename':
+            rename_role = role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
+            if rename_role not in inter.author.roles and inter.author.display_name != '[Ранг] Nickname (ВашеИмя)':
+                return await inter.send('Вам не нужно переименовываться.', ephemeral=True)
+
             await inter.response.send_modal(RenameModal("Введите ваши данные"))
 
-        try:
-            modal_inter = await self.bot.wait_for(
-                'modal_submit',
-                check=lambda i: i.author.id == inter.author.id and i.custom_id == 'modal_custom_id',
-                timeout=120)
-        except asyncio.TimeoutError:
-            return
+            try:
+                modal_inter = await self.bot.wait_for(
+                    'modal_submit',
+                    check=lambda i: i.author.id == inter.author.id,
+                    timeout=120)
+            except asyncio.TimeoutError:
+                return
 
-        name = modal_inter.text_values['name']
-        cyrillic_symbols = ['а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
-                            'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'э', 'ю', 'я']
-        if not all(letter in cyrillic_symbols for letter in name.lower()):
-            await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.',
-                             ephemeral=True)
-            return
+            name = modal_inter.text_values['name']
+            cyrillic_symbols = ['а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
+                                'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'э', 'ю', 'я']
+            if not all(letter in cyrillic_symbols for letter in name.lower()):
+                return await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.',
+                                 ephemeral=True)
+
+            rank = modal_inter.text_values['rank']
+            if not rank.isdecimal():
+                return await inter.send('Ваш Ранг должен быть двузначным числом, например 01', ephemeral=True)
+
+            nickname = modal_inter.text_values['nick']
+            await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
 
     @commands.Cog.listener()
     async def on_message(self, msg:disnake.Message):
