@@ -458,6 +458,12 @@ class Listeners(commands.Cog):
 
             nickname = modal_inter.text_values['nick']
             await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
+            newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
+            await inter.author.add_roles(newrole)  # Назначаем роль переименованному человеку
+            await inter.send('Авторизация успешна, теперь, выберите роль в открывшемся канале.', ephemeral=True,
+                             delete_after=6)
+            await asyncio.sleep(10)
+            await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
 
     @commands.Cog.listener()
     async def on_message(self, msg:disnake.Message):
