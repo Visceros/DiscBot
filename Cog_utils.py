@@ -465,13 +465,6 @@ class Listeners(commands.Cog):
             await asyncio.sleep(10)
             await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
 
-    @commands.Cog.listener()
-    async def on_message(self, msg:disnake.Message):
-        if '⏩' in msg.channel.name:
-            await asyncio.sleep(2)
-            if not msg.pinned:
-                await msg.delete(delay=2)
-
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     # @commands.Cog.listener()
