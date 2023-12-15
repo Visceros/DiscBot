@@ -434,7 +434,7 @@ class Listeners(commands.Cog):
             rename_role = role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
             if rename_role not in inter.author.roles and inter.author.display_name != '[Ранг] Nickname (ВашеИмя)':
                 return await inter.send('Вам не нужно переименовываться.', ephemeral=True)
-            await inter.response.defer()
+
             await inter.response.send_modal(RenameModal("Введите ваши данные"))
 
             try:
