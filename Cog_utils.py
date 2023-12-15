@@ -441,7 +441,7 @@ class Listeners(commands.Cog):
                 modal_inter = await self.bot.wait_for(
                     'modal_submit',
                     check=lambda i: i.author.id == inter.author.id,
-                    timeout=120)
+                    timeout=180)
             except asyncio.TimeoutError:
                 return
 
@@ -460,8 +460,9 @@ class Listeners(commands.Cog):
             await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
             newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
             await inter.author.add_roles(newrole)  # Назначаем роль переименованному человеку
-            await inter.send('Авторизация успешна, теперь, выберите роль в открывшемся канале.', ephemeral=True,
-                             delete_after=6)
+            await modal_inter.response.defer()
+            await modal_inter.send('Авторизация успешна, теперь, выберите роль в открывшемся канале.', ephemeral=True,
+                             delete_after=20)
             await asyncio.sleep(10)
             await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
 
