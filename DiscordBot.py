@@ -725,7 +725,7 @@ async def u(inter, member: disnake.Member):
         part_2 = f"`{time_in_clan.days//7} недель`"
         activity7d = await count_result_activity(seven_days_activity_records, warns)
         activity30d = await count_result_activity(thirty_days_activity_records, warns)
-        part_3 = f"\nАктивность за 7 дней: {activity7d//60} ч. {activity7d%60} мин.\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин."
+        part_3 = f"\nАктивность за 7 дней: {activity7d//60} ч. {activity7d%60} мин.\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин.\nID: {member.id}"
         embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
         embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
         embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
