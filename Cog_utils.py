@@ -447,7 +447,7 @@ class Listeners(commands.Cog):
 
             name = modal_inter.text_values['name']
             cyrillic_symbols = ['а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
-                                'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'э', 'ю', 'я']
+                                'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ы', 'ь', 'ъ', 'э', 'ю', 'я']
             if not all(letter in cyrillic_symbols for letter in name.lower()):
                 return await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.',
                                  ephemeral=True)
