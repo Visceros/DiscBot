@@ -455,6 +455,8 @@ class Listeners(commands.Cog):
             rank = modal_inter.text_values['rank']
             if not rank.isdecimal():
                 return await inter.send('Ваш Ранг должен быть двузначным числом, например 01', ephemeral=True)
+            if len(str(rank)) == 1:
+                rank = "0"+str(rank)
 
             nickname = modal_inter.text_values['nick']
             await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
