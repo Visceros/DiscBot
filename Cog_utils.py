@@ -70,7 +70,7 @@ class Listeners(commands.Cog):
                 # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
                     muted_member_count = 0
                     unmuted_member_count = 0
-                    for user in before.members:
+                    for user in before.channel.members:
                         if not user.bot:  # Отсекаем ботов
                             if user.voice.self_mute or user.self_deaf:
                                 muted_member_count += 1
