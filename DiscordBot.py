@@ -32,7 +32,7 @@ if token is None:
 
 #prefix = '!'
 tz = datetime.timezone(datetime.timedelta(hours=3))
-intents = disnake.Intents.default()
+intents = disnake.Intents.default().all()
 intents.members = True
 intents.presences = True
 intents.guild_messages = True

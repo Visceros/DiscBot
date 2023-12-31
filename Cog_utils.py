@@ -423,10 +423,11 @@ class Listeners(commands.Cog):
                 if role is None:
                     await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
                 else:
+                    await inter.response.defer()
                     await inter.author.add_roles(role) #assign the chosen role from roles list
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
                     await inter.author.remove_roles(checkrole) #remove the role to see the channel with roles message.
-                    await inter.send('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', ephemeral=True, delete_after=15)
+                    await inter.edit_original_message('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', ephemeral=True, delete_after=15)
 
     @commands.Cog.listener()
     async def on_button_click(self, inter:disnake.MessageInteraction):
