@@ -72,7 +72,7 @@ class Listeners(commands.Cog):
                     unmuted_member_count = 0
                     for user in before.channel.members:
                         if not user.bot:  # Отсекаем ботов
-                            if user.voice.self_mute or user.self_deaf:
+                            if user.voice.self_mute or user.voice.self_deaf:
                                 muted_member_count += 1
                             else:
                                 unmuted_member_count += 1

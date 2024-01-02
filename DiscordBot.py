@@ -921,7 +921,7 @@ async def salary(inter:disnake.ApplicationCommandInteraction, amount: int = 1000
 
 
 @bot.slash_command(dm_permission=False)
-async def warn(inter, member: disnake.Member, count=1):
+async def warn(inter, member: disnake.Member, count:int=1):
     """
     Command to warn activity rules violators
 
@@ -939,6 +939,13 @@ async def warn(inter, member: disnake.Member, count=1):
             if (role.id in eligible_roles_ids) or inter.author.guild_permissions.administrator:
                 async with pool.acquire() as db:
                     user_warns = await db.fetchval('SELECT warns FROM discord_users WHERE id=$1', member.id)
+                    if not isinstance(count, int):
+                        try:
+                            count = int(count)
+                        except TypeError:
+                            await member.guild.sys_channel.send(f'Ошибка при исполнении команды /warn для пользователя {member.display_name}, count={count}.\nНе удалось преобразовать количество предупреждений в число.')
+                            print(f'Ошибка при исполнении команды /warn для пользователя {member.display_name}, count={count}.\nНе удалось преобразовать количество предупреждений в число.')
+                            return
                     user_warns+=count
                     await db.execute('UPDATE discord_users SET warns=$1 WHERE id=$2', user_warns, member.id)
                 await moderation_channel.send(f'Модератор {inter.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива ({3*count} минут(ы).')
