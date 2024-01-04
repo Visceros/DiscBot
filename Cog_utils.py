@@ -423,11 +423,11 @@ class Listeners(commands.Cog):
                 if role is None:
                     await inter.send('Возникла ошибка, Роль не найдена, обратитесь к администратору сервера.', ephemeral=True)
                 else:
-                    await inter.response.defer()
+                    await inter.response.defer(ephemeral=True)
                     await inter.author.add_roles(role) #assign the chosen role from roles list
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
                     await inter.author.remove_roles(checkrole) #remove the role to see the channel with roles message.
-                    await inter.edit_original_message('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', ephemeral=True, delete_after=15)
+                    await inter.edit_original_message('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', delete_after=15)
 
     @commands.Cog.listener()
     async def on_button_click(self, inter:disnake.MessageInteraction):
@@ -549,13 +549,14 @@ class Games(commands.Cog):
                             try:
                                 await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
                             except asyncio.TimeoutError:
-                                await channel.send('```fix\nУдача не терпит медлительных. Время вышло! 👎```', delete_after=30)
+                                await inter.edit_original_response('```fix\nУдача не терпит медлительных. Время вышло! 👎```', delete_after=30)
                                 await asyncio.sleep(15)
                             else:
                                 reward, pic = gold_reward()
                                 path = os.path.join(os.getcwd(), 'images', pic)
                                 await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=160)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
+                                await inter.edit_original_response('Спасибо за игру!', delete_after=10)
 
     # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
 
