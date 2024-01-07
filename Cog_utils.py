@@ -465,11 +465,12 @@ class Listeners(commands.Cog):
             await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
             newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
             await inter.author.add_roles(newrole)  # Назначаем роль переименованному человеку
-            await modal_inter.response.defer()
-            await modal_inter.send('Авторизация успешна, теперь, выберите роль в открывшемся канале.', ephemeral=True,
-                             delete_after=20)
+
+            await modal_inter.response.defer(ephemeral=True)
+            await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.')
             await asyncio.sleep(10)
             await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
+            await modal_inter.delete_original_response()
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
