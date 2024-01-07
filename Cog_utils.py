@@ -427,7 +427,9 @@ class Listeners(commands.Cog):
                     await inter.author.add_roles(role) #assign the chosen role from roles list
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
                     await inter.author.remove_roles(checkrole) #remove the role to see the channel with roles message.
-                    await inter.edit_original_message('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', delete_after=15)
+                    await inter.edit_original_message('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать')
+                    await asyncio.sleep(10)
+                    await inter.delete_original_response()
 
     @commands.Cog.listener()
     async def on_button_click(self, inter:disnake.MessageInteraction):
@@ -498,23 +500,23 @@ class Games(commands.Cog):
         ----------
         inter: autofilled ApplicationCommandInteraction argument
         """
-        await inter.response.defer(ephemeral=True)
         reward_chat = self.bot.get_channel(696060547971547177)
         author = inter.author
         channel = inter.channel
         checkrole = disnake.utils.find(lambda r: 'СОКЛАНЫ' in r.name.upper(), inter.guild.roles)
         # Check if it's the right channel to write to and if user have relevant role
         if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
-            await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
+            await inter.send('```Error! Извините, эта команда работает только в специальном канале.```', ephemeral=True)
         elif checkrole not in author.roles:
-            await inter.edit_original_response(f'```Error! Извините, доступ имеют только Сокланы.```')
+            await inter.send(f'```Error! Извините, доступ имеют только Сокланы.```', ephemeral=True)
         else:
             # IF all correct we head further
             async with self.pool.acquire() as db:
                 user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', author.id)
                 if int(user_gold) < 1500:
-                    await inter.edit_original_response(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
+                    await inter.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```', ephemeral=True)
                 else:
+                    await inter.response.defer(ephemeral=True, thinking=True)
                     new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     await channel.send('**Решили испытать удачу и выиграть главный приз? Отлично! \n '
@@ -536,15 +538,16 @@ class Games(commands.Cog):
                         reward, pic = usual_reward()
                         path = os.path.join(os.getcwd(), 'images', pic)
                         await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'), delete_after=90)
+                        await inter.edit_original_response('Спасибо за игру!')
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         elif 'золотой ключ' in reward.lower():
                             await channel.send(
-                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**', delete_after=80)
+                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**', delete_after=90)
                             # Begin pasting the picture with Gold chests
                             path = os.path.join(os.getcwd(), 'images', 'Golden-chests.png')
                             _goldChests = GoldRow()
-                            await channel.send(file=disnake.File(path, 'Golden-chests.png'), components=_goldChests, delete_after=90)
+                            await channel.send(file=disnake.File(path, 'Golden-chests.png'), components=_goldChests, delete_after=120)
                             # End of pasting the picture with Gold chests
                             try:
                                 await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
@@ -556,7 +559,7 @@ class Games(commands.Cog):
                                 path = os.path.join(os.getcwd(), 'images', pic)
                                 await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=160)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
-                                await inter.edit_original_response('Спасибо за игру!', delete_after=10)
+                                await inter.edit_original_response('Спасибо за игру!')
 
     # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
 
