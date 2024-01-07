@@ -18,10 +18,6 @@ from db_connector import db_connection
 from Cog_utils import Listeners, Games, Player, Shop
 from buttons import Giveaway, RenameModal
 
-# ds_logger = logging.getLogger('disnake')
-# ds_logger.setLevel(logging.DEBUG)
-# handler = logging.FileHandler(filename='disnake.log', encoding='utf-8', mode='w')
-# ds_logger.addHandler(handler)
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
@@ -30,7 +26,6 @@ if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
-#prefix = '!'
 tz = datetime.timezone(datetime.timedelta(hours=3))
 intents = disnake.Intents.default().all()
 intents.members = True
@@ -336,50 +331,6 @@ async def set_rename(inter:disnake.ApplicationCommandInteraction):
     the_msg = history_messages[0]
     btn_rename = disnake.ui.Button(label='Переименоваться', custom_id='rename', style=disnake.ButtonStyle.primary)
     await the_msg.edit(components=btn_rename)
-
-
-# TODO - Если переименование по кнопке нормально работает - удалить.
-
-# @bot.slash_command()
-# async def name(inter: disnake.ApplicationCommandInteraction, rank: int, nickname:str, name:str):
-#     """
-#     Команда переименует вас по шаблону [Ранг] Никнейм (Имя)
-#
-#     Parameters
-#     ----------
-#     inter: autofilled
-#     rank: Ваш ранг - 2 цифры, если он ниже 10 добавьте 0 в начале.
-#     nickname: Ваш ник в игре
-#     name: Ваше имя, как к вам обращаться. Кириллицей
-#     """
-#     cyrillic_symbols = ['а','б','в','г','д','е','ё','ж','з','и','й','к','л','м','н','о','п','р','с','т','у','ф','х','ц','ч','ш','щ','э','ю','я']
-#     if not all(chr in cyrillic_symbols for chr in name.lower()):
-#         await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.', ephemeral=True)
-#         return
-#     if rank in range(1, 10):
-#         rank = '0'+str(rank)
-#
-#
-#     await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
-#
-#     btn = disnake.ui.Button(label='Я переименовался', custom_id='rename', style=disnake.enums.ButtonStyle.primary)
-#
-#     @bot.event
-#     async def on_button_click(inter):
-#         if inter.component.custom_id == 'rename':
-#             if not (inter.author.display_name == '[Ранг] Nickname (ВашеИмя)'):
-#                 newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
-#                 await inter.author.add_roles(newrole) # Назначаем роль переименованному человеку
-#                 await inter.send('Авторизация успешна, теперь, выберите роль в открывшемся канале.', ephemeral=True, delete_after=5)
-#                 await asyncio.sleep(10)
-#                 await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
-#             elif inter.author.display_name == '[Ранг] Nickname (ВашеИмя)':
-#                 await inter.channel.send('Вы НЕ переименовались! Доступ к клану не получен!', delete_after=5)
-#                 role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
-#                 if role not in inter.author.roles:
-#                     await inter.author.add_roles(role)
-#
-#     await inter.send('Подтвердите, что вы переименовались', components=btn, ephemeral=True, delete_after=60)
 
 
 @bot.slash_command(dm_permission=False)

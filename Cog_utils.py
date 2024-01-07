@@ -522,43 +522,43 @@ class Games(commands.Cog):
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     await channel.send('**Решили испытать удачу и выиграть главный приз? Отлично! \n '
                                      'Выберите, какой из шести простых сундуков открываем?\n\n'
-                                     'Нажмите на цифру от 1 до 6**', delete_after=180)
+                                     'Нажмите на цифру от 1 до 6**', delete_after=120)
                     # begin pasting the picture with usual chests
                     path = os.path.join(os.getcwd(), 'images', 'Normal-chests.png')
-                    await channel.send(file=disnake.File(path, 'Normal-chests.png'), view=NormalRow(), delete_after=95)
+                    await channel.send(file=disnake.File(path, 'Normal-chests.png'), view=NormalRow(), delete_after=115)
                     # end of pasting the picture with usual chests
 
                     def checkAuthor(inter:disnake.MessageInteraction):
                         return inter.author == author and inter.channel == channel
 
                     try:
-                        await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
+                        button_inter = await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
                     except asyncio.TimeoutError:
                         await channel.send('**Удача не терпит медлительных. Время вышло! 👎**', delete_after=30)
                     else:
                         reward, pic = usual_reward()
                         path = os.path.join(os.getcwd(), 'images', pic)
-                        await channel.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'), delete_after=90)
+                        await button_inter.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'), delete_after=110)
                         await inter.edit_original_response('Спасибо за игру!')
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         elif 'золотой ключ' in reward.lower():
                             await channel.send(
-                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**', delete_after=90)
+                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**', delete_after=100)
                             # Begin pasting the picture with Gold chests
                             path = os.path.join(os.getcwd(), 'images', 'Golden-chests.png')
                             _goldChests = GoldRow()
-                            await channel.send(file=disnake.File(path, 'Golden-chests.png'), components=_goldChests, delete_after=120)
+                            await channel.send(file=disnake.File(path, 'Golden-chests.png'), components=_goldChests, delete_after=95)
                             # End of pasting the picture with Gold chests
                             try:
-                                await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
+                                button_inter_gold = await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
                             except asyncio.TimeoutError:
                                 await inter.edit_original_response('```fix\nУдача не терпит медлительных. Время вышло! 👎```', delete_after=30)
                                 await asyncio.sleep(15)
                             else:
                                 reward, pic = gold_reward()
                                 path = os.path.join(os.getcwd(), 'images', pic)
-                                await channel.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=160)
+                                await button_inter_gold.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=160)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                                 await inter.edit_original_response('Спасибо за игру!')
 

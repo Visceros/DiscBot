@@ -19,6 +19,7 @@ class NormalRow(disnake.ui.View):
         self.add_item(disnake.ui.Button(label="3", custom_id="3", style=ButtonStyle.primary))
         self.add_item(disnake.ui.Button(label="4", custom_id="4", style=ButtonStyle.primary))
         self.add_item(disnake.ui.Button(label="5", custom_id="5", style=ButtonStyle.primary))
+        self.add_item(disnake.ui.Button(label="6", custom_id="6", style=ButtonStyle.primary))
 
 
 class GoldRow(disnake.ui.ActionRow):
