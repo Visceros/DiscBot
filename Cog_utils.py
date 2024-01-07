@@ -517,7 +517,7 @@ class Games(commands.Cog):
                 if int(user_gold) < 1500:
                     await inter.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```', ephemeral=True)
                 else:
-                    await inter.response.defer(ephemeral=True, thinking=True)
+                    await inter.response.defer(ephemeral=True)
                     new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     await channel.send('**Решили испытать удачу и выиграть главный приз? Отлично! \n '
