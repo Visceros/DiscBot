@@ -427,9 +427,7 @@ class Listeners(commands.Cog):
                     await inter.author.add_roles(role) #assign the chosen role from roles list
                     await inter.author.add_roles(*basic_achievement_roles) #additionally assing achievement roles
                     await inter.author.remove_roles(checkrole) #remove the role to see the channel with roles message.
-                    await inter.edit_original_message('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать')
-                    await asyncio.sleep(10)
-                    await inter.delete_original_response()
+                    await inter.send('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', ephemeral=True)
 
     @commands.Cog.listener()
     async def on_button_click(self, inter:disnake.MessageInteraction):
@@ -470,7 +468,6 @@ class Listeners(commands.Cog):
             await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.')
             await asyncio.sleep(10)
             await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
-            await modal_inter.delete_original_response()
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.

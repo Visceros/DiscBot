@@ -120,7 +120,7 @@ async def auto_rainbowise():
 
 # функция сброса варнов у всех юзеров на 0 каждое первое число месяца (дописать очистку данных в LogTable старше 3 мес)
 @tasks.loop(hours=24)
-async def montly_task():
+async def monthly_task():
 
     # События в первый день месяца
     if datetime.datetime.now(tz=tz).day == 1:
@@ -232,9 +232,9 @@ async def on_ready():
     except RuntimeError:
         auto_rainbowise.restart()
     try:
-        montly_task.start()
+        monthly_task.start()
     except RuntimeError:
-        montly_task.restart()
+        monthly_task.restart()
     daily_task.start()
     await accounting()
     print('I\'m ready to serve.')
@@ -967,49 +967,6 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:s
         return msg.author == author and msg.channel == channel
 
     gid = inter.guild.id
-
-    #checking if the message already has roles associated with it / Проверяем, если сообщение уже имеет прикрепленные к нему роли
-    # async with pool.acquire() as db:
-    #     data = await db.fetchval('SELECT data from PickaRole WHERE guild_id=$1, message_id=$2', gid, mid)
-    #     storage = json.loads(data)
-    #     if len(storage)>0:
-    #         temp_msg = await inter.send('Do you want to add more roles to this message? / Хотите добавить роли к этому сообщению?\nyes/no')
-    #         answer = await bot.wait_for("message", check=pickarole_check, timeout=120)
-    #         messages_to_delete.append(temp_msg)
-    #
-    #         if answer.content.lower() == 'yes' or answer.content.lower().startswith('y'):
-    #             temp_msg = await inter.send('How many reaction-role pairs do you wish to add / Сколько пар реакция-роль хотите добавить?')
-    #             messages_to_delete.append(temp_msg)
-    #             num = await bot.wait_for("message", check=pickarole_check, timeout=120)
-    #             try:
-    #                 num = int(num.content)
-    #             except ValueError:
-    #                 temp_msg = await inter.send('Error: you should send a digit / Ошибка: нужно отправить цифру')
-    #                 messages_to_delete.append(temp_msg)
-    #             for i in range(num):
-    #                 temp_msg = await inter.send(f'Enter the {i + 1} reaction emoji / Введите {i + 1} эмодзи реакции')
-    #                 emoj = await bot.wait_for("message", check=pickarole_check, timeout=120)
-    #                 messages_to_delete.append(emoj)
-    #                 emoj = str(emoj.content)
-    #                 storage[emoj] = 0
-    #                 messages_to_delete.append(temp_msg)
-    #                 temp_msg = await inter.send('Enter the role id for this reaction / Введите id роли для этой реакции')
-    #                 role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
-    #                 messages_to_delete.append(temp_msg)
-    #                 messages_to_delete.append(role_id)
-    #                 role_id = int(role_id.content)
-    #                 role = disnake.utils.find(lambda r: (role_id == r.id), inter.guild.roles)
-    #                 while role is None:
-    #                     temp_msg = await inter.send("There's no such role enter role id again/ Роль не найдена, введите id заново")
-    #                     messages_to_delete.append(temp_msg)
-    #                     role_id = await bot.wait_for("message", check=pickarole_check, timeout=120)
-    #                     messages_to_delete.append(role_id)
-    #                     role_id = int(role_id.content)
-    #                     role = await disnake.utils.find(lambda r: (role_id == r.id), inter.guild.roles)
-    #                 await msg.add_reaction(emoji=emoj)
-    #                 storage[emoj] = role_id
-    #             data_json = json.dumps(storage)
-    #             await db.execute('UPDATE PickaRole SET data=$1 WHERE guild_id=$2, message_id=$3', data_json, gid, mid,)
 
     #creating a new message with roles / создаём новое сообщение с ролями
     for i in range(num):
