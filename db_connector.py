@@ -4,7 +4,7 @@ import asyncpg
 
 async def db_connection():
     """Returns a connection pool object using asyncpg.create_pool() method"""
-    global pool
+    pool = None
     db_user = os.getenv('db_user')
     db_pwd = os.getenv('db_pwd')
     db_name = os.getenv('db_name')

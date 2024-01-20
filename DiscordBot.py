@@ -1072,5 +1072,28 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
         else:
             await channel.send(f'В розыгрыше "{prize}" от {author.display_name} слишком мало участников, победителя нет. Ждем вас в следующих раздачах. 👋')
 
+
+@bot.slash_command(dm_permission=False)
+async def ticket(inter:disnake.ApplicationCommandInteraction):
+    """
+    Покупка билета для розыгрыша
+
+    Parameters
+    ----------
+    inter: parameter is autofilled
+    """
+    moderation_channel = bot.get_channel(773010375775485982)
+    await inter.response.defer()
+    async with pool.acquire() as db:
+        user_money = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
+        if user_money < 500:
+            return await inter.response.send_message('У вас недостаточно валюты для покупки', ephemeral=True)
+        else:
+            await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_money, inter.author.id)
+            await inter.response.send_message('Билет успешно куплен', ephemeral=True)
+            await moderation_channel.send(f'{inter.author.mention} купил билет')
+
+
 #production bot
 bot.run(token, reconnect=True)
+
