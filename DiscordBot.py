@@ -1082,7 +1082,7 @@ async def ticket(inter:disnake.ApplicationCommandInteraction):
     ----------
     inter: parameter is autofilled
     """
-    moderation_channel = bot.get_channel(773010375775485982)
+    moderation_channel = bot.get_channel(696060547971547177)
     await inter.response.defer(ephemeral=True)
     async with pool.acquire() as db:
         user_money = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
