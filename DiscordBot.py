@@ -1083,16 +1083,16 @@ async def ticket(inter:disnake.ApplicationCommandInteraction):
     inter: parameter is autofilled
     """
     moderation_channel = bot.get_channel(773010375775485982)
-    await inter.response.defer()
+    await inter.response.defer(ephemeral=True)
     async with pool.acquire() as db:
         user_money = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
         if user_money is None:
-            return await inter.edit_original_response('Извините, эта возможность доступна только участникам клана с активностью в голосовых каналах.', ephemeral=True)
+            return await inter.edit_original_response('Извините, эта возможность доступна только участникам клана с активностью в голосовых каналах.')
         if user_money < 500:
-            return await inter.edit_original_response('У вас недостаточно валюты для покупки', ephemeral=True)
+            return await inter.edit_original_response('У вас недостаточно валюты для покупки')
         else:
             await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_money, inter.author.id)
-            await inter.edit_original_response('Билет успешно куплен', ephemeral=True)
+            await inter.edit_original_response('Билет успешно куплен')
             await moderation_channel.send(f'{inter.author.mention} купил билет')
 
 
