@@ -1086,6 +1086,8 @@ async def ticket(inter:disnake.ApplicationCommandInteraction):
     await inter.response.defer()
     async with pool.acquire() as db:
         user_money = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
+        if user_money is None:
+            return await inter.send('Извините, эта возможность доступна только участникам клана с активностью в голосовых каналах.', ephemeral=True)
         if user_money < 500:
             return await inter.response.send_message('У вас недостаточно валюты для покупки', ephemeral=True)
         else:
