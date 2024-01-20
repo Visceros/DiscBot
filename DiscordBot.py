@@ -688,7 +688,7 @@ async def u(inter, member: disnake.Member):
 
 @bot.message_command(dm_permission=False)
 @commands.has_permissions(administrator=True)
-async def danet(inter:disnake.ApplicationCommandInteraction, msg:disnake.Message, polltime:int=60):
+async def likedis(inter:disnake.ApplicationCommandInteraction, msg:disnake.Message, polltime:int=60):
     """Отправляет сообщение и добавляет под него,👍 и 👎 чтобы провести голосование.
 
     Parameters
