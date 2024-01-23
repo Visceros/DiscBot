@@ -21,24 +21,18 @@ from buttons import Giveaway, RenameModal
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
 load_dotenv(dotenv_path)
-token = os.getenv('bot_key')
+token = os.getenv('BOT_KEY')
 if token is None:
     print('Could not receive token. Please check if your .env file has the correct token')
     exit(1)
 
 tz = datetime.timezone(datetime.timedelta(hours=3))
-intents = disnake.Intents.default().all()
-intents.members = True
-intents.presences = True
-intents.guild_messages = True
-intents.voice_states = True
-intents.reactions = True
-intents.message_content = True
+intents = disnake.Intents.all()
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff',
               '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 command_sync_flags = commands.CommandSyncFlags.default()
 #command_sync_flags.sync_commands_debug = True  #uncomment to debug commands sync
-bot = commands.Bot(description='GoldenBot for Golden Crown discord.', intents=intents, command_sync_flags=command_sync_flags)
+bot = commands.InteractionBot(intents=intents, command_sync_flags=command_sync_flags)
 
 
 # считываем количество записей в базе данных - получаем не только кол-во записей, но и айдишники.
@@ -1074,7 +1068,7 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
 
 
 @bot.slash_command(dm_permission=False)
-async def ticket(inter:disnake.ApplicationCommandInteraction):
+async def ticket(inter:disnake.ApplicationCommandInteraction, gold=False):
     """
     Покупка билета для розыгрыша
 
@@ -1082,18 +1076,31 @@ async def ticket(inter:disnake.ApplicationCommandInteraction):
     ----------
     inter: parameter is autofilled
     """
+    if gold is True:
+        price = 1500
+    else:
+        price = 500
     moderation_channel = bot.get_channel(696060547971547177)
     await inter.response.defer(ephemeral=True)
     async with pool.acquire() as db:
         user_money = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
         if user_money is None:
             return await inter.edit_original_response('Извините, эта возможность доступна только участникам клана с активностью в голосовых каналах.')
-        if user_money < 500:
+        if user_money < price:
             return await inter.edit_original_response('У вас недостаточно валюты для покупки')
         else:
+            user_money -= price
             await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_money, inter.author.id)
-            await inter.edit_original_response('Билет успешно куплен')
-            await moderation_channel.send(f'{inter.author.mention} купил билет')
+            if gold is True:
+                await inter.edit_original_response('Золотой билет успешно куплен')
+                await moderation_channel.send(f'{inter.author.mention} купил золотой билет')
+            else:
+                await inter.edit_original_response('Билет успешно куплен')
+                await moderation_channel.send(f'{inter.author.mention} купил билет')
+
+@bot.slash_command(dm_permission=False)
+async def goldticket(inter:disnake.ApplicationCommandInteraction):
+    return await ticket(interaction=inter, gold=True)
 
 
 #production bot
