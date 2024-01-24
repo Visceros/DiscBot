@@ -826,7 +826,7 @@ async def antitop(inter, count: int = 15):
                     time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
                     if time_in_clan.days//14 > 0:
                         if time_in_clan.days//7 <= 4:
-                            if activity/(time_in_clan.days//7) < 10:
+                            if (activity//60)/(time_in_clan.days//7) < 10:
                                 result_list.append((member.mention, activity, time_in_clan.days//7))
                         elif time_in_clan.days//7 >= 4 and activity//60 < 40:
                             result_list.append((member.mention, activity, '4+'))
