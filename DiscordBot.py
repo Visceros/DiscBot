@@ -646,7 +646,7 @@ async def u(inter, member: disnake.Member):
     member: Участник дискорд сервера (ID, имя, упоминание)
     """
     eligible_roles_ids = {651377975106732034, 449837752687656960}
-    if any(role.id in eligible_roles_ids for role in inter.author.roles) or inter.message.author.guild_permissions.administrator is True:
+    if any(role.id in eligible_roles_ids for role in inter.author.roles) or inter.author.guild_permissions.administrator is True:
         global pool
         await inter.response.defer()
         async with pool.acquire() as db:
