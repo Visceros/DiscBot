@@ -646,38 +646,42 @@ async def u(inter, member: disnake.Member):
     member: Участник дискорд сервера (ID, имя, упоминание)
     """
     eligible_roles_ids = {651377975106732034, 449837752687656960}
-    #if any(role.id in eligible_roles_ids for role in inter.author.roles) or inter.message.author.guild_permissions.administrator is True:
-    global pool
-    async with pool.acquire() as db:
-        data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
-        if data is not None:
-            warns = int(data['warns'])
-            t_7days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=7)
-            t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
+    if any(role.id in eligible_roles_ids for role in inter.author.roles) or inter.message.author.guild_permissions.administrator is True:
+        global pool
+        await inter.response.defer()
+        async with pool.acquire() as db:
+            data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
+            if data is not None:
+                warns = int(data['warns'])
+                t_7days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=7)
+                t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
 
-            try:
-                seven_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
-                    t_7days_ago, datetime.datetime.now(tz=tz), member.id)
-                thirty_days_activity_records = await db.fetch(
-                    "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
-                    t_30days_ago, datetime.datetime.now(tz=tz), member.id)
-            except asyncpg.InterfaceError:
-                pool = await db_connection()
-        time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
+                try:
+                    seven_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
+                        t_7days_ago, datetime.datetime.now(tz=tz), member.id)
+                    thirty_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login ASC;",
+                        t_30days_ago, datetime.datetime.now(tz=tz), member.id)
+                except asyncpg.InterfaceError:
+                    pool = await db_connection()
+                time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
 
-        part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
-        part_2 = f"`{time_in_clan.days//7} недель`"
-        activity7d = await count_result_activity(seven_days_activity_records, warns)
-        activity30d = await count_result_activity(thirty_days_activity_records, warns)
-        part_3 = f"\nАктивность за 7 дней: {activity7d//60} ч. {activity7d%60} мин.\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин.\nID: {member.id}"
-        embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
-        embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
-        embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
-        embed.add_field(name=f"Активность:", value=part_3, inline=False)
-        await inter.send(embed=embed)
+                part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
+                part_2 = f"`{time_in_clan.days//7} недель`"
+                activity7d = await count_result_activity(seven_days_activity_records, warns)
+                activity30d = await count_result_activity(thirty_days_activity_records, warns)
+                part_3 = f"\nАктивность за 7 дней: {activity7d//60} ч. {activity7d%60} мин.\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин.\nID: {member.id}"
+                embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
+                embed.add_field(name=f"Пользователь:", value=part_1, inline=False)
+                embed.add_field(name=f"Состоит в клане", value=part_2, inline=False)
+                embed.add_field(name=f"Активность:", value=part_3, inline=False)
+                await inter.send(embed=embed)
+            else:
+                await inter.edit_original_response(
+                    'В базе пользователей не найдена информация по этому профилю. Чтобы информация появилась требуется активность в голосовых каналах клана')
     #else:
-        #await inter.send('Вы не являетесь модератором или администратором.')
+        await inter.send('Вы не являетесь модератором или администратором.')
 
 
 @bot.message_command(dm_permission=False)
