@@ -498,23 +498,23 @@ class Games(commands.Cog):
         ----------
         inter: autofilled ApplicationCommandInteraction argument
         """
+        await inter.response.defer(ephemeral=True)
         reward_chat = self.bot.get_channel(696060547971547177)
         author = inter.author
         channel = inter.channel
         checkrole = disnake.utils.find(lambda r: 'СОКЛАНЫ' in r.name.upper(), inter.guild.roles)
         # Check if it's the right channel to write to and if user have relevant role
         if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
-            await inter.send('```Error! Извините, эта команда работает только в специальном канале.```', ephemeral=True)
+            await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
         elif checkrole not in author.roles:
-            await inter.send(f'```Error! Извините, доступ имеют только Сокланы.```', ephemeral=True)
+            await inter.edit_original_response('```Error! Извините, доступ имеют только Сокланы.```')
         else:
             # IF all correct we head further
             async with self.pool.acquire() as db:
                 user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', author.id)
                 if int(user_gold) < 1500:
-                    await inter.send(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```', ephemeral=True)
+                    await inter.edit_original_response(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```', ephemeral=True)
                 else:
-                    await inter.response.defer(ephemeral=True)
                     new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     await channel.send('**Решили испытать удачу и выиграть главный приз? Отлично! \n '
@@ -536,7 +536,7 @@ class Games(commands.Cog):
                         reward, pic = usual_reward()
                         path = os.path.join(os.getcwd(), 'images', pic)
                         await button_inter.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'), delete_after=110)
-                        await inter.edit_original_response('Спасибо за игру!')
+                        await inter.delete_original_response()
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         elif 'золотой ключ' in reward.lower():
@@ -550,14 +550,14 @@ class Games(commands.Cog):
                             try:
                                 button_inter_gold = await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
                             except asyncio.TimeoutError:
-                                await inter.edit_original_response('```fix\nУдача не терпит медлительных. Время вышло! 👎```', delete_after=30)
-                                await asyncio.sleep(15)
+                                await inter.edit_original_response('```fix\nУдача не терпит медлительных. Время вышло! 👎```')
+                                await inter.delete_original_response(delay=15)
                             else:
                                 reward, pic = gold_reward()
                                 path = os.path.join(os.getcwd(), 'images', pic)
                                 await button_inter_gold.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=160)
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
-                                await inter.edit_original_response('Спасибо за игру!')
+                                await inter.delete_original_response()
 
     # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
 
@@ -571,6 +571,7 @@ class Games(commands.Cog):
         ----------
         inter: autofilled ApplicationCommandInteraction argument
         """
+        await inter.response.defer()
         bingo_numbers = ['🟦1️⃣', '🟦2️⃣', '🟦3️⃣', '🟦4️⃣', '🟦5️⃣', '🟦6️⃣', '🟦7️⃣', '🟦8️⃣', '🟦9️⃣', '1️⃣0️⃣',
                          '1️⃣1️⃣', '1️⃣2️⃣',
                          '1️⃣3️⃣', '1️⃣4️⃣', '1️⃣5️⃣', '1️⃣6️⃣', '1️⃣7️⃣', '1️⃣8️⃣', '1️⃣9️⃣', '2️⃣0️⃣', '2️⃣1️⃣',
@@ -619,11 +620,14 @@ class Games(commands.Cog):
         """
         if not 'казино' in inter.channel.name.lower():
             return await inter.send('```Error! Извините, эта команда работает только в канале казино.```', ephemeral=True)
+
+        await inter.response.defer(ephemeral=True)
+
         channel = inter.channel
         pins = await channel.pins()
         bid = int(bid)
         if bid < 50:
-            return await inter.send('Минимальная ставка: 50', ephemeral=True)
+            return await inter.edit_original_response('Минимальная ставка: 50')
         record_msg = None
         for msg in pins:
             if 'Текущий рекордный выигрыш:' in msg.content:
@@ -635,7 +639,7 @@ class Games(commands.Cog):
         async with self.pool.acquire() as db:
             user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', inter.author.id)
             if bid > user_gold:
-                return await inter.send('Недостаточно :coin: для такой ставки.', ephemeral=True)
+                return await inter.edit_original_response('Недостаточно :coin: для такой ставки.')
             else:
                 await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, inter.author.id)
                 slot_msg = await inter.channel.send(random.choice(screens['roll']))
@@ -681,6 +685,7 @@ class Games(commands.Cog):
                         embed = disnake.Embed()
                         embed.add_field(name='Внимание!', value=f'Поздравляем, {inter.author.mention} выиграл крупный приз **{prize}** :coin: в игре Казино!')
                         await self.messaging_channel.send(embed=embed)
+        await inter.delete_original_response(delay=5)
 
     # ------------- КОНЕЦ ИГРЫ КАЗИНО -----------
 
@@ -773,7 +778,7 @@ class Player(commands.Cog):
             self.vc.resume()
         else:
             await inter.send('Нечего ставить на паузу')
-        await inter.edit_original_response(content='done')
+        await inter.delete_original_response(delay=5)
 
 
     @commands.slash_command()
@@ -785,8 +790,8 @@ class Player(commands.Cog):
         ----------
         inter: autofilled ApplicationCommandInteraction argument
         """
-        self.vc = inter.guild.voice_client
         await inter.response.defer(ephemeral=True)
+        self.vc = inter.guild.voice_client
         if self.vc.is_playing() or self.vc.is_paused():
             if self.type=='playlist':
                 await self.vc.disconnect(force=True)
@@ -794,7 +799,7 @@ class Player(commands.Cog):
                 self.vc.stop()
         else:
             await inter.send("I am silent already/ Я и так уже молчу!", ephemeral=True)
-        await inter.edit_original_response(content='done')
+        await inter.delete_original_response(delay=5)
 
     @commands.slash_command()
     async def skip(self, inter):
@@ -810,7 +815,7 @@ class Player(commands.Cog):
         if self.type == 'playlist':
             if self.vc.is_playing() or self.vc.is_paused():
                 self.vc.stop()
-        await inter.edit_original_response(content='done')
+        await inter.delete_original_response()
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
 class Shop(commands.Cog):
@@ -848,23 +853,24 @@ class Shop(commands.Cog):
         duration: Длительность
         json_data: настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":"a198bc"}
         """
+        await inter.response.defer(ephemeral=True)
         author = inter.author
         channel = inter.channel
         messages_to_delete = []
 
         if product_type == 'help':
-            await inter.send('Добавить товар в магазин можно двумя путями:\n'
+            await inter.edit_original_response('Добавить товар в магазин можно двумя путями:\n'
                            'путь 1: ввести команду, и указать тип добавляемого товара, например\n!shop add role\n'
                            'и тогда бот в режиме диалога поможет вам заполнить данные о товаре, или\n'
                            'путь 2: сразу ввести все параметры, например:\n'
                            '!shop add role "VIP Ник Фиолетовый" 1500 30\n'
-                           'поддерживаемые типы в этой ревизии: role, profile_skin', ephemeral=True)
+                           'поддерживаемые типы в этой ревизии: role, profile_skin')
         elif product_type is not None and price is not None and product_name is not None and duration is not None:
             if duration == 0: duration = 'NULL'
             async with self.pool.acquire() as db:
                 try:
                     await db.execute(f'INSERT INTO SHOP (product_type, name, price, duration) VALUES($1, $2, $3, $4) ON CONFLICT (product_id, name) DO NOTHING;', product_type, product_name, price, duration)
-                    await inter.send('Товар успешно добавлен', ephemeral=True)
+                    await inter.edit_original_response('Товар успешно добавлен')
                 except Exception as e:
                     await inter.channel.send('Произошла ошибка при добавлении товара:\n')
                     await inter.channel.send(e.__str__())
@@ -964,6 +970,7 @@ class Shop(commands.Cog):
                             await channel.send(e)
 
             await asyncio.sleep(5)
+            await inter.delete_original_response()
             await channel.delete_messages(messages_to_delete)
 
 
@@ -1074,7 +1081,7 @@ class Shop(commands.Cog):
 
                 else:
                     await inter.send('Извините, товар с таким номером не найден.', delete_after=5)
-            await inter.edit_original_response('done')
+            await inter.delete_original_response(delay=3)
         # Если человек ввёл слова, считаем это названием товара
         elif isinstance(arg, str):
             product_name = arg
@@ -1121,5 +1128,5 @@ class Shop(commands.Cog):
 
                 else:
                     msg = await inter.send('Извините, товар с таким названием не найден.', delete_after=5)
-            await inter.edit_original_response('done')
+            await inter.delete_original_response(delay=2)
 

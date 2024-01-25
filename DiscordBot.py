@@ -412,13 +412,14 @@ async def add(inter, member: disnake.Member):
     inter: autofilled ApplicationCommandInteraction argument
     member: Участник дискорд сервера
     """
+    await inter.response.defer(ephemeral=True)
     async with pool.acquire() as db:
         try:
             await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
                              member.id, member.display_name, member.joined_at)
-            await inter.send('user added to database', ephemeral=True)
+            await inter.edit_original_response('user added to database')
         except asyncpg.exceptions.UniqueViolationError:
-            await inter.send('user is already added', ephemeral=True)
+            await inter.edit_original_response('user is already added')
 
 
 @user.sub_command()
@@ -474,6 +475,7 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
     member: Чей профиль показать
     """
     global pool
+    await inter.response.defer()
     async with pool.acquire() as db:
         data = await db.fetchrow(f'SELECT * FROM discord_users WHERE id=$1;', member.id)
         if data is not None:
@@ -520,11 +522,11 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             buffer = io.BytesIO()
             background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
-            await inter.send(file=disnake.File(buffer, 'profile.png'))
+            await inter.edit_original_response(file=disnake.File(buffer, 'profile.png'))
             buffer.close()
 
         else:
-            await inter.send('Не найдена информация по вашему профилю.\n'
+            await inter.edit_original_response('Не найдена информация по вашему профилю.\n'
                            'Функция "Профиль", "Валюта" и "Репутация" доступна только игрокам с активностью в голосовых каналах.')
 
 
@@ -539,10 +541,12 @@ async def clear(inter: disnake.ApplicationCommandInteraction, member: disnake.Me
     inter: autofilled ApplicationCommandInteraction
     member: Участник дискорд сервера (ID, имя, упоминание)
     """
+    await inter.response.defer(ephemeral=True)
     async with pool.acquire() as db:
         await db.execute('DELETE CASCADE FROM discord_users WHERE id=$1;', member.id)
         await db.execute('INSERT INTO discord_users (id, nickname, join_date, gold, warns) VALUES($1, $2, $3);',
                          member.id, member.display_name, member.joined_at)
+    await inter.edit_original_response('Удаление участника из базы выполнено.')
 
 
 # -------------КОНЕЦ БЛОКА АДМИН-МЕНЮ ПО УПРАВЛЕНИЮ ПОЛЬЗОВАТЕЛЯМИ--------------
@@ -560,16 +564,17 @@ async def gmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Me
     """
     author = inter.author
     gold = abs(int(gold))
+    await inter.response.defer()
     async with pool.acquire() as db:
         if inter.author.guild_permissions.administrator:
             gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
             newgold = int(gold_was) + gold
             await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-            await inter.send(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
+            await inter.edit_original_response(f'Пользователю {member.display_name} начислено +{gold} :coin:.')
         else:
             user_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', author.id)
             if gold > int(user_gold):
-                await inter.send('У вас нет столько денег.', ephemeral=True)
+                await inter.edit_original_response('У вас нет столько денег.')
                 return
             else:
                 newgold = int(user_gold) - gold
@@ -577,6 +582,7 @@ async def gmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Me
                 target_gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 newtargetgold = int(target_gold) + gold
                 await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newtargetgold, member.id)
+                await inter.edit_original_response(f'Пользователь {inter.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
                 await sys_channel.send(
                     f'Пользователь {inter.author.display_name} передал пользователю {member.display_name} {gold} валюты.')
 
@@ -599,7 +605,7 @@ async def mmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Me
         if newgold < 0:
             newgold = 0
         await db.execute('UPDATE discord_users SET gold=$1 WHERE id=$2;', newgold, member.id)
-        await inter.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.')
+        await inter.send(f'У Пользователя {member.mention} было отнято {gold} :coin:.', ephemeral=True)
 
 
 @bot.slash_command(dm_permission=False)
@@ -626,7 +632,6 @@ async def me(inter:disnake.ApplicationCommandInteraction):
     ----------
     inter: autofilled ApplicationCommandInteraction
     """
-
     if "клан-профиль" in inter.channel.name or "system" in inter.channel.name:
         usr = inter.author
         await show(inter, usr)
@@ -740,13 +745,14 @@ async def poll(inter, options: int, time=60, arg=None):
     time: Сколько минут длится опрос
     arg: напишите help, если хотите получить инструкцию по команде
     """
+    await inter.response.defer(ephemeral=True)
     if arg=='help':
-        return await inter.send(
+        return await inter.edit_original_response(
             '''Как использовать: команда пишется, сразу после сообщения, из которого хотите сделать \
             опрос (в нём заранее пропишите для людей опции голосования). Это сообщение, дублируется\
              и к нему назначаются реакции для голосования (до 9). Длительность по умолчанию - час.''')
     if options > 9:
-        return await inter.send(
+        return await inter.edit_original_response(
             content=f"{inter.message.author.mention}, количество вариантов в голосовании должно быть не больше 9!")
 
     messages = await inter.channel.history(limit=2).flatten()
@@ -755,6 +761,7 @@ async def poll(inter, options: int, time=60, arg=None):
     for num in range(options):
         await message.add_reaction(reactions[num])
     start_time = datetime.datetime.now(tz=tz)
+    await inter.delete_original_response()
     await asyncio.sleep(60*time)
     message = await inter.channel.fetch_message(messages[0].id)
     reactions_count_list = []
@@ -800,7 +807,7 @@ async def top(inter, count: int = 10):
         output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин.\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='Топ активности', value=output)
-    await inter.edit_original_response(content='done')
+    await inter.delete_original_response()
     await inter.send(embed=embed)
 
 
@@ -840,7 +847,7 @@ async def antitop(inter, count: int = 15):
     output = "".join(f"{i + 1}: {res[i][0]}, актив: {res[i][1]//60} ч. {res[i][1] % 60} мин., В клане: {res[i][2]} нед.;\n" for i in range(count))
     embed = disnake.Embed(color=disnake.Colour(int('efff00', 16)))
     embed.add_field(name='АнтиТоп активности', value=output)
-    await inter.edit_original_response(content='done')
+    await inter.delete_original_response()
     await inter.send(embed=embed)
 
 
@@ -881,6 +888,7 @@ async def warn(inter, member: disnake.Member, count:int=1):
     member: кому выдаём предупреждение
     count: сколько
     """
+    await inter.response.defer(ephemeral=True)
     if member is not None:
         eligible_roles_ids = {651377975106732034, 449837752687656960}
         moderation_channel = bot.get_channel(773010375775485982)
@@ -898,13 +906,15 @@ async def warn(inter, member: disnake.Member, count:int=1):
                             return
                     user_warns+=count
                     await db.execute('UPDATE discord_users SET warns=$1 WHERE id=$2', user_warns, member.id)
+                await inter.delete_original_response()
                 await moderation_channel.send(f'Модератор {inter.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива ({3*count} минут(ы).')
                 return await chat_channel.send(f'Модератор {inter.author.mention} ловит игрока {member.mention} на накрутке и отнимает у него время актива.')
+    else:
+        await inter.edit_original_response('Вы указали несуществующего пользователя.')
 
 
 # @message_command Это очень крутая штука, описанную функцию можно применить к любому сообщению, просто нажав
 # ПКМ и выбрав, какую именно функцию к нему применить
-
 @bot.message_command(dm_permission=False)
 async def react(inter, msg:disnake.Message, number:int=5):
     """
@@ -916,12 +926,13 @@ async def react(inter, msg:disnake.Message, number:int=5):
     msg: the message object
     number: сколько реакций поставить
     """
-
+    await inter.response.defer(ephemeral=True)
     emoji_list = ['👍', '👀','😍','🎉','🥳','🤔','❤']
     for i in range(number):
         rnd = random.randint(0,len(emoji_list)-2)
         emoj = emoji_list.pop(rnd)
         await msg.add_reaction(emoj)
+    await inter.delete_original_response()
 
 
 @bot.slash_command(dm_permission=False)
@@ -954,7 +965,7 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:s
     messages_to_delete = []
     author = inter.author
     channel = inter.channel
-
+    await inter.response.defer(ephemeral=True)
     def pickarole_check(msg:disnake.Message):
         """
         checks if the answering person is the one who entered the command
@@ -966,7 +977,7 @@ async def pickarole(inter:disnake.ApplicationCommandInteraction, num:int, text:s
         return msg.author == author and msg.channel == channel
 
     gid = inter.guild.id
-
+    await inter.delete_original_response()
     #creating a new message with roles / создаём новое сообщение с ролями
     for i in range(num):
         temp_msg = await channel.send(f'Введите {i+1} подпись для роли / Enter the {i+1} role label')
@@ -1018,6 +1029,7 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
     winners: Количество победителей
     prize: Приз, что раздаём
     """
+    await inter.response.defer(ephemeral=True)
     if hours is None or winners is None:
         return await inter.send('Для запуска розыгрыша введите /giveaway <кол-во часов> <кол-во победителей> <товар>.', ephemeral=True)
     author = inter.author
@@ -1050,6 +1062,7 @@ async def giveaway(inter:disnake.ApplicationCommandInteraction, hours:float, win
 
     view = Giveaway()
     await inter.send(embed=embed, view=view)
+    await inter.delete_original_response()
     await asyncio.sleep(hours*3600)
     random.shuffle(participants_list)
     if winners_number > 1:
@@ -1085,8 +1098,10 @@ async def ticket(inter:disnake.ApplicationCommandInteraction, gold=False):
         price = 1500
     else:
         price = 500
-    moderation_channel = bot.get_channel(696060547971547177)
+
     await inter.response.defer(ephemeral=True)
+
+    moderation_channel = bot.get_channel(696060547971547177)
     async with pool.acquire() as db:
         user_money = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1', inter.author.id)
         if user_money is None:
