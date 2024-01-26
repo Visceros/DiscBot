@@ -303,7 +303,7 @@ class Listeners(commands.Cog):
                     # При присоединении к голосовому каналу Если человека нет в базе данных - добавляем его и назначем роль
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                        roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942)]
+                        roles_list = [role for role in member.guild.roles if role.id in (613298562926903307, 613297741031800842, 613294791652016146, 613411791816359942, 1019738850987360336)]
                         if type(gold) == 'NoneType' or gold is None:
                             try:
                                 await db.execute(
@@ -465,7 +465,7 @@ class Listeners(commands.Cog):
             await inter.author.add_roles(newrole)  # Назначаем роль переименованному человеку
 
             await modal_inter.response.defer(ephemeral=True)
-            await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.')
+            await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.', components=disnake.ui.Button(style=disnake.ui.ButtonStyle.link, label='Перейти', url='https://discord.com/channels/198134036890255361/1055096375739699291'))
             await asyncio.sleep(10)
             await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
 
@@ -488,7 +488,7 @@ class Games(commands.Cog):
         self.pool = connection
         self.messaging_channel = self.bot.get_channel(442565510178013184)  # main chat of server
 
-    # ------------- ИГРА СУНДУЧКИ -----------
+    # ------------- ИГРА ЯЩИК ПАНДОРЫ -----------
     @commands.slash_command()
     async def chest(self, inter:disnake.ApplicationCommandInteraction):
         """
@@ -502,12 +502,13 @@ class Games(commands.Cog):
         reward_chat = self.bot.get_channel(696060547971547177)
         author = inter.author
         channel = inter.channel
-        checkrole = disnake.utils.find(lambda r: 'СОКЛАНЫ' in r.name.upper(), inter.guild.roles)
-        # Check if it's the right channel to write to and if user have relevant role
+        eligible_roles = {1019738850987360336, 1191731270691065926}
+        # Check if it's the right channel to write to
         if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
             await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
-        elif checkrole not in author.roles:
-            await inter.edit_original_response('```Error! Извините, доступ имеют только Сокланы.```')
+        # and if user has a relevant role
+        elif any(role in eligible_roles for role in member.roles):
+            await inter.edit_original_response('```Error! Ваш ранг в клане недостаточно высок, чтобы попытаться открыть Ящик Пандоры.```')
         else:
             # IF all correct we head further
             async with self.pool.acquire() as db:
@@ -517,9 +518,9 @@ class Games(commands.Cog):
                 else:
                     new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
-                    await channel.send('**Решили испытать удачу и выиграть главный приз? Отлично! \n '
-                                     'Выберите, какой из шести простых сундуков открываем?\n\n'
-                                     'Нажмите на цифру от 1 до 6**', delete_after=120)
+                    await channel.send('**Решили испытать удачу и выиграть приз? Что ж! \n '
+                                     'Выберите, какой из сундуков открываем?\n\n'
+                                     'Нажмите на цифру от 1 до 4**', delete_after=120)
                     # begin pasting the picture with usual chests
                     path = os.path.join(os.getcwd(), 'images', 'Normal-chests.png')
                     await channel.send(file=disnake.File(path, 'Normal-chests.png'), view=NormalRow(), delete_after=115)
@@ -559,7 +560,7 @@ class Games(commands.Cog):
                                 await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                                 await inter.delete_original_response()
 
-    # -------------- КОНЕЦ ИГРЫ СУНДУЧКИ ------------------
+    # -------------- КОНЕЦ ИГРЫ ЯЩИК ПАНДОРЫ ------------------
 
     # ------------- ИГРА КОЛЕСО ФОРТУНЫ  -----------
     @commands.slash_command(pass_context=True)

@@ -44,14 +44,14 @@ class RenameModal(disnake.ui.Modal):
                 label="Никнейм",
                 placeholder="Ваш никнейм",
                 custom_id="nick",
-                min_length=3,
+                min_length=2,
                 max_length=16
             ),
             disnake.ui.TextInput(
                 label="Имя",
                 placeholder="Ваше Имя",
                 custom_id="name",
-                min_length=3,
+                min_length=2,
                 max_length=16
             )
         ]

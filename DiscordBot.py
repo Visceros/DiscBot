@@ -652,7 +652,6 @@ async def u(inter, member: disnake.Member):
     """
     eligible_roles_ids = {651377975106732034, 449837752687656960}
     if any(role.id in eligible_roles_ids for role in inter.author.roles) or inter.author.guild_permissions.administrator is True:
-        print('ok')
         global pool
         await inter.response.defer()
         async with pool.acquire() as db:
