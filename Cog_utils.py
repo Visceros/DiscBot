@@ -507,7 +507,7 @@ class Games(commands.Cog):
         if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
             await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
         # and if user has a relevant role
-        elif any(role in eligible_roles for role in member.roles):
+        elif any(role in eligible_roles for role in author.roles):
             await inter.edit_original_response('```Error! Ваш ранг в клане недостаточно высок, чтобы попытаться открыть Ящик Пандоры.```')
         else:
             # IF all correct we head further
