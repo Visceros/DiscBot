@@ -271,18 +271,13 @@ async def _increment_money(server: disnake.Guild):
 async def accounting():
     crown = None
     try:
-        print(1)
         async for guild in bot.fetch_guilds():
             if 'golden' in guild.name.lower() and 'crown' in guild.name.lower():
                 crown = bot.get_guild(guild.id)
-                print(crown.name)
     except Exception as e:
         print(e)
     else:
-        if crown is not None:
-            _increment_money.start(crown)
-        else:
-            raise NameError(f'crown guild not found')
+        _increment_money.start(crown)
 
 # -------------------- Конец функции ежедневного начисления клановой валюты --------------------
 
