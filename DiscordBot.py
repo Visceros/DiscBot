@@ -271,7 +271,7 @@ async def _increment_money(server: disnake.Guild):
 async def accounting():
     try:
         async for guild in bot.fetch_guilds():
-            if 'golden crown' in guild.name.lower():
+            if 'golden' in guild.name.lower() and 'crown' in guild.name.lower():
                 crown = bot.get_guild(guild.id)
     except Exception as e:
         print(e)
