@@ -626,7 +626,10 @@ class Games(commands.Cog):
 
         channel = inter.channel
         pins = await channel.pins()
-        bid = int(bid)
+        try:
+            bid = int(bid)
+        except ValueError:
+            await inter.send('Ошибка. Ставка должна быть целым числом.')
         if bid < 50:
             return await inter.edit_original_response('Минимальная ставка: 50')
         record_msg = None
