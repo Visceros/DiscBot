@@ -63,10 +63,10 @@ async def initial_db_fill():
         print('Database reading done.')
         _crown = False
         for guild in bot.guilds:
-            if 'crown' in guild.name.lower():
+            if 'golden' in guild.name.lower() and 'crown' in guild.name.lower():
                 _crown = True
                 current_members_list = []
-                crown = guild
+                crown = bot.get_guild(guild.id)
                 global sys_channel
                 sys_channel = disnake.utils.find(lambda r: (r.name.lower() == 'system'), guild.channels)
                 if sys_channel is None:
@@ -273,6 +273,7 @@ async def accounting():
         async for guild in bot.fetch_guilds():
             if 'golden' in guild.name.lower() and 'crown' in guild.name.lower():
                 crown = bot.get_guild(guild.id)
+                print(crown.name)
     except Exception as e:
         print(e)
     else:
