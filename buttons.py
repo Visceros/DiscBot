@@ -34,7 +34,7 @@ class RenameModal(disnake.ui.Modal):
     def __init__(self, title: str):
         components = [
             disnake.ui.TextInput(
-                label="Ранг",
+                label="Ранг в игре",
                 placeholder="Ваш ранг",
                 value='00',
                 custom_id="rank",
