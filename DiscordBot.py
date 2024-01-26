@@ -30,9 +30,8 @@ tz = datetime.timezone(datetime.timedelta(hours=3))
 intents = disnake.Intents.all()
 rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff55', '00ffb6', '00fffc', '00bdff',
               '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
-command_sync_flags = commands.CommandSyncFlags.default()
-command_sync_flags.sync_commands = True
-command_sync_flags.sync_commands_debug = True  #uncomment to debug commands sync
+command_sync_flags = commands.CommandSyncFlags(sync_global_commands=True)
+#command_sync_flags.sync_commands_debug = True  #uncomment to debug commands sync
 bot = commands.InteractionBot(intents=intents, command_sync_flags=command_sync_flags)
 
 
