@@ -504,7 +504,7 @@ class Games(commands.Cog):
         channel = inter.channel
         eligible_roles = {1019738850987360336, 1191731270691065926}
         # Check if it's the right channel to write to
-        if 'сундучки' not in channel.name.lower() and 'казино' not in channel.name.lower():
+        if 'ящик_пандоры' not in channel.name.lower():
             await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
         # and if user has a relevant role
         elif any(role in eligible_roles for role in author.roles):
