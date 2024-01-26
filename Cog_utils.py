@@ -465,7 +465,7 @@ class Listeners(commands.Cog):
             await inter.author.add_roles(newrole)  # Назначаем роль переименованному человеку
 
             await modal_inter.response.defer(ephemeral=True)
-            await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.', components=disnake.ui.Button(style=disnake.ui.ButtonStyle.link, label='Перейти', url='https://discord.com/channels/198134036890255361/1055096375739699291'))
+            await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.', components=disnake.ui.Button(style=disnake.ButtonStyle.link, label='Перейти', url='https://discord.com/channels/198134036890255361/1055096375739699291'))
             await asyncio.sleep(10)
             await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
 
