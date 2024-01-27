@@ -1123,6 +1123,19 @@ async def goldticket(inter:disnake.ApplicationCommandInteraction):
     return await ticket(interaction=inter, gold=True)
 
 
+@bot.slash_command(dm_permission=False)
+@commands.has_permissions(administrator=True)
+async def eraseachievements(inter:disnake.ApplicationCommandInteraction):
+    await inter.response.defer(ephemeral=True)
+    for member in inter.guild.members:
+        _achievement_roles = []
+        for achievement_role in member.roles:
+            if 'ачивка' in achievement_role.name:
+                _achievement_roles.append(achievement_role)
+        if len(_achievement_roles) > 0:
+            await member.remove_roles(*_achievement_roles)
+
+
 #production bot
 bot.run(token, reconnect=True)
 
