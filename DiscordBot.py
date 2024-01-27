@@ -483,11 +483,20 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             achievments = 0
             negative_achievements = 0
             warns = int(data['warns'])
+            reputation = 0
             for role in member.roles:
                 if 'ачивка' in role.name.lower():
                     achievments += 1
                     if role.color == disnake.Colour(int('ff4f4f', 16)):
                         negative_achievements += 1
+                        reputation -= 10
+                    elif role.color == disnake.Colour(int('920a0a', 16)):
+                        negative_achievements += 1
+                        reputation -= 20
+                    elif role.color == disnake.Colour(int('873fff', 16)):
+                        reputation += 10
+                    else:
+                        reputation += 2
             positive_achievements = achievments - negative_achievements
             t_7days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=7)
             t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
@@ -504,7 +513,7 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             activity7d = await count_result_activity(seven_days_activity_records, warns)
             activity30d = await count_result_activity(thirty_days_activity_records, warns)
             part_1 = f"ПОЛЬЗОВАТЕЛЬ:\nНикнейм: {member.display_name}\nБанковский счёт: {data['gold']} золота"
-            part_2 = f"\nРЕПУТАЦИЯ:\nПозитивных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
+            part_2 = f"\nРЕПУТАЦИЯ:\nОчки престижа: {reputation}\nПозитивных ачивок: {positive_achievements}\nНегативных ачивок: {negative_achievements}"
             part_3 = f"\nАКТИВНОСТЬ:\nАктивность за 7 дней: {activity7d//60} ч. {activity7d%60} мин.\nАктивность за 30 дней: {activity30d//60} ч. {activity30d%60} мин."
             part_4 = f"\nПрочее:\nНа сервере с: {data['join_date']}"
             path = os.path.join('images', 'profile', data['profile_pic'])
@@ -1130,11 +1139,10 @@ async def eraseachievements(inter:disnake.ApplicationCommandInteraction):
     for member in inter.guild.members:
         _achievement_roles = []
         for achievement_role in member.roles:
-            if 'ачивка' in achievement_role.name:
+            if 'ачивка' in achievement_role.name.lower():
                 _achievement_roles.append(achievement_role)
         if len(_achievement_roles) > 0:
             await member.remove_roles(*_achievement_roles)
-
 
 #production bot
 bot.run(token, reconnect=True)
