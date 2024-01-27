@@ -681,8 +681,19 @@ async def u(inter, member: disnake.Member):
                 except asyncpg.InterfaceError:
                     pool = await db_connection()
                 time_in_clan = datetime.datetime.now(tz=tz) - member.joined_at
+                reputation = 0
+                for role in member.roles:
+                    if 'ачивка' in role.name.lower():
+                        if role.color == disnake.Colour(int('ff4f4f', 16)):
+                            reputation -= 10
+                        elif role.color == disnake.Colour(int('920a0a', 16)):
+                            reputation -= 20
+                        elif role.color == disnake.Colour(int('873fff', 16)):
+                            reputation += 10
+                        else:
+                            reputation += 2
 
-                part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:"
+                part_1 = f"Никнейм: {member.mention}\n Банковский счёт: `{data['gold']}` :coin:\n Репутация: {reputation}"
                 part_2 = f"`{time_in_clan.days//7} недель`"
                 activity7d = await count_result_activity(seven_days_activity_records, warns)
                 activity30d = await count_result_activity(thirty_days_activity_records, warns)
