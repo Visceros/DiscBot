@@ -489,10 +489,10 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
                     achievments += 1
                     if role.color == disnake.Colour(int('ff4f4f', 16)):
                         negative_achievements += 1
-                        reputation -= 10
+                        reputation -= 5
                     elif role.color == disnake.Colour(int('920a0a', 16)):
                         negative_achievements += 1
-                        reputation -= 20
+                        reputation -= 10
                     elif role.color == disnake.Colour(int('873fff', 16)):
                         reputation += 10
                     else:
@@ -685,9 +685,9 @@ async def u(inter, member: disnake.Member):
                 for role in member.roles:
                     if 'ачивка' in role.name.lower():
                         if role.color == disnake.Colour(int('ff4f4f', 16)):
-                            reputation -= 10
+                            reputation -= 5
                         elif role.color == disnake.Colour(int('920a0a', 16)):
-                            reputation -= 20
+                            reputation -= 10
                         elif role.color == disnake.Colour(int('873fff', 16)):
                             reputation += 10
                         else:
