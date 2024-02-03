@@ -3,9 +3,9 @@ import random
 
 def usual_reward():  # Здесь прописано соответствие фраз и картинок Обычных наград.
     usualrewards = {
-        '45': {'слот под стража.': 'slot-pod-strazha.png', 'слот под оружие.': 'slot-pod-oruzhie.png', 'слот под Варфрейма!': 'slot-pod-warfreima.png', 'слот под оружие арчвинга!': 'slot-pod-oryzhie-archwing.png', 'слот под усилитель!':'slot-pod-usilitel.png'},
-        '35': {'адаптер мистификатора для ближнего боя': 'adapter-blizhnii-boi.png', 'адаптер мистификатора для основного оружия': 'adapter-osnovnoe.png', 'адаптер мистификатора для вторичного оружия': 'adapter-vtorichnoe.png'},
-        '30': {'украшение сугатра!': 'aksessuar.png', 'крепёж на оружие.': 'krepezh.png', 'катализатор Орокин. ': 'catalizator.png', 'реактор Орокин.': 'reactor.png', 'адаптер Эксилус для оружия.': 'eksilus-na-orujie.png'},
+        '45': {'слот под стража.': 'slot-pod-strazha.png', 'слот под оружие.': 'slot-pod-oruzhie.png', 'слот под Варфрейма!': 'slot-pod-warfreima.png', 'слот под оружие арчвинга!': 'slot-pod-oryzhie-archwing.png', 'слот под усилитель!':'slot-pod-usilitel.png', 'украшение сугатра!': 'aksessuar.png'},
+        '35': {'катализатор Орокин. ': 'catalizator.png', 'реактор Орокин.': 'reactor.png', 'адаптер Эксилус для оружия.': 'eksilus-na-orujie.png'},
+        '30': {'крепёж на оружие.': 'krepezh.png', 'адаптер мистификатора для ближнего боя': 'adapter-blizhnii-boi.png', 'адаптер мистификатора для основного оружия': 'adapter-osnovnoe.png', 'адаптер мистификатора для вторичного оружия': 'adapter-vtorichnoe.png'},
         '25': {'увеличение шанса выпадения ресурсов.': 'shans-vipadeniya.png', 'умножитель ресурсов.': 'umnojitel-resursov.png', 'умножитель синтеза.': 'umnojitel-sinteza.png','бустер на кредиты.': 'umnojitel-creditov.png', 'кусок брони для варфрейма.': 'kusok-broni.png'},
         '15': {'золотой ключ.': 'golden-key.png'},
         'пустой сундук.': 'empty.png'
@@ -26,6 +26,6 @@ def gold_reward(): # Здесь прописано соответствие фр
         '30': {'форма-аура!': 'forma-aura.png'},
         '20': {'сандана!': 'sandana.png'}
     }
-    grade = random.choices(list(goldlrewards.keys()), weights=[50, 40, 35, 30, 25, 20])[0]
+    grade = random.choices(list(goldlrewards.keys()), weights=[50, 35, 30, 20])[0]
     ret = random.choice(list(goldlrewards[grade].keys()))
     return ret, goldlrewards[grade][ret]
