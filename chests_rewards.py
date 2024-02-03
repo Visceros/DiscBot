@@ -3,10 +3,10 @@ import random
 
 def usual_reward():  # Здесь прописано соответствие фраз и картинок Обычных наград.
     usualrewards = {
-        '45': {'слот под стража.': 'slot-pod-strazha.png', 'слот под оружие.': 'slot-pod-oruzhie.png'},
+        '45': {'слот под стража.': 'slot-pod-strazha.png', 'слот под оружие.': 'slot-pod-oruzhie.png', 'слот под Варфрейма!': 'slot-pod-warfreima.png', 'слот под оружие арчвинга!': 'slot-pod-oryzhie-archwing.png', 'слот под усилитель!':'slot-pod-usilitel.png'},
         '35': {'адаптер мистификатора для ближнего боя': 'adapter-blizhnii-boi.png', 'адаптер мистификатора для основного оружия': 'adapter-osnovnoe.png', 'адаптер мистификатора для вторичного оружия': 'adapter-vtorichnoe.png'},
-        '30': {'крепёж на оружие.': 'krepezh.png', 'катализатор Орокин. ': 'catalizator.png', 'реактор Орокин.': 'reactor.png', 'адаптер Эксилус для оружия.': 'eksilus-na-orujie.png', 'слот под Варфрейма!': 'slot-pod-warfreima.png'},
-        '25': {'увеличение шанса выпадения ресурсов.': 'shans-vipadeniya.png', 'умножитель ресурсов.': 'umnojitel-resursov.png', 'множитель синтеза.': 'umnojitel-sinteza.png','бустер на кредиты.': 'umnojitel-creditov.png', 'кусок брони для варфрейма.': 'kusok-broni.png'},
+        '30': {'украшение сугатра!': 'aksessuar.png', 'крепёж на оружие.': 'krepezh.png', 'катализатор Орокин. ': 'catalizator.png', 'реактор Орокин.': 'reactor.png', 'адаптер Эксилус для оружия.': 'eksilus-na-orujie.png'},
+        '25': {'увеличение шанса выпадения ресурсов.': 'shans-vipadeniya.png', 'умножитель ресурсов.': 'umnojitel-resursov.png', 'умножитель синтеза.': 'umnojitel-sinteza.png','бустер на кредиты.': 'umnojitel-creditov.png', 'кусок брони для варфрейма.': 'kusok-broni.png'},
         '15': {'золотой ключ.': 'golden-key.png'},
         'пустой сундук.': 'empty.png'
     }
@@ -21,11 +21,9 @@ def usual_reward():  # Здесь прописано соответствие ф
 
 def gold_reward(): # Здесь прописано соответствие фраз и картинок Золотых наград.
     goldlrewards = {
-        '50': {'аксессуар - скин/сугатра!': 'aksessuar.png', 'шазин.': 'shazin.png', 'анимация': 'animatsiya.png'},
-        #40': {'50 платины!': '50-pl.png'},
+        '50': {'анимация': 'animatsiya.png'},
         '35': {'палитра!': 'palitra.png'},
         '30': {'форма-аура!': 'forma-aura.png'},
-        '25': {'броня на Кават/Кубрау или генно-маскирующий набор!': 'bronya-kavat.png'},
         '20': {'сандана!': 'sandana.png'}
     }
     grade = random.choices(list(goldlrewards.keys()), weights=[50, 40, 35, 30, 25, 20])[0]
