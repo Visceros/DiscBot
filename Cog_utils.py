@@ -20,7 +20,7 @@ class Listeners(commands.Cog):
     def __init__(self, bot: commands.Bot, connection):
         self.pool = connection
         self.bot = bot
-        self.moderation_channel = self.bot.get_channel(773010375775485982)
+        self.moderation_channel = self.bot.get_channel(1201486380497387530)
         self.sys_channel = self.bot.get_channel(749551019553325076)
         self.messaging_channel = self.bot.get_channel(442565510178013184)
 
@@ -646,6 +646,7 @@ class Games(commands.Cog):
                 return await inter.edit_original_response('Недостаточно :coin: для такой ставки.')
             else:
                 await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2', user_gold - bid, inter.author.id)
+                await inter.channel.send(f'{inter.author.display_name} ставка {bid}:coin: принята')
                 slot_msg = await inter.channel.send(random.choice(screens['roll']))
                 for _ in range(3):
                     await slot_msg.edit(content=random.choice(screens['roll']))
@@ -653,7 +654,7 @@ class Games(commands.Cog):
                 win_lose = randbelow(100)
                 await slot_msg.delete()
                 # после <= стоит шанс проигрыша
-                if win_lose <= 60:
+                if win_lose <= 65:
                     await channel.send(random.choice(screens['lose']))
                     await channel.send(f'Сожалеем, {inter.author.display_name} в этот раз не повезло. Попробуйте ещё разок!')
                 else:

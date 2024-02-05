@@ -911,7 +911,7 @@ async def warn(inter, member: disnake.Member, count:int=1):
     await inter.response.defer(ephemeral=True)
     if member is not None:
         eligible_roles_ids = {651377975106732034, 449837752687656960}
-        moderation_channel = bot.get_channel(773010375775485982)
+        moderation_channel = bot.get_channel(1201486380497387530)
         chat_channel = bot.get_channel(442565510178013184)
         for role in inter.author.roles:
             if (role.id in eligible_roles_ids) or inter.author.guild_permissions.administrator:
