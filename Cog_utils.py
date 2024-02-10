@@ -366,6 +366,11 @@ class Listeners(commands.Cog):
                     gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                     await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
                         datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
+                elif not any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and any(item in after.channel.name.lower() for item in
+                       channel_groups_to_account_contain):
+                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
+                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id,
+                                     datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
                 await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} moved from {before.channel} to {after.channel}')
 
 
