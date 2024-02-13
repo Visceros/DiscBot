@@ -390,7 +390,6 @@ class Listeners(commands.Cog):
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
                                      member.id, datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
 
-
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
 

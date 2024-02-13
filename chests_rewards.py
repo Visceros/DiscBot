@@ -11,7 +11,7 @@ def usual_reward():  # Здесь прописано соответствие ф
         'пустой сундук.': 'empty.png'
     }
     win_lose_roll = random.randint(1,100)
-    if win_lose_roll < 70:
+    if win_lose_roll < 80:
         return 'пустой сундук.', usualrewards['пустой сундук.']
     else:
         grade = random.choices(list(usualrewards.keys()), weights=[60,35,30,25,15,0])[0]
