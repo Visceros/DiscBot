@@ -375,23 +375,24 @@ class Listeners(commands.Cog):
 
 
             # убираем начисление времени для пользователя с выключенным микрофоном
-                if not before.self_mute and after.self_mute:
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
-                        pass
-                    else:
-                        await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                                     datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
-                elif before.self_mute and not after.self_mute:
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
-                    if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
-                        pass
-                    else:
-                        await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
-                                     member.id, datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
+            if not before.self_mute and after.self_mute:
+                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
+                    pass
+                else:
+                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                                 datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
+            elif before.self_mute and not after.self_mute:
+                gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+                if not gold or gold == 0:  # Если человек, например в 'невидимке' всё время и у него нет золота, то скипаем его
+                    pass
+                else:
+                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);',
+                                 member.id, datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
 
         #launching a check for one in a voice channel
         await self.if_one_in_voice(member=member, before=before, after=after)
+
 
     @commands.Cog.listener()
     async def on_member_remove(self, member:disnake.Member):
