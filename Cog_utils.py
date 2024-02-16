@@ -381,23 +381,23 @@ class Games(commands.Cog):
         channel = inter.channel
         eligible_roles = {1019738850987360336, 1191731270691065926}
         # Check if it's the right channel to write to
-        if 'ящик_пандоры' not in channel.name.lower():
+        if channel.id != 441874976623165450:
             await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
         # and if user has a relevant role
-        elif any(role in eligible_roles for role in author.roles):
+        if not any(role.id in eligible_roles for role in author.roles):
             await inter.edit_original_response('```Error! Ваш ранг в клане недостаточно высок, чтобы попытаться открыть Ящик Пандоры.```')
         else:
             # IF all correct we head further
             async with self.pool.acquire() as db:
                 user_gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', author.id)
                 if int(user_gold) < 1500:
-                    await inter.edit_original_response(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```', ephemeral=True)
+                    await inter.edit_original_response(f'```Сожалею, но на вашем счету недостаточно валюты чтобы сыграть.```')
                 else:
                     new_gold = user_gold - 1500
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     await channel.send('**Решили испытать удачу и выиграть приз? Что ж! \n '
                                      'Выберите, какой из сундуков открываем?\n\n'
-                                     'Нажмите на цифру от 1 до 4**', delete_after=120)
+                                     'Нажмите на цифру от 1 до 4**', delete_after=118)
                     # begin pasting the picture with usual chests
                     path = os.path.join(os.getcwd(), 'images', 'Normal-chests.png')
                     await channel.send(file=disnake.File(path, 'Normal-chests.png'), view=NormalRow(), delete_after=115)
