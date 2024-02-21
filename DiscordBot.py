@@ -144,6 +144,33 @@ async def monthly_task():
     # События во второй день месяца
     if datetime.datetime.now(tz=tz).day == 2:
 
+        # обновление ТОПов клана
+        guild = bot.get_guild(198134036890255361)
+        result_list = []
+        top_in_clan_rId = 422480212840939562
+        top_in_clan_r = disnake.utils.find(lambda r: (r.id == top_in_clan_rId), guild.roles)
+        check_role = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), guild.roles)
+        t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
+        async with pool.acquire() as db:
+            for member in guild.members:
+                if top_in_clan_r in member.roles:
+                    await member.remove_roles(top_in_clan_r)
+                if checkrole in member.roles and not (member.id == guild.owner_id):
+                    warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
+                    thirty_days_activity_records = await db.fetch(
+                        "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;",
+                        member.id, t_30days_ago, datetime.datetime.now(tz=tz))
+                    activity = await count_result_activity(thirty_days_activity_records, warns)
+                    result_list.append((member, activity))
+            res = sorted(result_list, key=itemgetter(1), reverse=True)
+            count = 3
+            for record in res:
+                usr = record[0] #Берём пользователя с самой высокой активностью
+                await usr.add_roles(top_in_clan_r) # и даём ему роль топ клана
+                count-=1 # и так 3 раза, ибо count = 3.
+                if count == 0:
+                    break
+
         # снятие варнов на 2 день месяца
         async with pool.acquire() as db:
             await db.execute('UPDATE discord_users SET warns=0;')
@@ -151,7 +178,7 @@ async def monthly_task():
         # снятие ачивки "накрутчик" на 2 день месяца
         for user in bot.get_guild(198134036890255361).members:
             for role in user.roles:
-                if role.name.lower() == 'накрутчик': await user.remove_role(role)
+                if role.name.lower() == 'накрутчик': await user.remove_roles(role)
 
         # раздача зарплаты верховному совету на 2 день месяца
         for guild in bot.guilds:
