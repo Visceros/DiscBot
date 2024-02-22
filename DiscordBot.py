@@ -602,6 +602,7 @@ async def gmoney(inter:disnake.ApplicationCommandInteraction, member: disnake.Me
     author = inter.author
     gold = abs(int(gold))
     await inter.response.defer()
+    sys_channel = disnake.utils.find(lambda c: c.name.lower() == 'system', inter.guild.channels)
     async with pool.acquire() as db:
         if inter.author.guild_permissions.administrator:
             gold_was = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
