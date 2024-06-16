@@ -155,7 +155,7 @@ async def monthly_task():
             for member in guild.members:
                 if top_in_clan_r in member.roles:
                     await member.remove_roles(top_in_clan_r)
-                if checkrole in member.roles and not (member.id == guild.owner_id):
+                if check_role in member.roles and not (member.id == guild.owner_id):
                     warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
                     thirty_days_activity_records = await db.fetch(
                         "SELECT login, logoff from LogTable WHERE user_id=$1 AND login BETWEEN $2::timestamptz AND $3::timestamptz ORDER BY login DESC;",
