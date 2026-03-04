@@ -132,9 +132,10 @@ async def monthly_task():
                     if minutes == 0 and time_in_clan.days//7 >= 8:
                         await db.execute('DELETE FROM LogTable CASCADE WHERE user_id=$1;', user.id)
                         await db.execute('DELETE FROM discord_users CASCADE WHERE id=$1;', user.id)
-                        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), guild.roles)
-                        if checkrole in user.roles:
-                            await user.remove_roles(checkrole)
+                        # Убрана проверка на роль СОКЛАНЫ
+                        # checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), guild.roles)
+                        # if checkrole in user.roles:
+                        #     await user.remove_roles(checkrole)
                 else:
                     await db.execute('DELETE FROM LogTable CASCADE WHERE user_id=$1;', user.id)
                     await db.execute('DELETE FROM discord_users CASCADE WHERE id=$1;', user.id)
@@ -278,10 +279,11 @@ async def _increment_money(server: disnake.Guild):
     server: a discord Server
     """
     async with pool.acquire() as db:
-        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        #channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice'] # Count voice activity for money only in specific channels
         for member in server.members:
             if str(member.status) not in ['offline', 'idle'] and not member.bot and member.voice is not None:
-                if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute):
+                #if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute): # Give money only in specific channels
+                if not (member.voice.self_mute or member.voice.mute):
                     try:
                         gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                         if gold is not None:
@@ -834,12 +836,13 @@ async def top(inter, count: int = 10):
     await inter.response.defer(ephemeral=True)
     result_list = []
     users_count, users_ids = await initial_db_read()
-    checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles)
+    # checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles) # Clanmates only role
     t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
     async with pool.acquire() as db:
         async with inter.channel.typing():
             for member in inter.guild.members:
-                if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+                if member.id in users_ids and not (member.id == member.guild.owner_id): # all people, not only Clanmates
+                #if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id): #with Clanmates only clause
                     gold = await db.fetchval("SELECT gold from discord_users WHERE id=$1;", member.id)
                     if int(gold) > 0:
                         warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
@@ -874,10 +877,11 @@ async def antitop(inter, count: int = 15):
     result_list = []
     async with pool.acquire() as db:
         users_count, users_ids = await initial_db_read()
-        checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles)
+        #checkrole = disnake.utils.find(lambda r: ('СОКЛАНЫ' in r.name.upper()), inter.guild.roles)
         async with inter.channel.typing(): # анимация долгих вычислений в виде печатания
             for member in inter.guild.members:
-                if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id):
+                if member.id in users_ids and not (member.id == member.guild.owner_id): # # all people, not only Clanmates
+                # if member.id in users_ids and checkrole in member.roles and not (member.id == member.guild.owner_id): #with Clanmates only clause
                     t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
                     warns = await db.fetchval("SELECT warns from discord_users WHERE id=$1;", member.id)
                     thirty_days_activity_records = await db.fetch(

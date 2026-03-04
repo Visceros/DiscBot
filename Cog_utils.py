@@ -17,7 +17,7 @@ from buttons import NormalRow, GoldRow, RenameModal
 tz = datetime.timezone(datetime.timedelta(hours=3))
 
 class Listeners(commands.Cog):
-    def __init__(self, bot: commands.Bot, connection):
+    def __init__(self, bot, connection):
         self.pool = connection
         self.bot = bot
         self.moderation_channel = self.bot.get_channel(1201486380497387530)
@@ -26,129 +26,130 @@ class Listeners(commands.Cog):
 
     async def if_one_in_voice(self, member: disnake.Member, before, after):
 
-        async def check_channel(arg:disnake.VoiceChannel, db):
-            channel = arg
-
-            # Выдаём предупреждение, если человек один в канале, но сидит с ботом/ботами
-            if len(channel.members) > 1:
-                bot_counter = 0
-                for someone in channel.members:
-                    if someone.bot:
-                        bot_counter += 1
-                    else:
-                        user = someone
-                if len(channel.members) - bot_counter == 1:
-                    await self.sys_channel.send(f'{user.mention} сидит один в канале {channel.name} с ботом')
-                    await asyncio.sleep(90)  # ждём полторы минуты
-                    # Перепроверяем, что это один и тот же человек
-                    bot_counter = 0
-                    for someone in channel.members:
-                        if someone.bot:
-                            bot_counter += 1
-                    if len(channel.members) - bot_counter == 1 and user in channel.members \
-                            and not user.voice.self_mute and not user.voice.mute:
-                        await user.move_to(user.guild.afk_channel)  # Переносим в AFK-канал
-                        user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', user.id)
-                        user_warns += 1
-                        await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns,
-                                         user.id)  # Выдаём предупреждение
-                        await self.messaging_channel.send(
-                            content=f'{user.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                    f' общей комнате с включенным микрофоном. Отключите микрофон, пока сидите одни.')
-                        if user_warns % 3 == 0:
-                            await self.moderation_channel.send(
-                                f'Пользователь {user.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
-                        bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
-                                                      user.guild.roles)
-                        if user_warns >= 6 and not bad_role in user.roles:
-                            await user.add_roles(bad_role)
-                        await self.sys_channel.send(
-                            f'Пользователь {user.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
-
-                # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
-                muted_member_count = 0
-                unmuted_member_count = 0
-                for someone in channel.members:
-                    if not someone.bot:  # Отсекаем ботов
-                        if someone.voice.self_deaf or someone.voice.self_mute:
-                            muted_member_count += 1
-                        else:
-                            unmuted_member_count += 1
-                            unmuted_member_id = someone.id
-                            unmuted_member = someone
-                # Если в канале сидит только один незамученный человек, даём минуту на размут
-                if unmuted_member_count == 1 and muted_member_count >= 1:
-                    await asyncio.sleep(60)
-                    if not unmuted_member.voice.self_deaf and not unmuted_member.voice.self_mute:
-                        muted_member_count = 0
-                        unmuted_member_count = 0
-                        for someone in channel.members:
-                            if not someone.bot:
-                                if someone.voice.self_deaf or someone.voice.self_mute:
-                                    muted_member_count += 1
-                                else:
-                                    unmuted_member_count += 1
-                                    new_unmuted_member_id = someone.id
-                        if unmuted_member_count == 1 and muted_member_count >= 1 and new_unmuted_member_id == unmuted_member_id:
-                            await self.messaging_channel.send(
-                                '{} в данный момент вы единственный активный участник в комнате.'
-                                'Отключите микрофон на сервере для более точной статистики активности, иначе это '
-                                'будет рассматриваться как нарушение правил. Спасибо.'.format(
-                                    disnake.utils.get(unmuted_member.guild.members, id=unmuted_member_id).mention))
-                            await asyncio.sleep(30)  # Даём ещё 30 сек после предупреждения
-                            if unmuted_member.voice is not None and unmuted_member.voice.channel == channel:
-                                muted_member_count = 0
-                                unmuted_member_count = 0
-                                for ch_member in channel.members:
-                                    if not ch_member.bot:
-                                        if ch_member.voice.self_deaf or ch_member.voice.self_mute:
-                                            muted_member_count += 1
-                                        else:
-                                            unmuted_member_count += 1
-                                            new_unmuted_member_id = ch_member.id
-                                if unmuted_member_count == 1 and muted_member_count >= 1 and new_unmuted_member_id == unmuted_member_id:
-                                    user_warns = await db.fetchval(
-                                        'SELECT Warns from discord_users WHERE id=$1;', unmuted_member.id)
-                                    user_warns += 1
-                                    await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;',
-                                                     user_warns, unmuted_member.id)  # Выдаём предупреждение
-                                    await unmuted_member.move_to(unmuted_member.guild.afk_channel)
-                                    await self.sys_channel.send(
-                                        f'Пользователь {unmuted_member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
-
-            # Выдаём предупреждение, если человек один в канале
-            elif len(channel.members) == 1:
-                member = channel.members[0]
-                await asyncio.sleep(90)  # Ждём полторы минуты
-                # Перепроверяем, что это один и тот же человек
-                if member.voice is not None and len(channel.members) == 1 and member in channel.members and not member.voice.self_mute and not member.voice.mute and not member.bot:
-                    await member.move_to(member.guild.afk_channel)
-                    user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
-                    user_warns += 1
-                    await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
-                    await self.messaging_channel.send(
-                        content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
-                                f' общей комнате с включенным микрофоном. Отключите микрофон, пока сидите одни.')
-                    if user_warns >= 6:
-                        bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
-                        if bad_role not in member.roles:
-                            await member.add_roles(bad_role)
-                    await self.sys_channel.send(
-                        f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
-
-
-        self.sys_channel = disnake.utils.get(member.guild.channels, name='system')
-        channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
-        async with self.pool.acquire() as db:
-            # Запускаем проверку в случае, когда кто-то вышел из канала
-            if after.channel is None and before.channel is not None and any(
-                            item in before.channel.name.lower() for item in channel_groups_to_account_contain):
-                await check_channel(before.channel, db=db)
-
-            # Проверяем если кто-то вошёл в канал
-            if before.channel is None and after.channel is not None and any(
-                    item in after.channel.name.lower() for item in channel_groups_to_account_contain):
-                await check_channel(after.channel, db=db)
+        pass # Check for being alone in the vc is switched off now. Remove the pass and uncomment the section below to switch on.
+        # async def check_channel(arg:disnake.VoiceChannel, db):
+        #     channel = arg
+        #
+        #     # Выдаём предупреждение, если человек один в канале, но сидит с ботом/ботами
+        #     if len(channel.members) > 1:
+        #         bot_counter = 0
+        #         for someone in channel.members:
+        #             if someone.bot:
+        #                 bot_counter += 1
+        #             else:
+        #                 user = someone
+        #         if len(channel.members) - bot_counter == 1:
+        #             await self.sys_channel.send(f'{user.mention} сидит один в канале {channel.name} с ботом')
+        #             await asyncio.sleep(90)  # ждём полторы минуты
+        #             # Перепроверяем, что это один и тот же человек
+        #             bot_counter = 0
+        #             for someone in channel.members:
+        #                 if someone.bot:
+        #                     bot_counter += 1
+        #             if len(channel.members) - bot_counter == 1 and user in channel.members \
+        #                     and not user.voice.self_mute and not user.voice.mute:
+        #                 await user.move_to(user.guild.afk_channel)  # Переносим в AFK-канал
+        #                 user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', user.id)
+        #                 user_warns += 1
+        #                 await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns,
+        #                                  user.id)  # Выдаём предупреждение
+        #                 await self.messaging_channel.send(
+        #                     content=f'{user.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
+        #                             f' общей комнате с включенным микрофоном. Отключите микрофон, пока сидите одни.')
+        #                 if user_warns % 3 == 0:
+        #                     await self.moderation_channel.send(
+        #                         f'Пользователь {user.display_name} получил 3 предупреждения/варна за накрутку и теряет 10 минут из активности.')
+        #                 bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()),
+        #                                               user.guild.roles)
+        #                 if user_warns >= 6 and not bad_role in user.roles:
+        #                     await user.add_roles(bad_role)
+        #                 await self.sys_channel.send(
+        #                     f'Пользователь {user.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
+        #
+        #         # Проверяем, что пользователь сидит единственный, с активным микрофоном, когда у остальных они выключены
+        #         muted_member_count = 0
+        #         unmuted_member_count = 0
+        #         for someone in channel.members:
+        #             if not someone.bot:  # Отсекаем ботов
+        #                 if someone.voice.self_deaf or someone.voice.self_mute:
+        #                     muted_member_count += 1
+        #                 else:
+        #                     unmuted_member_count += 1
+        #                     unmuted_member_id = someone.id
+        #                     unmuted_member = someone
+        #         # Если в канале сидит только один незамученный человек, даём минуту на размут
+        #         if unmuted_member_count == 1 and muted_member_count >= 1:
+        #             await asyncio.sleep(60)
+        #             if not unmuted_member.voice.self_deaf and not unmuted_member.voice.self_mute:
+        #                 muted_member_count = 0
+        #                 unmuted_member_count = 0
+        #                 for someone in channel.members:
+        #                     if not someone.bot:
+        #                         if someone.voice.self_deaf or someone.voice.self_mute:
+        #                             muted_member_count += 1
+        #                         else:
+        #                             unmuted_member_count += 1
+        #                             new_unmuted_member_id = someone.id
+        #                 if unmuted_member_count == 1 and muted_member_count >= 1 and new_unmuted_member_id == unmuted_member_id:
+        #                     await self.messaging_channel.send(
+        #                         '{} в данный момент вы единственный активный участник в комнате.'
+        #                         'Отключите микрофон на сервере для более точной статистики активности, иначе это '
+        #                         'будет рассматриваться как нарушение правил. Спасибо.'.format(
+        #                             disnake.utils.get(unmuted_member.guild.members, id=unmuted_member_id).mention))
+        #                     await asyncio.sleep(30)  # Даём ещё 30 сек после предупреждения
+        #                     if unmuted_member.voice is not None and unmuted_member.voice.channel == channel:
+        #                         muted_member_count = 0
+        #                         unmuted_member_count = 0
+        #                         for ch_member in channel.members:
+        #                             if not ch_member.bot:
+        #                                 if ch_member.voice.self_deaf or ch_member.voice.self_mute:
+        #                                     muted_member_count += 1
+        #                                 else:
+        #                                     unmuted_member_count += 1
+        #                                     new_unmuted_member_id = ch_member.id
+        #                         if unmuted_member_count == 1 and muted_member_count >= 1 and new_unmuted_member_id == unmuted_member_id:
+        #                             user_warns = await db.fetchval(
+        #                                 'SELECT Warns from discord_users WHERE id=$1;', unmuted_member.id)
+        #                             user_warns += 1
+        #                             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;',
+        #                                              user_warns, unmuted_member.id)  # Выдаём предупреждение
+        #                             await unmuted_member.move_to(unmuted_member.guild.afk_channel)
+        #                             await self.sys_channel.send(
+        #                                 f'Пользователь {unmuted_member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
+        #
+        #     # Выдаём предупреждение, если человек один в канале
+        #     elif len(channel.members) == 1:
+        #         member = channel.members[0]
+        #         await asyncio.sleep(90)  # Ждём полторы минуты
+        #         # Перепроверяем, что это один и тот же человек
+        #         if member.voice is not None and len(channel.members) == 1 and member in channel.members and not member.voice.self_mute and not member.voice.mute and not member.bot:
+        #             await member.move_to(member.guild.afk_channel)
+        #             user_warns = await db.fetchval('SELECT Warns from discord_users WHERE id=$1;', member.id)
+        #             user_warns += 1
+        #             await db.execute('UPDATE discord_users SET Warns=$1 WHERE id=$2;', user_warns, member.id)
+        #             await self.messaging_channel.send(
+        #                 content=f'{member.mention} Вы были перемещены в AFK комнату, т.к. вы единственный живой участник в'
+        #                         f' общей комнате с включенным микрофоном. Отключите микрофон, пока сидите одни.')
+        #             if user_warns >= 6:
+        #                 bad_role = disnake.utils.find(lambda r: ('НАКРУТЧИК' in r.name.upper()), member.guild.roles)
+        #                 if bad_role not in member.roles:
+        #                     await member.add_roles(bad_role)
+        #             await self.sys_channel.send(
+        #                 f'Пользователь {member.display_name} получил предупреждение за нарушение правил сервера (накрутка активности).')
+        #
+        #
+        # self.sys_channel = disnake.utils.get(member.guild.channels, name='system')
+        # channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
+        # async with self.pool.acquire() as db:
+        #     # Запускаем проверку в случае, когда кто-то вышел из канала
+        #     if after.channel is None and before.channel is not None and any(
+        #                     item in before.channel.name.lower() for item in channel_groups_to_account_contain):
+        #         await check_channel(before.channel, db=db)
+        #
+        #     # Проверяем если кто-то вошёл в канал
+        #     if before.channel is None and after.channel is not None and any(
+        #             item in after.channel.name.lower() for item in channel_groups_to_account_contain):
+        #         await check_channel(after.channel, db=db)
 
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
@@ -162,14 +163,15 @@ class Listeners(commands.Cog):
                        channel_groups_to_account_contain) and not member.bot:
 
                     # Проверяем заполнен ли никнейм по форме, если нет - кикаем из войс чата.
-                    if member.display_name == '[Ранг] Nickname (ВашеИмя)':
-                        await member.move_to(None)
-                        private_msg_channel = member.dm_channel
-                        if private_msg_channel is None:
-                            private_msg_channel = await member.create_dm()
-                            await private_msg_channel.send(
-                                f'Клановые каналы сервера {member.guild.name} недоступны, до тех пор, пока ваш ник не соответствует правилам сервера.')
-                            return
+                    # ОТКЛЮЧЕНО. Для включения - раскомментировать
+                    # if member.display_name == '[Ранг] Nickname (ВашеИмя)':
+                    #     await member.move_to(None)
+                    #     private_msg_channel = member.dm_channel
+                    #     if private_msg_channel is None:
+                    #         private_msg_channel = await member.create_dm()
+                    #         await private_msg_channel.send(
+                    #             f'Клановые каналы сервера {member.guild.name} недоступны, до тех пор, пока ваш ник не соответствует правилам сервера.')
+                    #         return
                     # Конец предыдущего блока
 
                     # При присоединении к голосовому каналу Если человека нет в базе данных - добавляем его и назначем роль
@@ -182,26 +184,27 @@ class Listeners(commands.Cog):
                                     'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
                                     member.id, member.display_name, member.joined_at)
                                 await self.sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
-                                #role_to_add = disnake.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
-                                role_to_add = disnake.utils.get(member.guild.roles, id=613298562926903307)
-                                checkrole = disnake.utils.get(member.guild.roles, id=422449514264395796) #Сокланы
-                                if checkrole in member.roles and not any(role in roles_list for role in member.roles):
-                                    try:
-                                        await member.add_roles(role_to_add)
-                                    except Exception as e:
-                                        await self.sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
-                                    await self.sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
-                                elif role_to_add in member.roles and not checkrole in member.roles:
-                                    await member.remove_roles(role_to_add)
+                        # <<<<<        УБИРАЕМ  НАЗНАЧЕНИЕ  РОЛЕЙ  СОКЛАНАМ (старое)  >>>>>>>
+                                # role_to_add = disnake.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                                # role_to_add = disnake.utils.get(member.guild.roles, id=613298562926903307)
+                                # checkrole = disnake.utils.get(member.guild.roles, id=422449514264395796) #Сокланы
+                                # if checkrole in member.roles and not any(role in roles_list for role in member.roles):
+                                #     try:
+                                #         await member.add_roles(role_to_add)
+                                #     except Exception as e:
+                                #         await self.sys_channel.send(f'Got Error trying to add Tenno role to {member.display_name}\n{e}')
+                                #     await self.sys_channel.send(f'Роль {role_to_add} выдана пользователю {member.display_name}')
+                                # elif role_to_add in member.roles and not checkrole in member.roles:
+                                #     await member.remove_roles(role_to_add)
                             except asyncpg.exceptions.UniqueViolationError:
                                 await self.sys_channel.send(f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
-                        #role_to_add = disnake.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
-                        role_to_add = disnake.utils.get(member.guild.roles, id=613298562926903307)
-                        checkrole = disnake.utils.get(member.guild.roles, id=422449514264395796) #Сокланы
-                        if checkrole in member.roles and not any(role in roles_list for role in member.roles):
-                            await member.add_roles(role_to_add)
-                        elif role_to_add in member.roles and not checkrole in member.roles:
-                            await member.remove_roles(role_to_add)
+                        # #role_to_add = disnake.utils.find(lambda r: ('ТЕННО' in r.name.upper()), member.guild.roles)
+                        # role_to_add = disnake.utils.get(member.guild.roles, id=613298562926903307)
+                        # checkrole = disnake.utils.get(member.guild.roles, id=422449514264395796) #Сокланы
+                        # if checkrole in member.roles and not any(role in roles_list for role in member.roles):
+                        #     await member.add_roles(role_to_add)
+                        # elif role_to_add in member.roles and not checkrole in member.roles:
+                        #     await member.remove_roles(role_to_add)
                     except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
                         print('Got error:', err, err.__traceback__)
                         self.pool = await db_connection()
@@ -272,16 +275,21 @@ class Listeners(commands.Cog):
             await db.execute('DELETE FROM LogTable WHERE user_id=$1;', member.id)
             await db.execute('DELETE FROM discord_users WHERE id=$1;', member.id)
 
+# ----------------------- БЛОК РЕГИСТРАЦИИ И АВТОПЕРЕИМЕНОВАНИЯ ПОЛЬЗОВАТЕЛЯ -----------------------
+
+    # ----------------- Назначение роли при присоединении к серверу ---------------------
     @commands.Cog.listener()
     async def on_member_update(self, before:disnake.Member, after:disnake.Member):
         if before.pending and not after.pending:
-            role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
-            await after.add_roles(role)
+            pass
+            # role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
+            # await after.add_roles(role)
 
+    # ----------------- Автопереименование при присоединении к серверу ---------------------
     @commands.Cog.listener()
     async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
-            await member.edit(nick='[Ранг] Nickname (ВашеИмя)')
+            await member.edit(nick='Nickname (ВашеИмя)')
             #ch = disnake.utils.find(lambda c: 'присоединился' in c.name.lower(), member.guild.channels)
 
 
@@ -309,8 +317,7 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_button_click(self, inter:disnake.MessageInteraction):
         if inter.component.custom_id == 'rename':
-            rename_role = role = disnake.utils.get(inter.guild.roles, id=1004019172323364965)
-            if rename_role not in inter.author.roles and inter.author.display_name != '[Ранг] Nickname (ВашеИмя)':
+            if inter.author.display_name != 'Nickname (ВашеИмя)':
                 return await inter.send('Вам не нужно переименовываться.', ephemeral=True)
 
             await inter.response.send_modal(RenameModal("Введите ваши данные"))
@@ -319,10 +326,10 @@ class Listeners(commands.Cog):
                 modal_inter = await self.bot.wait_for(
                     'modal_submit',
                     check=lambda i: i.author.id == inter.author.id,
-                    timeout=180)
+                    timeout=300)
             except asyncio.TimeoutError:
                 return
-
+            #   -----------------Проверка Имени--------------------
             name = modal_inter.text_values['name']
             cyrillic_symbols = ['а', 'б', 'в', 'г', 'д', 'е', 'ё', 'ж', 'з', 'и', 'й', 'к', 'л', 'м', 'н', 'о', 'п', 'р',
                                 'с', 'т', 'у', 'ф', 'х', 'ц', 'ч', 'ш', 'щ', 'ы', 'ь', 'ъ', 'э', 'ю', 'я']
@@ -330,21 +337,18 @@ class Listeners(commands.Cog):
                 return await inter.send('Имя должно состоять только из символов кириллицы. Переименуйтесь ещё раз.',
                                  ephemeral=True)
 
-            rank = modal_inter.text_values['rank']
-            if not rank.isdecimal():
-                return await inter.send('Ваш Ранг должен быть двузначным числом, например 01', ephemeral=True)
-            if len(str(rank)) == 1:
-                rank = "0"+str(rank)
-
+            #   -----------------Проверка Ранга--------------------
+            # rank = modal_inter.text_values['rank']
+            # if not rank.isdecimal():
+            #     return await inter.send('Ваш Ранг должен быть двузначным числом, например 01', ephemeral=True)
+            # if len(str(rank)) == 1:
+            #     rank = "0"+str(rank)
             nickname = modal_inter.text_values['nick']
-            await inter.author.edit(nick=f'[{rank}] {nickname} ({name})')
-            newrole = disnake.utils.get(inter.guild.roles, id=1055096120264626216)  # роль "Не выбрал роль"
-            await inter.author.add_roles(newrole)  # Назначаем роль переименованному человеку
-
+            #await inter.author.edit(nick=f'[{rank}] {nickname} ({name})') # Никнейм с Рангом
+            await inter.author.edit(nick=f'[{nickname} ({name})') # Никнейм без Ранга
             await modal_inter.response.defer(ephemeral=True)
-            await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.', components=disnake.ui.Button(style=disnake.ButtonStyle.link, label='Перейти', url='https://discord.com/channels/198134036890255361/1055096375739699291'))
-            await asyncio.sleep(10)
-            await inter.author.remove_roles(disnake.utils.get(inter.guild.roles, id=1004019172323364965))
+            #await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.', components=disnake.ui.Button(style=disnake.ButtonStyle.link, label='Перейти', url='https://discord.com/channels/198134036890255361/1055096375739699291'))
+            await modal_inter.edit_original_response('Авторизация успешна')
 
 
     #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
@@ -379,7 +383,7 @@ class Games(commands.Cog):
         reward_chat = self.bot.get_channel(696060547971547177)
         author = inter.author
         channel = inter.channel
-        eligible_roles = {1019738850987360336, 1191731270691065926}
+        eligible_roles = {685476171588173933}
         # Check if it's the right channel to write to
         if channel.id != 441874976623165450:
             await inter.edit_original_response('```Error! Извините, эта команда работает только в специальном канале.```')
@@ -397,10 +401,10 @@ class Games(commands.Cog):
                     await db.execute('UPDATE discord_users set gold=$1 WHERE id=$2;', new_gold, author.id)
                     await channel.send('**Решили испытать удачу и выиграть приз? Что ж! \n '
                                      'Выберите, какой из сундуков открываем?\n\n'
-                                     'Нажмите на цифру от 1 до 4**', delete_after=118)
+                                     'Нажмите на цифру от 1 до 4**', delete_after=180)
                     # begin pasting the picture with usual chests
                     path = os.path.join(os.getcwd(), 'images', 'Normal-chests.png')
-                    await channel.send(file=disnake.File(path, 'Normal-chests.png'), view=NormalRow(), delete_after=115)
+                    await channel.send(file=disnake.File(path, 'Normal-chests.png'), view=NormalRow(), delete_after=178)
                     # end of pasting the picture with usual chests
 
                     def checkAuthor(inter:disnake.MessageInteraction):
@@ -413,17 +417,17 @@ class Games(commands.Cog):
                     else:
                         reward, pic = usual_reward()
                         path = os.path.join(os.getcwd(), 'images', pic)
-                        await button_inter.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'), delete_after=110)
+                        await button_inter.send(f'**Сундук со скрипом открывается...ваш приз: {reward}**', file=disnake.File(path, 'reward.png'), delete_after=175)
                         await inter.delete_original_response()
                         if 'золотой ключ' not in reward.lower() and 'пустой сундук' not in reward:
                             await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
                         elif 'золотой ключ' in reward.lower():
                             await channel.send(
-                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**', delete_after=100)
+                                '**ОГО! Да у нас счастливчик! Принимайте поздравления и готовьтесь открыть золотой сундук!**', delete_after=172)
                             # Begin pasting the picture with Gold chests
                             path = os.path.join(os.getcwd(), 'images', 'Golden-chests.png')
                             _goldChests = GoldRow()
-                            await channel.send(file=disnake.File(path, 'Golden-chests.png'), components=_goldChests, delete_after=95)
+                            await channel.send(file=disnake.File(path, 'Golden-chests.png'), components=_goldChests, delete_after=170)
                             # End of pasting the picture with Gold chests
                             try:
                                 button_inter_gold = await self.bot.wait_for('button_click', timeout=180, check=checkAuthor)
@@ -433,8 +437,8 @@ class Games(commands.Cog):
                             else:
                                 reward, pic = gold_reward()
                                 path = os.path.join(os.getcwd(), 'images', pic)
-                                await button_inter_gold.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=160)
-                                await reward_chat.send(f'{author.mention} выиграл {reward} в игре сундучки.')
+                                await button_inter_gold.send(f'**Вы проворачиваете Золотой ключ в замочной скважине и под крышкой вас ждёт:** {reward}', file=disnake.File(path, 'gold-reward.png'), delete_after=165)
+                                await reward_chat.send(f'{author.mention} выиграл {reward} в игре Ящик Пандоры.')
                                 await inter.delete_original_response()
 
     # -------------- КОНЕЦ ИГРЫ ЯЩИК ПАНДОРЫ ------------------
@@ -701,7 +705,7 @@ class Player(commands.Cog):
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
 class Shop(commands.Cog):
-    def __init__(self, bot: commands.Bot, connection):
+    def __init__(self, bot, connection):
         self.pool = connection
         self.bot = bot
 
