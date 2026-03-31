@@ -360,6 +360,12 @@ class Listeners(commands.Cog):
 
         async with self.pool.acquire() as db:
             async def sticker_resend(msg=message):
+                """Переотправляет закрепленное сообщение / Resends the sticker message
+
+                Parameters
+                ----------
+                msg: disnake.Message object
+                """
                 sticky_msg = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id={msg.channel.id};')
                 await self.sys_channel.send(f'Закрепленное сообщение из базы данных: {sticky_msg}\nтип {type(sticky_msg)}')
                 if sticky_msg is not None and type(sticky_msg) != 'NoneType':

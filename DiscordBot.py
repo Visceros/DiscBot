@@ -1201,6 +1201,12 @@ async def sticker(inter:disnake.ApplicationCommandInteraction):
     @sticker.sub_command()
     @commands.has_permissions(administrator=True)
     async def add(inter:disnake.ApplicationCommandInteraction):
+        """add - создать закрепленное сообщение
+
+        Parameters
+        ----------
+        inter: autofilled ApplicationCommandInteraction parameter
+        """
         channel = inter.channel
 
         await inter.response.send_modal(StickyNoteModal())
@@ -1224,6 +1230,12 @@ async def sticker(inter:disnake.ApplicationCommandInteraction):
 
     @sticker.sub_command()
     async def delete(inter:disnake.ApplicationCommandInteraction):
+        """убрать закрепленное сообщение
+
+        Parameters
+        ----------
+        inter: autofilled ApplicationCommandInteraction parameter
+        """
         channel = inter.channel
         async with pool.acquire() as db:
             try:
