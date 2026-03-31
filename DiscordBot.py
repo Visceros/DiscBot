@@ -1208,7 +1208,7 @@ async def sticker(inter:disnake.ApplicationCommandInteraction):
         """
         channel = inter.channel
 
-        await inter.response.send_modal(StickyNoteModal())
+        await inter.response.send_modal(StickyNoteModal(title="Закрепление сообщения, как последнего в чате"))
 
         try:
             modal_inter = await bot.wait_for(
