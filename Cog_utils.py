@@ -741,7 +741,8 @@ class Shop(commands.Cog):
 
     @commands.slash_command()
     async def shop(self, inter:disnake.ApplicationCommandInteraction):
-        """shop group command
+        """
+        shop group command
 
         Parameters
         ----------
@@ -761,11 +762,11 @@ class Shop(commands.Cog):
         Parameters
         ----------
         inter: autofilled ApplicationCommandInteraction argument
-        product_type: Тип товара
+        product_type: Тип товара или Help для отображения справки
         product_name: Название товара
         price: Цена
         duration: Длительность
-        json_data: настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":(255,123,0,255)}
+        json_data: Настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":(255,123,0,255)}
         """
         await inter.response.defer(ephemeral=True)
         author = inter.author
@@ -925,7 +926,8 @@ class Shop(commands.Cog):
                        '!shop add - добавить товар (только администраторы): см. shop add help\n'
                        '!shop delete - удалить товар из магазина (только администраторы)\n',
                          ephemeral=True, delete_after=60)
-        # -------------КОНЕЦ БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
+
+    # -------------КОНЕЦ БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
 
     @commands.slash_command()
     async def buy(self, inter:disnake.ApplicationCommandInteraction, arg, num:int=1):
@@ -944,12 +946,13 @@ class Shop(commands.Cog):
             shoplog_channel = await inter.guild.create_text_channel('market_log', position=len(inter.guild.channels), overwrites={inter.guild.default_role: disnake.PermissionOverwrite(view_channel=False)})
 
         def author_check(m: disnake.Message):
-            """ Default author check
+            """
+            Default author check
 
-                Parameters
-                ----------
-                m: autofilled disnake.Message argument - instance of the message
-                    """
+            Parameters
+            ----------
+            m: autofilled disnake.Message argument - instance of the message
+            """
             return m.author.bot or m.author == inter.author
 
         # Если человек ввёл цифры, считаем, что он ввёл ID товара
