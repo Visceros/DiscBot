@@ -367,7 +367,6 @@ class Listeners(commands.Cog):
                 msg: disnake.Message object
                 """
                 sticky_msg = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id={msg.channel.id};')
-                await self.sys_channel.send(f'Закрепленное сообщение из базы данных: {sticky_msg}\nтип {type(sticky_msg)}')
                 if sticky_msg is not None and type(sticky_msg) != 'NoneType':
                     async for item in msg.channel.history(limit=15):
                         if item.content == sticky_msg:

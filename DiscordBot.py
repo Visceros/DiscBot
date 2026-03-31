@@ -1194,7 +1194,6 @@ async def sticker(inter:disnake.ApplicationCommandInteraction):
 
     Parameters
     ----------
-    option: sub command type
     inter: autofilled ApplicationCommandInteraction parameter
     """
     pass
