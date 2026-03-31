@@ -56,3 +56,13 @@ class RenameModal(disnake.ui.Modal):
             )
         ]
         super(RenameModal, self).__init__(title=title, components=components)
+
+class StickyNoteModal(disnake.ui.Modal):
+    """A Modal window with Text Input to make a sticky text note as a last message in chat"""
+    def __init__(self, title="Закрепление сообщения, как последнего в чате"):
+        components = [disnake.ui.TextInput(
+            label="Сообщение для закрепления в чате",
+            placeholder="Текст сообщения",
+            custom_id="text"
+        )]
+        super(StickyNoteModal, self).__init__(title=title, components=components)

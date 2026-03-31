@@ -159,8 +159,8 @@ class Listeners(commands.Cog):
         channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice']
         async with self.pool.acquire() as db:
             if member.voice is not None:
-                if any(item in after.channel.name.lower() for item in
-                       channel_groups_to_account_contain) and not member.bot:
+                if not member.bot:
+                #if any(item in after.channel.name.lower() for item in channel_groups_to_account_contain) and not member.bot: <- Учёт активности только в опред. каналах
 
                     # Проверяем заполнен ли никнейм по форме, если нет - кикаем из войс чата.
                     # ОТКЛЮЧЕНО. Для включения - раскомментировать
@@ -214,8 +214,8 @@ class Listeners(commands.Cog):
                 # конец блока добавления нового пользователя в базу данных
 
             if before.channel is None and after.channel is not None and not after.afk and not after.self_mute:
-                if any(item in after.channel.name.lower() for item in
-                       channel_groups_to_account_contain) and not member.bot:
+                if not member.bot:
+                #if any(item in after.channel.name.lower() for item in channel_groups_to_account_contain) and not member.bot:  <- Учёт активности только в опред. каналах
                     try:
                         gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
                         await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id, datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
@@ -230,22 +230,24 @@ class Listeners(commands.Cog):
                             await self.sys_channel.send(f'user {member.display_name} is already added')
                     await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} joined channel {after.channel}')
 
+            # Записываем в БД окончание активности по выходу из голсового канала
             elif before.channel is not None and after.channel is None:
                 gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
                 await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;', datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
                 await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} left channel {before.channel}')
 
+            # ------- Изменение активности в БД (начало/конец) при переходе из канала, где она учитывается, в каналы где не учитывается и наоборот: ---------
             elif before.channel is not None and after.channel is not None and after.channel != before.channel:
-                if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and not any(item in after.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
-                    gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
-                    await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
-                        datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
-                elif not any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and any(item in after.channel.name.lower() for item in
-                       channel_groups_to_account_contain):
-                    gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
-                    await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id,
-                                     datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
+                # if any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and not any(item in after.channel.name.lower() for item in
+                #        channel_groups_to_account_contain):
+                #     gold = await db.fetchval('SELECT gold from discord_users WHERE id=$1;', member.id)
+                #     await db.execute('UPDATE LogTable SET logoff=$1::timestamptz, gold=$2 WHERE user_id=$3 AND logoff IsNULL;',
+                #         datetime.datetime.now(tz=tz).replace(microsecond=0), gold, member.id)
+                # elif not any(item in before.channel.name.lower() for item in channel_groups_to_account_contain) and any(item in after.channel.name.lower() for item in
+                #        channel_groups_to_account_contain):
+                #     gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id};')
+                #     await db.execute(f'INSERT INTO LogTable (user_id, login, gold) VALUES ($1, $2, $3);', member.id,
+                #                      datetime.datetime.now(tz=tz).replace(microsecond=0), gold)
                 await self.sys_channel.send(f'{datetime.datetime.now(tz=tz).replace(microsecond=0)}\n{member.display_name} moved from {before.channel} to {after.channel}')
 
 
@@ -289,7 +291,8 @@ class Listeners(commands.Cog):
     @commands.Cog.listener()
     async def on_member_join(self, member:disnake.Member):
         if 'golden' in member.guild.name.lower() and 'crown' in member.guild.name.lower():
-            await member.edit(nick='Nickname (ВашеИмя)')
+            pass
+            #await member.edit(nick='Nickname (ВашеИмя)')
             #ch = disnake.utils.find(lambda c: 'присоединился' in c.name.lower(), member.guild.channels)
 
 
@@ -351,17 +354,31 @@ class Listeners(commands.Cog):
             await modal_inter.edit_original_response('Авторизация успешна')
 
 
-    #simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
-    # @commands.Cog.listener()
-    # async def on_message(self, message:disnake.Message):
-    #     #guild = message.author.guild
-    #     if not message.content.startswith('!'):
-    #         db = await self.pool.acquire()
-    #         gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={message.author.id};')
-    #         if not type(gold) == 'NoneType' or gold is not None:
-    #             messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id};')
-    #             await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id=(SELECT user_id FROM LogTable WHERE user_id={message.author.id} ORDER BY login DESC LIMIT 1;')
-    #         await self.pool.release(db)
+    # simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
+    @commands.Cog.listener()
+    async def on_message(self, message:disnake.Message):
+
+        async with self.pool.acquire() as db:
+            async def sticker_resend(msg=message):
+                sticky_msg = db.execute(f'SELECT message FROM stickers WHERE channel_id={msg.channel.id};')
+                await self.sys_channel.send(f'Закрепленное сообщение из базы данных: {sticky_msg}\nтип {type(sticky_msg)}')
+                if sticky_msg is not None and type(sticky_msg) != 'NoneType':
+                    async for item in msg.channel.history(limit=15):
+                        if item.content == sticky_msg:
+                            await item.delete()
+                            break
+                    await msg.channel.send(sticky_msg)
+
+            # async def message_counter(msg=message):
+            #
+            #     gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={msg.author.id};')
+            #     if not type(gold) == 'NoneType' or gold is not None:
+            #         # messages - количество сообщений от участника
+            #         messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id};')
+            #         await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id=(SELECT user_id FROM LogTable WHERE user_id={message.author.id} ORDER BY login DESC LIMIT 1;')
+
+            await sticker_resend(message)
+            await self.pool.release(db)
 
 class Games(commands.Cog):
     def __init__(self, bot, connection):
@@ -737,7 +754,7 @@ class Shop(commands.Cog):
         product_name: Название товара
         price: Цена
         duration: Длительность
-        json_data: настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":"a198bc"}
+        json_data: настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":(255,123,0,255)}
         """
         await inter.response.defer(ephemeral=True)
         author = inter.author
@@ -745,12 +762,12 @@ class Shop(commands.Cog):
         messages_to_delete = []
 
         if product_type == 'help':
-            await inter.edit_original_response('Добавить товар в магазин можно двумя путями:\n'
-                           'путь 1: ввести команду, и указать тип добавляемого товара, например\n!shop add role\n'
-                           'и тогда бот в режиме диалога поможет вам заполнить данные о товаре, или\n'
-                           'путь 2: сразу ввести все параметры, например:\n'
-                           '!shop add role "VIP Ник Фиолетовый" 1500 30\n'
-                           'поддерживаемые типы в этой ревизии: role, profile_skin')
+            await inter.edit_original_response('Добавить товар в магазин можно введя команду /shop add:\n'
+                           'В первом параметре выбрать тип товара Роль - Role, Обложка Профиля - Profile_skin, Help - показать это сообщение'
+                           'и указать название товара, его цену а также длительность в случае покупки на время\n'
+                           'например:\n/shop add role "VIP Ник Фиолетовый" 1500 30\n'
+                           'поддерживаемые типы в этой ревизии: Роль: Role, Обложка профиля: Profile_skin')
+
         elif product_type is not None and price is not None and product_name is not None and duration is not None:
             if duration == 0: duration = 'NULL'
             async with self.pool.acquire() as db:

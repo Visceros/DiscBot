@@ -16,7 +16,7 @@ from PIL import Image, ImageDraw, ImageFont
 from operator import itemgetter
 from db_connector import db_connection
 from Cog_utils import Listeners, Games, Player, Shop
-from buttons import Giveaway, RenameModal
+from buttons import Giveaway, RenameModal, StickyNoteModal
 
 
 dotenv_path = os.path.join(os.path.dirname(__file__), '.env')
@@ -1186,6 +1186,53 @@ async def eraseachievements(inter:disnake.ApplicationCommandInteraction):
                 _achievement_roles.append(achievement_role)
         if len(_achievement_roles) > 0:
             await member.remove_roles(*_achievement_roles)
+
+
+@bot.slash_command(dm_permission=False)
+async def sticker():
+    """add - создать закрепленное сообщение / delete - убрать закрепленное сообщение
+
+    Parameters
+    ----------
+    option: sub command type
+    """
+    pass
+    @sticker.sub_command()
+    @commands.has_permissions(administrator=True)
+    async def add(inter:disnake.ApplicationCommandInteraction):
+        channel = inter.channel
+
+        await inter.response.send_modal(StickyNoteModal())
+
+        try:
+            modal_inter = await bot.wait_for(
+                "modal_submit",
+                check=lambda i: i.author.id == inter.author.id,
+                timeout=600)
+        except asyncio.TimeoutError:
+            return
+
+        await modal_inter.response.defer(ephemeral=True)
+        sticky_message = modal_inter.text_values["text"]
+        async with pool.acquire() as db:
+            try:
+                await db.execute('INSERT INTO stickers (message, channel_id) VALUES($1, $2);', sticky_message, inter.channel_id)
+            except Exception as e:
+                await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
+        await channel.send(sticky_message)
+
+    @sticker.sub_command()
+    async def delete(inter:disnake.ApplicationCommandInteraction):
+        channel = inter.channel
+        async with pool.acquire() as db:
+            try:
+                sticky_message = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id = {channel.id};')
+                async for message in channel.history(limit=15):
+                    if message.content == sticky_message:
+                        await message.delete()
+                        await db.execute('DELETE FROM stickers FROM stickers WHERE channel_id = {channel.id};')
+            except Exception as e:
+                await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
 
 #production bot
 bot.run(token, reconnect=True)
