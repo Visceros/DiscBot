@@ -1189,12 +1189,13 @@ async def eraseachievements(inter:disnake.ApplicationCommandInteraction):
 
 
 @bot.slash_command(dm_permission=False)
-async def sticker():
+async def sticker(inter:disnake.ApplicationCommandInteraction):
     """add - создать закрепленное сообщение / delete - убрать закрепленное сообщение
 
     Parameters
     ----------
     option: sub command type
+    inter: autofilled ApplicationCommandInteraction parameter
     """
     pass
     @sticker.sub_command()
