@@ -357,7 +357,6 @@ class Listeners(commands.Cog):
     # simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     @commands.Cog.listener()
     async def on_message(self, message:disnake.Message):
-
         async with self.pool.acquire() as db:
             async def sticker_resend(msg=message):
                 """Переотправляет закрепленное сообщение / Resends the sticker message
@@ -931,7 +930,6 @@ class Shop(commands.Cog):
         inter: autofilled ApplicationCommandInteraction argument
         arg: ID или название товара
         num: количество (если применимо), по умолчанию = 1
-        
         """
         await inter.response.defer(ephemeral=True)
         shoplog_channel = disnake.utils.find(lambda r: (r.name.lower() == 'market_log'), inter.guild.channels)
