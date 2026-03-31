@@ -429,6 +429,13 @@ class Games(commands.Cog):
                     # end of pasting the picture with usual chests
 
                     def checkAuthor(inter:disnake.MessageInteraction):
+                        """
+                        Default author check
+
+                        Parameters
+                        ----------
+                        inter: autofilled disnake.MessageInteraction argument
+                        """
                         return inter.author == author and inter.channel == channel
 
                     try:
@@ -608,12 +615,12 @@ class Player(commands.Cog):
     @commands.slash_command()
     async def play(self, inter:disnake.ApplicationCommandInteraction, url:str):
         """
-        Plays music from youtube links
+        Plays music from YouTube links
 
         Parameters
         ----------
         inter: autofilled ApplicationCommandInteraction argument
-        url: youtube link
+        url: YouTube link
         """
         await inter.response.defer(ephemeral=True)
         if not url.startswith(('https', 'http')):
@@ -937,6 +944,12 @@ class Shop(commands.Cog):
             shoplog_channel = await inter.guild.create_text_channel('market_log', position=len(inter.guild.channels), overwrites={inter.guild.default_role: disnake.PermissionOverwrite(view_channel=False)})
 
         def author_check(m: disnake.Message):
+            """ Default author check
+
+                Parameters
+                ----------
+                m: autofilled disnake.Message argument - instance of the message
+                    """
             return m.author.bot or m.author == inter.author
 
         # Если человек ввёл цифры, считаем, что он ввёл ID товара
