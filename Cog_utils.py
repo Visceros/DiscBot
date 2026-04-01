@@ -756,6 +756,18 @@ class Shop(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def add(self, inter:disnake.ApplicationCommandInteraction,
                   product_type: ProductType, product_name:str, price: int, duration: int, json_data=None):
+        """
+        Добавить товар в магазин / Add a product to the shop
+
+        Parameters
+        ----------
+        inter: autofilled ApplicationCommandInteraction argument
+        product_type: Тип товара или Help для отображения справки
+        product_name: Название товара
+        price: Ценa
+        duration: Длительноcть в днях
+        json_data: Настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":(25,123,0,255)}
+        """
         await inter.response.defer(ephemeral=True)
         author = inter.author
         channel = inter.channel

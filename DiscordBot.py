@@ -1189,17 +1189,18 @@ async def eraseachievements(inter:disnake.ApplicationCommandInteraction):
             await member.remove_roles(*_achievement_roles)
 
 
+Sticker_options = commands.option_enum({'Add':'add', 'Delete':'delete'})
 @bot.slash_command(dm_permission=False)
-async def sticker(inter:disnake.ApplicationCommandInteraction):
+@commands.has_permissions(administrator=True)
+async def sticker(inter:disnake.ApplicationCommandInteraction, option:Sticker_options):
     """add - создать закрепленное сообщение / delete - убрать закрепленное сообщение
 
     Parameters
     ----------
     inter: autofilled ApplicationCommandInteraction parameter
+    option: Add - создать закреп или delete - убрать закреп.
     """
-    pass
-    @sticker.sub_command()
-    @commands.has_permissions(administrator=True)
+
     async def add(inter:disnake.ApplicationCommandInteraction):
         """add - создать закрепленное сообщение
 
@@ -1228,7 +1229,6 @@ async def sticker(inter:disnake.ApplicationCommandInteraction):
                 await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
         await channel.send(sticky_message)
 
-    @sticker.sub_command()
     async def delete(inter:disnake.ApplicationCommandInteraction):
         """убрать закрепленное сообщение
 
@@ -1246,6 +1246,11 @@ async def sticker(inter:disnake.ApplicationCommandInteraction):
                         await db.execute('DELETE FROM stickers FROM stickers WHERE channel_id = {channel.id};')
             except Exception as e:
                 await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
+    # ---------------------------------------------------------------------------------------------------------
+    if option == 'add':
+        await add(inter=inter)
+    elif option == 'delete':
+        await delete(inter=inter)
 
 #production bot
 bot.run(token, reconnect=True)
