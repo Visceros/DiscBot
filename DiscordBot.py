@@ -1232,6 +1232,7 @@ async def sticker(inter:disnake.ApplicationCommandInteraction, option:Sticker_op
                     await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
                 return
         await channel.send(sticky_message)
+        await inter.send('Сообщение успешно закреплено', ephemeral=True)
 
     async def delete(inter:disnake.ApplicationCommandInteraction):
         """убрать закрепленное сообщение
@@ -1248,6 +1249,7 @@ async def sticker(inter:disnake.ApplicationCommandInteraction, option:Sticker_op
                     if message.content == sticky_message:
                         await message.delete()
                         await db.execute(f'DELETE FROM stickers WHERE channel_id = {channel.id};')
+                        await inter.send('Закрепленное сообщение успешно удалено', ephemeral=True)
             except Exception as e:
                 await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
     # ---------------------------------------------------------------------------------------------------------
