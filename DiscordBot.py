@@ -1226,7 +1226,11 @@ async def sticker(inter:disnake.ApplicationCommandInteraction, option:Sticker_op
             try:
                 await db.execute('INSERT INTO stickers (message, channel_id) VALUES($1, $2);', sticky_message, inter.channel_id)
             except Exception as e:
-                await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
+                if 'duplicate key value violates unique constraint "channel"' in e.__str__():
+                    await inter.send("В канале может быть только одно закрепленное сообщение. Сначала удалите старое через /sticker delete", ephemeral=True)
+                else:
+                    await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
+                return
         await channel.send(sticky_message)
 
     async def delete(inter:disnake.ApplicationCommandInteraction):
