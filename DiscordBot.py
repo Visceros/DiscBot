@@ -1243,11 +1243,11 @@ async def sticker(inter:disnake.ApplicationCommandInteraction, option:Sticker_op
         channel = inter.channel
         async with pool.acquire() as db:
             try:
-                sticky_message = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id = {channel.id};')
+                sticky_message = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id={channel.id};')
                 async for message in channel.history(limit=15):
                     if message.content == sticky_message:
                         await message.delete()
-                        await db.execute('DELETE FROM stickers FROM stickers WHERE channel_id = {channel.id};')
+                        await db.execute(f'DELETE FROM stickers WHERE channel_id = {channel.id};')
             except Exception as e:
                 await inter.send(f'Произошла ошибка:\n {e.__str__()}', ephemeral=True)
     # ---------------------------------------------------------------------------------------------------------
