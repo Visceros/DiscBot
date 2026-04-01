@@ -371,7 +371,6 @@ class Listeners(commands.Cog):
                         if history_message.content == sticky_msg:
                             break
                     else:
-                        print(msg.channel.history[0].content)
                         await asyncio.sleep(1)
                         async for item in msg.channel.history(limit=10):
                             if item.content == sticky_msg:
