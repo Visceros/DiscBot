@@ -766,7 +766,7 @@ class Shop(commands.Cog):
         product_name: Название товара
         price: Ценa
         duration: Длительноcть в днях
-        json_data: Настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":(25,123,0,255)}
+        json_data: Настройки профиля вида: {"image_name": "название_файла_картинки.png", "text_color":(25,123,0,255)}
         """
         await inter.response.defer(ephemeral=True)
         author = inter.author
