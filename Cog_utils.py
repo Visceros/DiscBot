@@ -764,8 +764,8 @@ class Shop(commands.Cog):
         inter: autofilled ApplicationCommandInteraction argument
         product_type: Тип товара или Help для отображения справки
         product_name: Название товара
-        price: Цена
-        duration: Длительность
+        price: Ценa
+        duration: Длительноcть
         json_data: Настройки профиля, пример: {"image_name": "название_файла_картинки.png", "text_color":(255,123,0,255)}
         """
         await inter.response.defer(ephemeral=True)
