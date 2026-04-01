@@ -367,11 +367,16 @@ class Listeners(commands.Cog):
                 """
                 sticky_msg = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id={msg.channel.id};')
                 if sticky_msg is not None and type(sticky_msg) != 'NoneType':
-                    async for item in msg.channel.history(limit=15):
-                        if item.content == sticky_msg:
-                            await item.delete()
-                            break
-                    await msg.channel.send(sticky_msg)
+                    if msg.channel.history[0].content == sticky_msg:
+                        pass
+                    else:
+                        print(msg.channel.history[0].content)
+                        await asyncio.sleep(1)
+                        async for item in msg.channel.history(limit=15):
+                            if item.content == sticky_msg:
+                                await item.delete()
+                                break
+                        await msg.channel.send(sticky_msg)
 
             # async def message_counter(msg=message):
             #
