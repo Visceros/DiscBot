@@ -673,7 +673,7 @@ async def me(inter:disnake.ApplicationCommandInteraction):
     ----------
     inter: autofilled ApplicationCommandInteraction
     """
-    if "клан-профиль" in inter.channel.name or "system" in inter.channel.name:
+    if "профиль" in inter.channel.name or "system" in inter.channel.name:
         usr = inter.author
         await show(inter, usr)
     else:
