@@ -69,12 +69,22 @@ class StickyNoteModal(disnake.ui.Modal):
         components = [disnake.ui.TextInput(
             label="Сообщение для закрепления в чате",
             placeholder="Текст сообщения",
-            custom_id="text"
+            custom_id="sticky_text"
         )]
         super(StickyNoteModal, self).__init__(title=title, components=components)
 
 
 # Новый вид магазина в виде Embed-а с кнопками
+class ShopBuyModal(disnake.ui.Modal):
+    def __init__(self, title="Покупка товара в Магазине"):
+        components = [
+            disnake.ui.TextInput(
+                label="Введите номер или название желаемого товара",
+                custom_id="shop_product"
+            )
+        ]
+        super().__init__(title=title, components=components)
+
 class ShopView(disnake.ui.ActionRow):
     def __init__(self):
         super().__init__()
