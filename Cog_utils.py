@@ -396,11 +396,10 @@ class Listeners(commands.Cog):
     async def on_message(self, message:disnake.Message):
 
         # рофл-функция про катану
-        async def katana(msg=message):
-            katanas = ['катана', 'катаны', 'катаны', 'катан', 'катане', 'катанам', 'катану', 'катаны', 'катаной', 'катаною', 'катанами', 'катане', 'катанах']
-            for word in katanas:
-                if word in msg.content:
-                    await msg.channel.send(f'{msg.author.mention}\nКатана? В игре нет оружия с таким названием.')
+        katanas = ['катана', 'катаны', 'катаны', 'катан', 'катане', 'катанам', 'катану', 'катаны', 'катаной', 'катаною', 'катанами', 'катане', 'катанах']
+        for word in katanas:
+            if word in message.content:
+                await message.channel.send(f'{message.author.mention}\nКатана? В игре нет оружия с таким названием.')
 
         async with self.pool.acquire() as db:
             async def sticker_resend(msg=message):
