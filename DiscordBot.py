@@ -785,7 +785,7 @@ async def likedis(inter:disnake.ApplicationCommandInteraction, msg:disnake.Messa
             content=f'Участники голосования от {inter.author.display_name}, начатого в {start_time} не смогли определиться с выбором')
 
 
-@bot.slash_command(dm_permission=False, name='Создать Опрос')
+@bot.slash_command(dm_permission=False)
 async def poll(inter, options: int, time=60, arg=None):
     """
     Создаёт опрос / Makes a poll
