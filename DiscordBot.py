@@ -674,11 +674,40 @@ async def me(inter:disnake.ApplicationCommandInteraction):
     ----------
     inter: autofilled ApplicationCommandInteraction
     """
+
+    # При присоединении к голосовому каналу Если человека нет в базе данных - добавляем его и назначем роль
+    global pool
+    member = inter.author
+    async with pool.acquire() as db:
+        try:
+            gold = await db.fetchval(f'SELECT gold from discord_users WHERE id={member.id}')
+            roles_list = [role for role in member.guild.roles if role.id in (
+            1486644163704262716, 653683016912338955, 742056254721228817, 688066382348419200, 742057453562101870,
+            654005044815069186, 651377953271185409)]
+            if not any(role in roles_list for role in member.roles):
+                try:
+                    for role_to_add in roles_list:
+                        await member.add_roles(role_to_add)
+                except Exception as e:
+                    print(f'Возникла ошибка при назначении ролей профиля:/n{e.__str__()}')
+            if type(gold) == 'NoneType' or gold is None:
+                try:
+                    await db.execute(
+                        'INSERT INTO discord_users (id, nickname, join_date) VALUES($1, $2, $3);',
+                        member.id, member.display_name, member.joined_at)
+                    await sys_channel.send(f'Юзер добавлен в базу данных: {member.display_name}')
+                except asyncpg.exceptions.UniqueViolationError:
+                    await sys_channel.send(
+                        f'Пользователь {member.display_name}, id: {member.id} уже есть в базе данных')
+        except asyncpg.connection.exceptions.ConnectionRejectionError or asyncpg.connection.exceptions.ConnectionFailureError as err:
+            print('Got error:', err, err.__traceback__)
+            pool = await db_connection()
+            await me(member)
+
     if "профиль" in inter.channel.name or "system" in inter.channel.name:
-        usr = inter.author
-        await show(inter, usr)
+        await show(inter, member)
     else:
-        msg = await inter.send('Команда доступна только в специальном канале / Command is accessible only in predefined channel.', ephemeral=True)
+        await inter.send('Команда доступна только в специальном канале / Command is accessible only in predefined channel.', ephemeral=True)
 
 
 # просмотр урезанного профиля пользователей для модерации
