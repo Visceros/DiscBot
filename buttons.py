@@ -95,6 +95,7 @@ class ShopAddModal(disnake.ui.Modal):
         ]
         super().__init__(title=title, components=components)
 
+
 class ShopView(disnake.ui.ActionRow):
     def __init__(self):
         super().__init__()
