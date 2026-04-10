@@ -825,7 +825,7 @@ class Shop(commands.Cog):
         ----------
         inter: autofilled MessageCommandInteraction argument
         """
-        on_page = 15
+        on_page = 10
         embed = disnake.Embed()
         shop_view = ShopView()
         author: disnake.Member = inter.author
