@@ -401,6 +401,7 @@ class Listeners(commands.Cog):
             for word in katanas:
                 if word in message.content:
                     await message.channel.send(f'{message.author.mention}\nКатана? В игре нет оружия с таким названием.')
+                    break
 
         async with self.pool.acquire() as db:
             async def sticker_resend(msg=message):
