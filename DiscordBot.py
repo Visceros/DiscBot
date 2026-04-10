@@ -659,9 +659,7 @@ async def echo(inter:disnake.ApplicationCommandInteraction, text:str):
     inter: autofilled ApplicationCommandInteraction
     text: output message text
     """
-    #await inter.delete_original_response()
-    a:disnake.InteractionMessage = inter.original_message
-    await inter.send(a.content)
+    await inter.response.delete()
     await inter.send(text)
     msg = str(inter.author.display_name) + ' using /echo sent: ' + text
     await sys_channel.send(msg)
