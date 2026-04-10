@@ -13,5 +13,5 @@ pafy==0.5.5
 Pillow
 python-dotenv==1.2.2
 pytube==12.1.0
-yarl==1.8.1
+yarl
 youtube-dl==2021.12.17
