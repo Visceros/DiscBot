@@ -12,9 +12,10 @@ from pytube import Playlist
 from casino_rewards import screens
 from secrets import randbelow
 from db_connector import db_connection
-from buttons import NormalRow, GoldRow, RenameModal
+from buttons import NormalRow, GoldRow, RenameModal, ShopView, ShopBuyModal, ShopAddModal
 
 tz = datetime.timezone(datetime.timedelta(hours=3))
+
 
 class Listeners(commands.Cog):
     def __init__(self, bot, connection):
@@ -26,7 +27,7 @@ class Listeners(commands.Cog):
 
     async def if_one_in_voice(self, member: disnake.Member, before, after):
 
-        pass # Check for being alone in the vc is switched off now. Remove the pass and uncomment the section below to switch on.
+        pass  # Check for being alone in the vc is switched off now. Remove the pass and uncomment the section below to switch on.
         # async def check_channel(arg:disnake.VoiceChannel, db):
         #     channel = arg
         #
@@ -150,7 +151,6 @@ class Listeners(commands.Cog):
         #     if before.channel is None and after.channel is not None and any(
         #             item in after.channel.name.lower() for item in channel_groups_to_account_contain):
         #         await check_channel(after.channel, db=db)
-
 
     # --------------------------- Регистрация начала и конца времени Активности пользователей ---------------------------
     @commands.Cog.listener()
@@ -324,7 +324,8 @@ class Listeners(commands.Cog):
                     await inter.send('Роль успешно получена! Теперь Вы можете пользоваться функционалом сервера. Добро пожаловать', ephemeral=True)
 
     @commands.Cog.listener()
-    async def on_button_click(self, inter:disnake.MessageInteraction):
+    async def on_button_click(self, inter:[disnake.MessageInteraction, disnake.MessageCommandInteraction]):
+        # ----------------------- Обработка нажатия кнопки "Переименоваться" --------------------------------
         if inter.component.custom_id == 'rename':
             if inter.author.display_name != 'Nickname (ВашеИмя)':
                 return await inter.send('Вам не нужно переименовываться.', ephemeral=True)
@@ -359,10 +360,48 @@ class Listeners(commands.Cog):
             #await modal_inter.edit_original_response('Авторизация успешна, теперь, выберите роль в открывшемся канале.', components=disnake.ui.Button(style=disnake.ButtonStyle.link, label='Перейти', url='https://discord.com/channels/198134036890255361/1055096375739699291'))
             await modal_inter.edit_original_response('Авторизация успешна')
 
+        if inter.component.custom_id.startswith('shop'):
+            shop = Shop(bot=self.bot, connection=self.pool.acquire())
+
+        # ----------------------- ОБРАБОТКА НАЖАТИЯ КНОПОК МАГАЗИНА --------------------------------
+            if inter.component.custom_id == 'shop_open':
+                await shop.shop_view(interaction=inter)
+
+            if inter.component.custom_id == 'shop_next':
+                pass
+
+            if inter.component.custom_id == 'shop_prev':
+                pass
+
+            if inter.component.custom_id == 'shop_buy':
+                await inter.response.send_modal(ShopBuyModal())
+                try:
+
+                    shop_modal = await self.bot.wait_for(
+                        'modal_submit',
+                        check=lambda i: i.author.id == inter.author.id,
+                        timeout=300)
+                    buy_arg = shop_modal.text_values['shop_product']
+                    await shop.buy(inter=inter, arg=buy_arg)
+                except asyncio.TimeoutError:
+                    return
+                pass
+
+            if inter.component.custom_id == 'shop_admin':
+                pass
+
 
     # simple message counter. Позже тут будет ежемесячный топ, обновляющийся каждое 1 число.
     @commands.Cog.listener()
     async def on_message(self, message:disnake.Message):
+
+        # рофл-функция про катану
+        async def katana(msg=message):
+            katanas = ['катана', 'катаны', 'катаны', 'катан', 'катане', 'катанам', 'катану', 'катаны', 'катаной', 'катаною', 'катанами', 'катане', 'катанах']
+            for word in katanas:
+                if word in msg.content:
+                    await msg.channel.send(f'{msg.author.mention}\nКатана? В игре нет оружия с таким названием.')
+
         async with self.pool.acquire() as db:
             async def sticker_resend(msg=message):
                 """Переотправляет закрепленное сообщение / Resends the sticker message
@@ -389,8 +428,8 @@ class Listeners(commands.Cog):
             #     gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={msg.author.id};')
             #     if not type(gold) == 'NoneType' or gold is not None:
             #         # messages - количество сообщений от участника
-            #         messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={message.author.id};')
-            #         await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id=(SELECT user_id FROM LogTable WHERE user_id={message.author.id} ORDER BY login DESC LIMIT 1;')
+            #         messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={msg.author.id};')
+            #         await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={msg.author.id} ORDER BY login DESC LIMIT 1;')
 
             await sticker_resend(message)
             await self.pool.release(db)
@@ -482,7 +521,7 @@ class Games(commands.Cog):
 
     # -------------- КОНЕЦ ИГРЫ ЯЩИК ПАНДОРЫ ------------------
 
-    # ------------- ИГРА КОЛЕСО ФОРТУНЫ  -----------
+    # ------------- ИГРА КОЛЕСО ФОРТУНЫ -----------
     @commands.slash_command(pass_context=True)
     async def fortuna(self, inter:disnake.ApplicationCommandInteraction):
         """
@@ -743,27 +782,78 @@ class Player(commands.Cog):
         await inter.delete_original_response()
     # ------------- Конец блока с проигрывателем музыки с YouTube -----------
 
+
+async def help(inter:disnake.ApplicationCommandInteraction):
+    """
+    A help function
+
+    Parameters
+    ----------
+    inter: autofilled ApplicationCommandInteraction argument
+    """
+    await inter.send('Инструкция пользования магазином:\n'
+                   '!buy название - купить товар\n'
+                   '!shop add - добавить товар (только администраторы): см. shop add help\n'
+                   '!shop delete - удалить товар из магазина (только администраторы)\n',
+                     ephemeral=True, delete_after=60)
+
+
 class Shop(commands.Cog):
     def __init__(self, bot, connection):
         self.pool = connection
         self.bot = bot
 
-    # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
-
+    # -------------------------------------------- ДОДЕЛАТЬ установку магазина --------------------------------------
     @commands.slash_command()
-    async def shop(self, inter:disnake.ApplicationCommandInteraction):
+    async def shop_setup(self, inter:disnake.ApplicationCommandInteraction):
+        # dm = await self.bot.get_channel(inter.author.create_dm()) # Отправка настройки в приват? Создание канала
+        await inter.send('Для установки Магазина, укажите ссылку на канал в котором будет магазин.')
+        # await dm.send('Для установки Магазина, укажите ссылку на канал в котором будет магазин.') # Отправка настройки в приват?
+        msg = await self.bot.wait_for('message')
+        channel_id = msg.content[msg.content.rfind('/')+1:]
+        await inter.edit_original_response(f'Айди канала: {channel_id}')
+        pass
+
+
+    # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
+    @commands.slash_command()
+    async def shop_view(self, inter:disnake.MessageCommandInteraction): # Витрина магазина
         """
         shop group command
 
         Parameters
         ----------
-        inter: autofilled ApplicationCommandInteraction argument
+        inter: autofilled MessageCommandInteraction argument
         """
-        pass
+        on_page = 15
+        embed = disnake.Embed()
+        shop_view = ShopView()
+        author: disnake.Member = inter.author
+
+        if author.guild_permissions.administrator:
+            for btn in shop_view.children:
+                if btn.custom_id == "shop_admin":
+                    btn.disabled = False
+            # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
+        try:
+            async with self.pool.acquire() as db:
+                cur = await db.cursor('SELECT (product_id, product_type, name, price, duration) FROM SHOP SORT BY product_id ASC;', )
+                page = await cur.fetch(on_page)
+
+                embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
+                for goods_id,goods_type, goods_name, goods_price, goods_duration in page:
+                    embed.add_field(
+                        name='',
+                        value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
+                    )
+            await inter.send(embed=embed, components=shop_view)
+        except Exception as e:
+            await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
+
+        # Протестировать
 
     ProductType = commands.option_enum({'Help':'help', 'Role':'role', 'Profile_skin':'profile_skin'})
 
-    @shop.sub_command()
     @commands.has_permissions(administrator=True)
     async def add(self, inter:disnake.ApplicationCommandInteraction,
                   product_type: ProductType, product_name:str, price: int, duration: int, json_data=None):
@@ -780,9 +870,20 @@ class Shop(commands.Cog):
         json_data: Настройки профиля вида: {"image_name": "название_файла_картинки.png", "text_color":(25,123,0,255)}
         """
         await inter.response.defer(ephemeral=True)
+        the_modal = await inter.response.send_modal(ShopAddModal)
         author = inter.author
         channel = inter.channel
         messages_to_delete = []
+
+        # ------------------- НИЖЕ ПРИМЕР КОДА ДЛЯ ВЫТАСКИВАНИЯ КАРТИНКИ ИЗ СООБЩЕНИЯ ПОЛЬЗОВАТЕЛЯ -----------------
+
+        # message = await self.bot.wait_for("message")
+        # if message.attachments:
+        #     for attachment in message.attachments:
+        #         if attachment.content_type == 'image':
+        #             # Здесь можно обработать изображение, например сохранить его
+        #             attachment.save('path/to/save/image.png')
+
 
         if product_type == 'help':
             await inter.edit_original_response('Добавить товар в магазин можно введя команду /shop add:\n'
@@ -899,8 +1000,6 @@ class Shop(commands.Cog):
             await inter.delete_original_response()
             await channel.delete_messages(messages_to_delete)
 
-
-    @shop.sub_command()
     @commands.has_permissions(administrator=True)
     async def delete(self, inter:disnake.ApplicationCommandInteraction, arg):
         """
@@ -923,31 +1022,15 @@ class Shop(commands.Cog):
         else:
             await inter.edit_original_response('Вы не ввели какой товар удалить. Укажите id или название товара.')
 
-    @shop.sub_command()
-    async def help(self, inter:disnake.ApplicationCommandInteraction):
-        """
-        A help function
-
-        Parameters
-        ----------
-        inter: autofilled ApplicationCommandInteraction argument
-        """
-        await inter.send('Инструкция пользования магазином:\n'
-                       '!buy название - купить товар\n'
-                       '!shop add - добавить товар (только администраторы): см. shop add help\n'
-                       '!shop delete - удалить товар из магазина (только администраторы)\n',
-                         ephemeral=True, delete_after=60)
-
     # -------------КОНЕЦ БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
 
-    @commands.slash_command()
-    async def buy(self, inter:disnake.ApplicationCommandInteraction, arg, num:int=1):
+    async def buy(self, inter:[disnake.MessageInteraction, disnake.MessageCommandInteraction], arg, num:int=1):
         """
         Buy something from Shop
 
         Parameters
         ----------
-        inter: autofilled ApplicationCommandInteraction argument
+        inter: autofilled MessageCommandInteraction argument
         arg: ID или название товара
         num: количество (если применимо), по умолчанию = 1
         """

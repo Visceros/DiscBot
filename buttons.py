@@ -85,6 +85,16 @@ class ShopBuyModal(disnake.ui.Modal):
         ]
         super().__init__(title=title, components=components)
 
+class ShopAddModal(disnake.ui.Modal):
+    def __init__(self, title="Покупка товара в Магазине"):
+        components = [
+            disnake.ui.TextInput(
+                label="Введите номер или название желаемого товара",
+                custom_id="shop_product"
+            )
+        ]
+        super().__init__(title=title, components=components)
+
 class ShopView(disnake.ui.ActionRow):
     def __init__(self):
         super().__init__()
