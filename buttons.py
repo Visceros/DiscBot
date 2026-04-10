@@ -85,6 +85,7 @@ class ShopBuyModal(disnake.ui.Modal):
         ]
         super().__init__(title=title, components=components)
 
+
 class ShopAddModal(disnake.ui.Modal):
     def __init__(self, title="Покупка товара в Магазине"):
         components = [
@@ -96,79 +97,86 @@ class ShopAddModal(disnake.ui.Modal):
         super().__init__(title=title, components=components)
 
 
+# -------------------- Кнопка "просмотреть магазин" ------------------------
+class ButtonView(disnake.ui.button):
+    def __init__(self):
+        super().__init__(
+            style=disnake.ButtonStyle.primary,
+            label="Открыть магазин",
+            custom_id='shop_open'
+        )
+
+
+# -------------------- Кнопка "Управление магазином" ------------------------
+class ButtonAdmin(disnake.ui.button):
+    def __init__(self, disabled: bool):
+        super().__init__(
+            style=disnake.ButtonStyle.gray,
+            custom_id='shop_admin',
+            emoji="⚙️",
+            disabled=disabled
+        )
+
+
+class ButtonPrev(disnake.ui.button):
+    def __init__(self, disabled: bool, emoji="⬅️"):
+        super().__init__(
+            emoji=emoji,
+            disabled=disabled,
+            custom_id='shop_prev'
+        )
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        view = self.view
+        try:
+            if view.author_id:
+                if inter.author.id != view.author_id:
+                    return await inter.send("Меню может пользоваться только тот кто отправил команду",
+                                            ephemeral=True)
+                else:
+                    # Найти, как связать коллбеки с эмбедом
+                    await inter.response.edit_message()
+        except:
+            await inter.send('Невозможно переключить страницу', ephemeral=True)
+
+
+class ButtonNext(disnake.ui.button):
+    def __init__(self, disabled: bool, emoji="➡️"):
+        super().__init__(
+            emoji=emoji,
+            disabled=disabled,
+            custom_id='shop_next'
+        )
+
+    async def callback(self, inter: disnake.MessageInteraction):
+        view = self.view
+        try:
+            if view.author_id:
+                if inter.author.id != view.author_id:
+                    return await inter.send("Меню может пользоваться только тот кто отправил команду",
+                                            ephemeral=True)
+                else:
+                    # Найти, как связать коллбеки с эмбедом
+                    await inter.response.edit_message()
+        except:
+            await inter.send('Невозможно переключить страницу', ephemeral=True)
+
+
+class ButtonBuy(disnake.ui.button):
+    def __init__(self, disabled: bool, emoji="🛒"):
+        super().__init__(
+            emoji=emoji,
+            disabled=disabled,
+            custom_id='shop_buy'
+        )
+
+    def callback(self, inter: disnake.MessageInteraction):
+        pass
+
+
 class ShopView(disnake.ui.ActionRow):
     def __init__(self):
         super().__init__()
-
-        # -------------------- Кнопка "просмотреть магазин" ------------------------
-        class ButtonView(disnake.ui.button):
-            def __init__(self):
-                super().__init__(
-                    style=disnake.ButtonStyle.primary,
-                    label="Открыть магазин",
-                    custom_id='shop_open'
-                )
-
-        # -------------------- Кнопка "Управление магазином" ------------------------
-        class ButtonAdmin(disnake.ui.button):
-            def __init__(self, disabled:bool):
-                super().__init__(
-                    style=disnake.ButtonStyle.gray,
-                    custom_id='shop_admin',
-                    emoji="⚙️",
-                    disabled=disabled
-                )
-
-        class ButtonPrev(disnake.ui.button):
-            def __init__(self, disabled: bool, emoji="⬅️"):
-                super().__init__(
-                    emoji=emoji,
-                    disabled=disabled,
-                    custom_id='shop_prev'
-                )
-
-            async def callback(self, inter: disnake.MessageInteraction):
-                view = self.view
-                try:
-                    if view.author_id:
-                        if inter.author.id != view.author_id:
-                            return await inter.send("Меню может пользоваться только тот кто отправил команду", ephemeral=True)
-                        else:
-                            # Найти, как связать коллбеки с эмбедом
-                            await inter.response.edit_message()
-                except:
-                    await inter.send('Невозможно переключить страницу', ephemeral=True)
-
-        class ButtonNext(disnake.ui.button):
-            def __init__(self, disabled: bool, emoji="➡️"):
-                super().__init__(
-                    emoji=emoji,
-                    disabled=disabled,
-                    custom_id='shop_next'
-                )
-
-            async def callback(self, inter: disnake.MessageInteraction):
-                view = self.view
-                try:
-                    if view.author_id:
-                        if inter.author.id != view.author_id:
-                            return await inter.send("Меню может пользоваться только тот кто отправил команду", ephemeral=True)
-                        else:
-                            # Найти, как связать коллбеки с эмбедом
-                            await inter.response.edit_message()
-                except:
-                    await inter.send('Невозможно переключить страницу', ephemeral=True)
-
-        class ButtonBuy(disnake.ui.button):
-            def __init__(self, disabled: bool, emoji="🛒"):
-                super().__init__(
-                    emoji=emoji,
-                    disabled=disabled,
-                    custom_id='shop_buy'
-                )
-
-            def callback(self, inter: disnake.MessageInteraction):
-                pass
 
         self.append_item(ButtonPrev(disabled=True))
         self.append_item(ButtonNext(disabled=False))
