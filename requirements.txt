@@ -2,7 +2,7 @@ aiohttp
 aiosignal
 async-timeout
 asyncpg==0.31.0
-attrs==
+attrs
 charset-normalizer
 disnake==2.12.0
 ffmpeg==1.4
