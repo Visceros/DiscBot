@@ -232,7 +232,7 @@ async def daily_task():
                         json_data = json.loads(product['json_data'])
                         if current_profile_skin == json_data['image_name']:  #Если фон профиля не сменился
                             try:
-                                await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', 'default_profile_pic.png', '(199,199,199,255)', user.id)
+                                await db.execute('UPDATE discord_users SET profile_pic=$1, profile_text_color=$2 WHERE id=$3', 'default_profile_pic.png', '(255,207,102,255)', user.id)
                                 print('Вернул стандартный фон профиля пользователяю', user.display_name)
                             except Exception as e:
                                 await sys_channel.send(f'{guild.owner.mention} Произошла ошибка при возвращении стандартного фона профиля для пользователя {user.mention}:')
@@ -659,6 +659,7 @@ async def echo(inter:disnake.ApplicationCommandInteraction, text:str):
     inter: autofilled ApplicationCommandInteraction
     text: output message text
     """
+    await inter.delete_original_response()
     await inter.send(text)
     msg = str(inter.author.display_name) + ' using /echo sent: ' + text
     await sys_channel.send(msg)
@@ -736,12 +737,12 @@ async def u(inter, member: disnake.Member):
                 await inter.send(embed=embed)
             else:
                 await inter.edit_original_response(
-                    'В базе пользователей не найдена информация по этому профилю. Чтобы информация появилась требуется активность в голосовых каналах клана')
+                    'В базе пользователей не найдена информация по этому профилю. Чтобы информация появилась требуется активность в голосовых каналах')
     else:
         await inter.send('Вы не являетесь модератором или администратором.')
 
 
-@bot.message_command(dm_permission=False)
+@bot.message_command(dm_permission=False, name='Лайк-дизлайк')
 @commands.has_permissions(administrator=True)
 async def likedis(inter:disnake.ApplicationCommandInteraction, msg:disnake.Message, polltime:int=60):
     """Отправляет сообщение и добавляет под него,👍 и 👎 чтобы провести голосование.
@@ -784,10 +785,10 @@ async def likedis(inter:disnake.ApplicationCommandInteraction, msg:disnake.Messa
             content=f'Участники голосования от {inter.author.display_name}, начатого в {start_time} не смогли определиться с выбором')
 
 
-@bot.slash_command(dm_permission=False)
+@bot.slash_command(dm_permission=False, name='Создать Опрос')
 async def poll(inter, options: int, time=60, arg=None):
     """
-    Makes a poll
+    Создаёт опрос / Makes a poll
 
     Parameters
     ----------
@@ -968,7 +969,7 @@ async def warn(inter, member: disnake.Member, count:int=1):
 
 # @message_command Это очень крутая штука, описанную функцию можно применить к любому сообщению, просто нажав
 # ПКМ и выбрав, какую именно функцию к нему применить
-@bot.message_command(dm_permission=False)
+@bot.message_command(dm_permission=False, name='Реакции')
 async def react(inter, msg:disnake.Message, number:int=5):
     """
     Бот добавит реакции под указанное сообщение. ПКМ по сообщению -> Apps -> react.
@@ -1221,7 +1222,7 @@ async def sticker(inter:disnake.ApplicationCommandInteraction, option:Sticker_op
             return
 
         await modal_inter.response.defer(ephemeral=True)
-        sticky_message = modal_inter.text_values["text"]
+        sticky_message = modal_inter.text_values["sticky_text"]
         async with pool.acquire() as db:
             try:
                 await db.execute('INSERT INTO stickers (message, channel_id) VALUES($1, $2);', sticky_message, inter.channel_id)
