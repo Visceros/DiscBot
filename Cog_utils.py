@@ -816,7 +816,7 @@ class Shop(commands.Cog):
 
 
     # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
-    @commands.slash_command()
+    @commands.slash_command(auto_sync=True)
     async def shop_view(self, inter:disnake.MessageCommandInteraction): # Витрина магазина
         """
         shop group command
