@@ -554,13 +554,10 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             profile_text = part_1+'\n'+part_2+'\n'+part_3+'\n'+part_4   # текст профиля
             profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
             text_color = ast.literal_eval(data['profile_text_color'])
-            background_width, background_height = background_img.size
-            left, top, right, bottom = profile_font.getbbox(profile_text)
-            #text_width, text_height = right - left, bottom - top
-            textbox = draw.multiline_textbbox((20,20),text=profile_text, font=profile_font)
-            #x = (background_width-text_width)//2
-            #y = (background_height-text_height)//3
-            draw.text((20, 20), text=profile_text, fill=text_color, font=profile_font) # вписываем текст
+            #background_width, background_height = background_img.size
+            #left, top, right, bottom = profile_font.getbbox(profile_text)
+            #textbox = draw.multiline_textbbox((20,20),text=profile_text, font=profile_font)
+            draw.text((50, 50), text=profile_text, fill=text_color, font=profile_font) # вписываем текст
             buffer = io.BytesIO()
             background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
