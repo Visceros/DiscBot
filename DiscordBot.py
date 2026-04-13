@@ -557,8 +557,10 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             background_width, background_height = background_img.size
             left, top, right, bottom = profile_font.getbbox(profile_text)
             text_width, text_height = right - left, bottom - top
+            print('text_width:',text_width, 'text_height:', text_height)
             x = (background_width-text_width)//2
             y = (background_height-text_height)//3
+            print('x=', x, 'y=', y)
             draw.text((x,y), text=profile_text, fill=text_color, font=profile_font) # вписываем текст
             buffer = io.BytesIO()
             background_img.save(buffer, format='PNG')  # сохраняем в буфер обмена
