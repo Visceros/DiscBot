@@ -555,7 +555,8 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             profile_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
             text_color = ast.literal_eval(data['profile_text_color'])
             background_width, background_height = background_img.size
-            text_width, text_height = draw.textsize(profile_text, font=profile_font)
+            left, top, right, bottom = profile_font.getbbox(profile_text)
+            text_width, text_height = right - left, bottom - top
             x = (background_width-text_width)//2
             y = (background_height-text_height)//3
             draw.text((x,y), text=profile_text, fill=text_color, font=profile_font) # вписываем текст
