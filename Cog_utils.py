@@ -819,7 +819,7 @@ class Shop(commands.Cog):
 
     # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
     @commands.slash_command(auto_sync=True)
-    async def shop_view(self, inter:disnake.MessageCommandInteraction): # Витрина магазина
+    async def shop_view(self, inter:disnake.MessageCommandInteraction): # Витрина магазина, ID = 1493541134561972291
         """
         Просмотреть витрину магазина \ View the shop
 
@@ -839,15 +839,17 @@ class Shop(commands.Cog):
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
             async with self.pool.acquire() as db:
-                cur = await db.cursor('SELECT (product_id, product_type, name, price, duration) FROM SHOP ORDER BY product_id ASC;', )
-                page = await cur.fetch(on_page)
+                async with db.transaction() as transac:
+                    # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
+                    cur = await db.cursor('SELECT (product_id, product_type, name, price, duration) FROM SHOP ORDER BY product_id ASC;', )
+                    page = await cur.fetch(on_page)
 
-                embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
-                for goods_id,goods_type, goods_name, goods_price, goods_duration in page:
-                    embed.add_field(
-                        name='',
-                        value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
-                    )
+                    embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
+                    for goods_id,goods_type, goods_name, goods_price, goods_duration in page:
+                        embed.add_field(
+                            name='',
+                            value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
+                        )
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')

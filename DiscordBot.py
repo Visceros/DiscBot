@@ -184,7 +184,7 @@ async def monthly_task():
         # раздача зарплаты верховному совету на 2 день месяца
         for guild in bot.guilds:
             amount = 1000  # количество заработной платы
-            salary_roles_ids = {651377975106732034, 449837752687656960} # ID ролей, которым начисляется зарплата
+            salary_roles_ids = {651377975106732034, 449837752687656960, 1489831507433488586} # ID ролей, которым начисляется зарплата
             async with pool.acquire() as db:
                 for id in salary_roles_ids:
                     role = disnake.utils.find(lambda r: (r.id == id), guild.roles)
@@ -658,8 +658,8 @@ async def echo(inter:disnake.ApplicationCommandInteraction, text:str):
     inter: autofilled ApplicationCommandInteraction
     text: output message text
     """
-    await inter.response.send_message(text)
-    #await inter.send(text)
+    ch = inter.channel
+    await ch.send(text)
     msg = str(inter.author.display_name) + ' using /echo sent: ' + text
     await sys_channel.send(msg)
 
