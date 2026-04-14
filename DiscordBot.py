@@ -660,6 +660,7 @@ async def echo(inter:disnake.ApplicationCommandInteraction, text:str):
     """
     ch = inter.channel
     await ch.send(text)
+    await inter.send('👌', ephemeral=True)
     msg = str(inter.author.display_name) + ' using /echo sent: ' + text
     await sys_channel.send(msg)
 
