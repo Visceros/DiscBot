@@ -401,6 +401,7 @@ class Listeners(commands.Cog):
             for word in katanas:
                 if word in message.content:
                     await message.channel.send(f'{message.author.mention}\nКатана? В игре нет оружия с таким названием.')
+                    await asyncio.sleep(40)
                     break
 
         async with self.pool.acquire() as db:
@@ -820,7 +821,7 @@ class Shop(commands.Cog):
     @commands.slash_command(auto_sync=True)
     async def shop_view(self, inter:disnake.MessageCommandInteraction): # Витрина магазина
         """
-        shop group command
+        Просмотреть витрину магазина \ View the shop
 
         Parameters
         ----------
@@ -838,7 +839,7 @@ class Shop(commands.Cog):
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
             async with self.pool.acquire() as db:
-                cur = await db.cursor('SELECT (product_id, product_type, name, price, duration) FROM SHOP SORT BY product_id ASC;', )
+                cur = await db.cursor('SELECT (product_id, product_type, name, price, duration) FROM SHOP ORDER BY product_id ASC;', )
                 page = await cur.fetch(on_page)
 
                 embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
