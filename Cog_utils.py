@@ -839,17 +839,17 @@ class Shop(commands.Cog):
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
             async with self.pool.acquire() as db:
-                async with db.transaction() as transac:
-                    # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
-                    cur = await db.cursor('SELECT (product_id, product_type, name, price, duration) FROM SHOP ORDER BY product_id ASC;', )
-                    page = await cur.fetch(on_page)
+                cur = await db.execute('DECLARE shop_cursor CURSOR SCROLL WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM SHOP ORDER BY product_id ASC;')
+                #async with db.transaction() as transac:
+                # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
+                page = await cur.fetch(on_page)
 
-                    embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
-                    for goods_id,goods_type, goods_name, goods_price, goods_duration in page:
-                        embed.add_field(
-                            name='',
-                            value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
-                        )
+                embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
+                for goods_id,goods_type, goods_name, goods_price, goods_duration in page:
+                    embed.add_field(
+                        name='',
+                        value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
+                    )
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
