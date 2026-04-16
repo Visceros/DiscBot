@@ -173,4 +173,4 @@ class ShopView(disnake.ui.ActionRow):
         self.append_item(ButtonPrev(disabled=True))
         self.append_item(ButtonBuy(disabled=False))
         self.append_item(ButtonNext(disabled=False))
-        self.append_item(ButtonAdmin(disabled=True))
+        self.append_item(ButtonAdmin(disabled=False))

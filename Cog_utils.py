@@ -853,11 +853,11 @@ class Shop(commands.Cog):
                     # embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value='')
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
-                            embed_fields['№'].append(goods_id)
-                            embed_fields['Тип'].append(goods_type)
-                            embed_fields['Название'].append(goods_name)
-                            embed_fields['Цена'].append(goods_price)
-                            embed_fields['Длительность'].append(goods_duration)
+                            embed_fields['№'].append(str(goods_id)+'\n')
+                            embed_fields['Тип'].append(str(goods_type)+'\n')
+                            embed_fields['Название'].append(str(goods_name)+'\n')
+                            embed_fields['Цена'].append(str(goods_price)+'\n')
+                            embed_fields['Длительность'].append(str(goods_duration)+'\n')
                     for key,value in embed_fields.items():
                         embed.add_field(name=f'{key}',value=f'{value}', inline=True)
             await inter.send(embed=embed, components=shop_view)
