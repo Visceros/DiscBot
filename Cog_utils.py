@@ -849,7 +849,6 @@ class Shop(commands.Cog):
                     }
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
-                    print(f'{type(page)}\n{page}')
                     # Добавляем инфу в сообщение
                     # embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value='')
                     for record in page:
@@ -859,7 +858,7 @@ class Shop(commands.Cog):
                             embed_fields['Название'].append(goods_name)
                             embed_fields['Цена'].append(goods_price)
                             embed_fields['Длительность'].append(goods_duration)
-                    for key,value in embed_fields:
+                    for key,value in embed_fields.items():
                         embed.add_field(name=f'{key}',value=f'{value}', inline=True)
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
