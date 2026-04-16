@@ -861,8 +861,8 @@ class Shop(commands.Cog):
                             values_.append(' '.join(map(str,(goods_id,goods_type, goods_name, goods_price, goods_duration))))
                     # for key,value in embed_fields.items():
                     #      embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
-                        fields = "\n".join(item for item in values_)
-                        embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value=f'{fields}')
+                    fields = "\n".join(item for item in values_)
+                    embed.add_field(name='№\t  | Тип\t  | Название\t | Цена\t | Длительность', value=f'{fields}')
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
