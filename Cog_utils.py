@@ -841,7 +841,7 @@ class Shop(commands.Cog):
             async with self.pool.acquire() as db:
                 async with db.transaction() as transac:
                 # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
-                    cur = await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
+                    cur = await db.cursor('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await cur.fetch(on_page)
                     # Добавляем инфу в сообщение
                     embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
