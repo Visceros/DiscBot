@@ -846,11 +846,12 @@ class Shop(commands.Cog):
                     print(f'{type(page)}\n{page}')
                     # Добавляем инфу в сообщение
                     embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
-                    for goods_id,goods_type, goods_name, goods_price, goods_duration in page:
-                        embed.add_field(
-                            name='',
-                            value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
-                        )
+                    for record in page:
+                        for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
+                            embed.add_field(
+                                name='',
+                                value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
+                            )
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
