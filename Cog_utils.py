@@ -828,7 +828,7 @@ class Shop(commands.Cog):
         inter: autofilled MessageCommandInteraction argument
         """
         on_page = 10
-        embed = disnake.Embed()
+        embed = disnake.Embed(title='Магазин')
         shop_view = ShopView()
         author: disnake.Member = inter.author
 
@@ -845,12 +845,12 @@ class Shop(commands.Cog):
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     print(f'{type(page)}\n{page}')
                     # Добавляем инфу в сообщение
-                    embed.add_field(name='Магазин', value='№ | Тип | Название | Цена | Длительность')
+                    embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value='')
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
                             embed.add_field(
-                                name='',
-                                value=f'{goods_id},{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
+                                name=f'{goods_id}',
+                                value=f',{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
                             )
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
