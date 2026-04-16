@@ -842,8 +842,9 @@ class Shop(commands.Cog):
                 # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
                 async with db.transaction() as transac:
                     cur = await db.cursor('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
-                    print(cur.fetchrow())
-                    await cur.forward(on_page)
+                    print(await cur.fetchrow())
+                    await cur.forward(5)
+                    print(1)
                     page = await cur.fetch(on_page)
                     print(f'{type(page)}\n{page}')
                     # Добавляем инфу в сообщение
