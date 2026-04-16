@@ -839,9 +839,10 @@ class Shop(commands.Cog):
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
             async with self.pool.acquire() as db:
-                async with db.transaction() as transac:
                 # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
+                async with db.transaction() as transac:
                     cur = await db.cursor('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
+                    print(cur.fetchrow())
                     await cur.forward(on_page)
                     page = await cur.fetch(on_page)
                     print(f'{type(page)}\n{page}')
