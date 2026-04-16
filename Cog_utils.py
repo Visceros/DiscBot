@@ -858,11 +858,11 @@ class Shop(commands.Cog):
                             # embed_fields['Название'].append(goods_name)
                             # embed_fields['Цена'].append(goods_price)
                             # embed_fields['Длительность'].append(goods_duration)
-                            values_.append(" ".join((f'{goods_id!s:3}',f'{goods_type!s:13}', f'{goods_name!s:21}', f'{goods_price!s:5}',f'{goods_duration!s:3}')))
+                            values_.append(" ".join((f'{goods_id!s:<3}',f'{goods_type!s:^13}', f'{goods_name!s:^21}', f'{goods_price!s:^6}',f'{goods_duration!s:^8}')))
                     # for key,value in embed_fields.items():
                     #      embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
                     fields = "\n".join(item for item in values_)
-                    embed.add_field(name=f'{"№":4}| {"Тип":}  | Название\t | Цена\t | Длительность', value=f'{fields}')
+                    embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность', value=f'{fields}')
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
