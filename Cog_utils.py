@@ -839,7 +839,7 @@ class Shop(commands.Cog):
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
             async with self.pool.acquire() as db:
-                async with db.transaction() as transac:
+                async with db.transaction():
                     # embed_fields = {
                     #     '№': [],
                     #     'Тип': [],
@@ -858,10 +858,11 @@ class Shop(commands.Cog):
                             # embed_fields['Название'].append(goods_name)
                             # embed_fields['Цена'].append(goods_price)
                             # embed_fields['Длительность'].append(goods_duration)
-                            values_.append(f'{goods_id!s:<3},{goods_type!s:^13}, {goods_name!s:^21}, {goods_price!s:^6},{goods_duration!s:^8}')
+                            row = f'{str(goods_id):<3},{str(goods_type):^13}, {str(goods_name):^21}, {str(goods_price):^6},{str(goods_duration):^8}'
+                            values_.append(row)
                     # for key,value in embed_fields.items():
                     #      embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
-                    fields = "\n".join(values_)
+                    fields = "\n".join(item for item in values_)
                     embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность', value=f'{fields}')
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
