@@ -832,26 +832,35 @@ class Shop(commands.Cog):
         shop_view = ShopView()
         author: disnake.Member = inter.author
 
-        if author.guild_permissions.administrator:
+        if not author.guild_permissions.administrator:
             for btn in shop_view.children:
                 if btn.custom_id == "shop_admin":
-                    btn.disabled = False
+                    shop_view.remove_item(btn)
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
             async with self.pool.acquire() as db:
-                # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
                 async with db.transaction() as transac:
+                    embed_fields = {
+                        '№': [],
+                        'Тип': [],
+                        'Название': [],
+                        'Цена': [],
+                        'Длительность': [],
+                    }
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     print(f'{type(page)}\n{page}')
                     # Добавляем инфу в сообщение
-                    embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value='')
+                    # embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value='')
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
-                            embed.add_field(
-                                name=f'{goods_id}',
-                                value=f',{goods_type}, {goods_name}, {goods_price}, {goods_duration}', inline=True
-                            )
+                            embed_fields['№'].append(goods_id)
+                            embed_fields['Тип'].append(goods_type)
+                            embed_fields['Название'].append(goods_name)
+                            embed_fields['Цена'].append(goods_price)
+                            embed_fields['Длительность'].append(goods_duration)
+                    for key,value in embed_fields:
+                        embed.add_field(name=f'{key}',value=f'{value}', inline=True)
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
