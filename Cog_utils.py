@@ -858,7 +858,7 @@ class Shop(commands.Cog):
                             # embed_fields['Название'].append(goods_name)
                             # embed_fields['Цена'].append(goods_price)
                             # embed_fields['Длительность'].append(goods_duration)
-                            values_.append(' '.join((goods_id,goods_type, goods_name, goods_price, goods_duration)))
+                            values_.append(' '.join(map(str,(goods_id,goods_type, goods_name, goods_price, goods_duration))))
                     # for key,value in embed_fields.items():
                     #      embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
                         fields = "\n".join(item for item in values_)
