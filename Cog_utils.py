@@ -843,6 +843,8 @@ class Shop(commands.Cog):
                 # ОШИБКА! КУРСОР МОЖЕТ СУЩЕСТВОВАТЬ ТОЛЬКО ВНУТРИ ТРАНЗАКЦИИ. НАПИСАЛ ВЫШЕ ТРАНЗАКЦИЮ. ПРОВЕРИТЬ СИНТАКСИС И СТРУКТУРУ.
                     cur = await db.cursor('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     print(f'{type(cur)},\n{cur}')
+                    async for record in cur:
+                        print(record)
                     page = await cur.fetch(on_page)
                     print(f'{type(page)}\n{page}')
                     # Добавляем инфу в сообщение
