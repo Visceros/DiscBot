@@ -840,26 +840,29 @@ class Shop(commands.Cog):
         try:
             async with self.pool.acquire() as db:
                 async with db.transaction() as transac:
-                    embed_fields = {
-                        '№': [],
-                        'Тип': [],
-                        'Название': [],
-                        'Цена': [],
-                        'Длительность': [],
-                    }
+                    # embed_fields = {
+                    #     '№': [],
+                    #     'Тип': [],
+                    #     'Название': [],
+                    #     'Цена': [],
+                    #     'Длительность': [],
+                    # }
+                    values_ = []
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     # Добавляем инфу в сообщение
-                    # embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value='')
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
-                            embed_fields['№'].append(str(goods_id)+'\n')
-                            embed_fields['Тип'].append(str(goods_type)+'\n')
-                            embed_fields['Название'].append(str(goods_name)+'\n')
-                            embed_fields['Цена'].append(str(goods_price)+'\n')
-                            embed_fields['Длительность'].append(str(goods_duration)+'\n')
-                    for key,value in embed_fields.items():
-                        embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
+                            # embed_fields['№'].append(goods_id)
+                            # embed_fields['Тип'].append(goods_type)
+                            # embed_fields['Название'].append(goods_name)
+                            # embed_fields['Цена'].append(goods_price)
+                            # embed_fields['Длительность'].append(goods_duration)
+                            values_.append(' '.join((goods_id,goods_type, goods_name, goods_price, goods_duration)))
+                    # for key,value in embed_fields.items():
+                    #      embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
+                        fields = "\n".join(item for item in values_)
+                        embed.add_field(name='№  | Тип  | Название | Цена | Длительность', value=f'{fields}')
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
