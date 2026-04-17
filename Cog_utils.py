@@ -851,6 +851,7 @@ class Shop(commands.Cog):
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     # Добавляем инфу в сообщение
+                    i = 1
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
                             # embed_fields['№'].append(goods_id)
@@ -859,10 +860,15 @@ class Shop(commands.Cog):
                             # embed_fields['Цена'].append(goods_price)
                             # embed_fields['Длительность'].append(goods_duration)
                             row = f'{str(goods_id):<3} {str(goods_type):^13} {str(goods_name):^21} {str(goods_price):^6}{str(goods_duration):^8}'
+                            if i == 1:
+                                print(row)
                             values_.append(row)
+                            print(values_)
+                            print("\n".join(item for item in values_))
                     # for key,value in embed_fields.items():
                     #      embed.add_field(name=f'{key}',value=f'{"".join(item for item in value)}', inline=True)
                     fields = "\n".join(item for item in values_)
+                    print(fields)
                     embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность', value=f'{fields}')
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
