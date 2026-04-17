@@ -399,7 +399,7 @@ class Listeners(commands.Cog):
         if not message.author.bot:
             katanas = ['катана', 'катаны', 'катаны', 'катан', 'катане', 'катанам', 'катану', 'катаны', 'катаной', 'катаною', 'катанами', 'катане', 'катанах']
             for word in katanas:
-                if word in message.content:
+                if word in message.content.lower():
                     await message.channel.send(f'{message.author.mention}\nКатана? В игре нет оружия с таким названием.')
                     await asyncio.sleep(40)
                     break
