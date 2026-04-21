@@ -32,7 +32,7 @@ rgb_colors = ['ff0000', 'ff4800', 'ffaa00', 'ffe200', 'a5ff00', '51ff00', '00ff5
               '0055ff', '0600ff', '6700ff', '9f00ff', 'f200ff', 'ff0088', 'ff003b']
 command_sync_flags = commands.CommandSyncFlags(sync_commands_debug=True, sync_on_cog_actions=True)
 bot = commands.InteractionBot(intents=intents, command_sync_flags=command_sync_flags)
-
+sys_channel = None
 
 # считываем количество записей в базе данных - получаем не только кол-во записей, но и айдишники.
 async def initial_db_read():
@@ -66,7 +66,6 @@ async def initial_db_fill():
                 _crown = True
                 current_members_list = []
                 crown = bot.get_guild(guild.id)
-                global sys_channel
                 sys_channel = disnake.utils.find(lambda r: (r.name.lower() == 'system'), guild.channels)
                 if sys_channel is None:
                     sys_channel = await guild.create_text_channel('system', position=len(guild.channels), overwrites={guild.default_role: disnake.PermissionOverwrite(view_channel=False)})
@@ -658,10 +657,12 @@ async def echo(inter:disnake.ApplicationCommandInteraction, text:str):
     text: output message text
     """
     ch = inter.channel
+    sys_channel = disnake.utils.find(lambda r: ('SYSTEM' in r.name.upper()), inter.guild.channels)
     await ch.send(text)
     await inter.send('👌', ephemeral=True)
     msg = str(inter.author.display_name) + ' using /echo sent: ' + text
     await sys_channel.send(msg)
+
 
 
 @bot.slash_command(dm_permission=False)
