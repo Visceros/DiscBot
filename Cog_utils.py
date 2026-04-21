@@ -820,7 +820,7 @@ class Shop(commands.Cog):
 
 
     # -------------НАЧАЛО БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
-    @commands.slash_command(auto_sync=True)
+    @commands.slash_command()
     async def shop_view(self, inter:disnake.MessageCommandInteraction): # Витрина магазина, ID = 1493541134561972291
         """
         Просмотреть витрину магазина \ View the shop
@@ -1043,8 +1043,8 @@ class Shop(commands.Cog):
 
     # -------------КОНЕЦ БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
 
-    @commands.slash_command()
-    async def buy(self, inter:[disnake.MessageInteraction, disnake.MessageCommandInteraction], option, num:int=1):
+    @commands.slash_command(auto_sync=True)
+    async def buy(self, inter:disnake.ApplicationCommandInteraction, option, num:int=1):
         """
         Buy something from Shop
 
