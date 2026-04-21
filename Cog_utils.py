@@ -384,7 +384,7 @@ class Listeners(commands.Cog):
                         check=lambda i: i.author.id == inter.author.id,
                         timeout=300)
                     buy_arg = shop_modal.text_values['shop_product']
-                    await shop.buy(inter=inter, arg=buy_arg)
+                    await shop.buy(interaction=inter, option=buy_arg)
                 except asyncio.TimeoutError:
                     return
                 pass
@@ -838,7 +838,7 @@ class Shop(commands.Cog):
         background = Image.open(path).convert('RGBA')
         draw = ImageDraw.Draw(background)
         text_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
-        text_ = f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность\n\n'
+        text_ = f'{"№":<5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность\n\n'
         if not author.guild_permissions.administrator:
             for btn in shop_view.children:
                 if btn.custom_id == "shop_admin":
@@ -851,6 +851,7 @@ class Shop(commands.Cog):
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     # Добавляем инфу в сообщение
+                    # Попробовать варинаты через ImageText.Text и через multiline_textbbox
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
                             row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^12}\n'
@@ -1042,14 +1043,15 @@ class Shop(commands.Cog):
 
     # -------------КОНЕЦ БЛОКА УПРАВЛЕНИЯ МАГАЗИНОМ И ТОВАРАМИ --------------
 
-    async def buy(self, inter:[disnake.MessageInteraction, disnake.MessageCommandInteraction], arg, num:int=1):
+    @commands.slash_command()
+    async def buy(self, inter:[disnake.MessageInteraction, disnake.MessageCommandInteraction], option, num:int=1):
         """
         Buy something from Shop
 
         Parameters
         ----------
         inter: autofilled MessageCommandInteraction argument
-        arg: ID или название товара
+        option: ID или название товара
         num: количество (если применимо), по умолчанию = 1
         """
         await inter.response.defer(ephemeral=True)
@@ -1068,8 +1070,8 @@ class Shop(commands.Cog):
             return m.author.bot or m.author == inter.author
 
         # Если человек ввёл цифры, считаем, что он ввёл ID товара
-        if arg.isdigit() or isinstance(arg, int):
-            product_id = int(arg)
+        if option.isdigit() or isinstance(option, int):
+            product_id = int(option)
             async with self.pool.acquire() as db:
                 product = await db.fetchrow('SELECT * FROM Shop WHERE product_id=$1', product_id)
                 if product is not None:
@@ -1117,8 +1119,8 @@ class Shop(commands.Cog):
                     await inter.send('Извините, товар с таким номером не найден.', delete_after=5)
             await inter.delete_original_response(delay=3)
         # Если человек ввёл слова, считаем это названием товара
-        elif isinstance(arg, str):
-            product_name = arg
+        elif isinstance(option, str):
+            product_name = option
             async with self.pool.acquire() as db:
                 product = await db.fetchrow('SELECT * FROM SHOP WHERE name=$1', product_name)
                 if product is not None:

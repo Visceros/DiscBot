@@ -85,6 +85,7 @@ class ShopBuyModal(disnake.ui.Modal):
         ]
         super().__init__(title=title, components=components)
 
+
 class ShopAddModal(disnake.ui.Modal):
     def __init__(self, title="Покупка товара в Магазине"):
         components = [
@@ -96,28 +97,32 @@ class ShopAddModal(disnake.ui.Modal):
         super().__init__(title=title, components=components)
 
 
+# -------------------- Кнопка "просмотреть магазин" ------------------------
+class ButtonView(disnake.ui.Button):
+    def __init__(self):
+        super().__init__(
+            style=disnake.ButtonStyle.primary,
+            label="Открыть магазин",
+            custom_id='shop_open'
+        )
+
+
 class ShopView(disnake.ui.ActionRow):
     def __init__(self):
         super().__init__()
 
-        # -------------------- Кнопка "просмотреть магазин" ------------------------
-        class ButtonView(disnake.ui.Button):
-            def __init__(self):
-                super().__init__(
-                    style=disnake.ButtonStyle.primary,
-                    label="Открыть магазин",
-                    custom_id='shop_open'
-                )
-
         # -------------------- Кнопка "Управление магазином" ------------------------
         class ButtonAdmin(disnake.ui.Button):
-            def __init__(self, disabled:bool):
+            def __init__(self, disabled: bool):
                 super().__init__(
                     style=disnake.ButtonStyle.gray,
                     custom_id='shop_admin',
                     emoji="⚙️",
                     disabled=disabled
                 )
+
+            async def callback(self, interaction: disnake.MessageInteraction, /) -> None:
+                 await interaction.edit_original_response(interaction.message, components=ShopAdminView())
 
         class ButtonPrev(disnake.ui.Button):
             def __init__(self, disabled: bool, emoji="⬅️"):
@@ -132,7 +137,8 @@ class ShopView(disnake.ui.ActionRow):
                 try:
                     if view.author_id:
                         if inter.author.id != view.author_id:
-                            return await inter.send("Меню может пользоваться только тот кто отправил команду", ephemeral=True)
+                            return await inter.send("Меню может пользоваться только тот кто отправил команду",
+                                                    ephemeral=True)
                         else:
                             # Найти, как связать коллбеки с эмбедом
                             await inter.response.edit_message()
@@ -152,7 +158,8 @@ class ShopView(disnake.ui.ActionRow):
                 try:
                     if view.author_id:
                         if inter.author.id != view.author_id:
-                            return await inter.send("Меню может пользоваться только тот кто отправил команду", ephemeral=True)
+                            return await inter.send("Меню может пользоваться только тот кто отправил команду",
+                                                    ephemeral=True)
                         else:
                             # Найти, как связать коллбеки с эмбедом
                             await inter.response.edit_message()
@@ -167,10 +174,59 @@ class ShopView(disnake.ui.ActionRow):
                     custom_id='shop_buy'
                 )
 
-            def callback(self, inter: disnake.MessageInteraction):
+            async def callback(self, inter: disnake.MessageInteraction):
                 pass
 
         self.append_item(ButtonPrev(disabled=True))
         self.append_item(ButtonBuy(disabled=False))
         self.append_item(ButtonNext(disabled=False))
         self.append_item(ButtonAdmin(disabled=False))
+
+
+class ShopAdminView(disnake.ui.ActionRow):
+    def __init__(self):
+        super().__init__()
+
+        class ButtonBack(disnake.ui.Button):
+            def __init__(self, emoji="🔙", ):
+                super().__init__(
+                    emoji=emoji,
+                    disabled=False,
+                    custom_id='shop_admin_back'
+                )
+
+            async def callback(self, interaction: disnake.MessageInteraction) -> None:
+                pass
+
+        class ButtonADD(disnake.ui.Button):
+            def __init__(self, emoji="➕"):
+                super().__init__(
+                    emoji=emoji,
+                    disabled=False,
+                    custom_id='shop_admin_add'
+                )
+
+            async def callback(self, interaction: disnake.MessageInteraction) -> None:
+                pass
+
+        class ButtonDEL(disnake.ui.Button):
+            def __init__(self, emoji="❌"):
+                super().__init__(
+                    emoji=emoji,
+                    disabled=False,
+                    custom_id='shop_admin_del'
+                )
+
+            async def callback(self, interaction: disnake.MessageInteraction) -> None:
+                pass
+
+        class ButtonHelp(disnake.ui.Button):
+            def __init__(self, emoji="❓"):
+                super().__init__(
+                    emoji=emoji,
+                    disabled=False,
+                    custom_id='shop_admin_help'
+                )
+
+            async def callback(self, interaction: disnake.MessageInteraction) -> None:
+                pass
