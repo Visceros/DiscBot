@@ -838,7 +838,7 @@ class Shop(commands.Cog):
         background = Image.open(path).convert('RGBA')
         draw = ImageDraw.Draw(background)
         text_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
-        text_ = f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность'
+        text_ = f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность\n\n'
         if not author.guild_permissions.administrator:
             for btn in shop_view.children:
                 if btn.custom_id == "shop_admin":
@@ -853,11 +853,12 @@ class Shop(commands.Cog):
                     # Добавляем инфу в сообщение
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
-                            row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^12}+\n'
+                            row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^12}\n'
                             text_ += row
-                            if i == 1:
-                                await inter.channel.send(row)
-                                i-=1
+                            if i != 10:
+                                i+=1
+                            else:
+                                await inter.channel.send('         '+row)
             draw.text((50, 50), text=text_, font=text_font)  # вписываем текст
             buffer = io.BytesIO()
             background.save(buffer, format='PNG')  # сохраняем в буфер обмена
