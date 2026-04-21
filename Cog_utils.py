@@ -851,7 +851,7 @@ class Shop(commands.Cog):
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     # Добавляем инфу в сообщение
-                    embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность',value='')
+                    embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность',value='', inline=False)
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
                             # embed_fields['№'].append(goods_id)
@@ -860,7 +860,7 @@ class Shop(commands.Cog):
                             # embed_fields['Цена'].append(goods_price)
                             # embed_fields['Длительность'].append(goods_duration)
                             row = f'{str(goods_id):<3} {str(goods_type):^13} {str(goods_name):^21} {str(goods_price):^6}{str(goods_duration):^8}'
-                            embed.add_field(name=row, value='', inline=True)
+                            embed.add_field(name=row, value='', inline=False)
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
