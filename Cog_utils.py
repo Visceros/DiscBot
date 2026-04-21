@@ -8,6 +8,8 @@ import random
 import datetime
 import json
 import pafy
+import io
+from PIL import Image, ImageDraw, ImageFont
 from pytube import Playlist
 from casino_rewards import screens
 from secrets import randbelow
@@ -827,11 +829,16 @@ class Shop(commands.Cog):
         ----------
         inter: autofilled MessageCommandInteraction argument
         """
+        await inter.response.defer()
         on_page = 10
-        embed = disnake.Embed(title='Магазин')
+        #embed = disnake.Embed(title='Магазин')
         shop_view = ShopView()
         author: disnake.Member = inter.author
-
+        path = os.path.join('images', 'profile', 'default_profile_pic.png')
+        background = Image.open(path).convert('RGBA')
+        draw = ImageDraw.Draw(background)
+        text_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
+        text_ = ''
         if not author.guild_permissions.administrator:
             for btn in shop_view.children:
                 if btn.custom_id == "shop_admin":
@@ -840,28 +847,22 @@ class Shop(commands.Cog):
         try:
             async with self.pool.acquire() as db:
                 async with db.transaction():
-                    # embed_fields = {
-                    #     '№': [],
-                    #     'Тип': [],
-                    #     'Название': [],
-                    #     'Цена': [],
-                    #     'Длительность': [],
-                    # }
-                    values_ = []
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     # Добавляем инфу в сообщение
-                    embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность',value='', inline=False)
+                    #embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность',value='', inline=False)
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
-                            # embed_fields['№'].append(goods_id)
-                            # embed_fields['Тип'].append(goods_type)
-                            # embed_fields['Название'].append(goods_name)
-                            # embed_fields['Цена'].append(goods_price)
-                            # embed_fields['Длительность'].append(goods_duration)
-                            row = f'{str(goods_id):<3} {str(goods_type):^13} {str(goods_name):^21} {str(goods_price):^6}{str(goods_duration):^8}'
-                            embed.add_field(name=row, value='', inline=False)
-            await inter.send(embed=embed, components=shop_view)
+                            row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^8}+\n'
+                            text_ += row
+                            #embed.add_field(name=row, value='', inline=False)
+            draw.text((50, 50), text=text_, font=text_font)  # вписываем текст
+            buffer = io.BytesIO()
+            background.save(buffer, format='PNG')  # сохраняем в буфер обмена
+            buffer.seek(0)
+            await inter.edit_original_response(file=disnake.File(buffer, 'shop.png'))
+            buffer.close()
+            #await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
 
