@@ -845,6 +845,7 @@ class Shop(commands.Cog):
                     shop_view.remove_item(btn)
             # ДОПИСАТЬ ОБРАБОТКУ НАЖАТИЯ админской кнопки
         try:
+            i = 1
             async with self.pool.acquire() as db:
                 async with db.transaction():
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
@@ -854,6 +855,9 @@ class Shop(commands.Cog):
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
                             row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^12}+\n'
                             text_ += row
+                            if i == 1:
+                                await inter.channel.send(row)
+                                i-=1
             draw.text((50, 50), text=text_, font=text_font)  # вписываем текст
             buffer = io.BytesIO()
             background.save(buffer, format='PNG')  # сохраняем в буфер обмена
