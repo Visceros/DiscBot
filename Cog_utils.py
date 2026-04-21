@@ -830,7 +830,7 @@ class Shop(commands.Cog):
         inter: autofilled MessageCommandInteraction argument
         """
         await inter.response.defer()
-        on_page = 10
+        on_page = 15
         #embed = disnake.Embed(title='Магазин')
         shop_view = ShopView()
         author: disnake.Member = inter.author
@@ -838,7 +838,7 @@ class Shop(commands.Cog):
         background = Image.open(path).convert('RGBA')
         draw = ImageDraw.Draw(background)
         text_font = ImageFont.truetype('Fonts/arialbd.ttf', encoding='UTF-8', size=22) # Шрифт текста профиля
-        text_ = ''
+        text_ = f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность'
         if not author.guild_permissions.administrator:
             for btn in shop_view.children:
                 if btn.custom_id == "shop_admin":
@@ -850,19 +850,16 @@ class Shop(commands.Cog):
                     await db.execute('DECLARE shop_cursor SCROLL CURSOR WITH HOLD FOR SELECT (product_id, product_type, name, price, duration) FROM shop ORDER BY product_id ASC;')
                     page = await db.fetch(f'FETCH FORWARD {on_page} from shop_cursor;')
                     # Добавляем инфу в сообщение
-                    #embed.add_field(name=f'{"№":^5}| {"Тип":^13}  | {"Название":^21} | {"Цена":^5} | Длительность',value='', inline=False)
                     for record in page:
                         for goods_id,goods_type, goods_name, goods_price, goods_duration in record:
-                            row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^8}+\n'
+                            row = f'{str(goods_id):<3} {str(goods_type):<13} {str(goods_name):<21} {str(goods_price):^6}{str(goods_duration):^12}+\n'
                             text_ += row
-                            #embed.add_field(name=row, value='', inline=False)
             draw.text((50, 50), text=text_, font=text_font)  # вписываем текст
             buffer = io.BytesIO()
             background.save(buffer, format='PNG')  # сохраняем в буфер обмена
             buffer.seek(0)
-            await inter.edit_original_response(file=disnake.File(buffer, 'shop.png'))
+            await inter.edit_original_response(file=disnake.File(buffer, 'shop.png'), components=shop_view)
             buffer.close()
-            #await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
 
