@@ -860,7 +860,7 @@ class Shop(commands.Cog):
                             # embed_fields['Цена'].append(goods_price)
                             # embed_fields['Длительность'].append(goods_duration)
                             row = f'{str(goods_id):<3} {str(goods_type):^13} {str(goods_name):^21} {str(goods_price):^6}{str(goods_duration):^8}'
-                            embed.add_field(name=row, value='')
+                            embed.add_field(name=row, value='', inline=True)
             await inter.send(embed=embed, components=shop_view)
         except Exception as e:
             await inter.send(f'Произошла ошибка в модуле витрины магазина:\n{e.__str__()}')
