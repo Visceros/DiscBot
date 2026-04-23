@@ -299,6 +299,7 @@ async def _increment_money(server: disnake.Guild):
                 try:
                     m = chat_history[0]
                     print(m.author, f'sent {len(chat_history)} messages in', m.channel)
+                    await sys_channel.send(f'{m.author} sent {len(chat_history)} messages in {m.channel}')
                 except IndexError:
                     pass
                 except disnake.HTTPException:
