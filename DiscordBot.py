@@ -299,7 +299,7 @@ async def _increment_money(server: disnake.Guild):
                     try:
                         if member in list(msg.author for msg in await channel.history(after=datetime.datetime.now(tz=tz)-datetime.timedelta(minutes=1)).flatten()):
                             print(f'{member.display_name} чатился в прошлую минуту')
-                    except IndexError:
+                    except (IndexError, AttributeError):
                         pass
                     except disnake.HTTPException:
                         print(e.__str__())
