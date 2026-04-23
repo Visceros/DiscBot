@@ -295,13 +295,14 @@ async def _increment_money(server: disnake.Guild):
                             await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
                             await sys_channel.send(content=e.__str__())
 
-                for channel in server.channels:
-                    try:
-                        if member in list(msg.author for msg in await channel.history(after=datetime.datetime.now(tz=tz)-datetime.timedelta(minutes=1)).flatten()):
-                            print(f'{member.display_name} чатился в прошлую минуту')
-                    except (IndexError, AttributeError):
-                        pass
-                    except disnake.HTTPException:
+                for ch in server.channels:
+                    if isinstance(ch, (disnake.TextChannel, disnake.VoiceChannel)):
+                        try:
+                            if member in list(msg.author for msg in await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()):
+                                print(f'{member.display_name} чатился в прошлую минуту в {ch.name}')
+                        except (IndexError, AttributeError):
+                            pass
+                        except disnake.HTTPException:
                         print(e.__str__())
                     # try:
                     #     gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
