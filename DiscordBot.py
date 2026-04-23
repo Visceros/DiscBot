@@ -285,7 +285,6 @@ async def _increment_money(server: disnake.Guild):
                 print(m.author, f'sent {len(chat_history)} messages in', m.channel)
             except IndexError:
                 pass
-            #if chat_history[0] is not None:
                 # try:
                 #     gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                 #     if gold is not None:
