@@ -302,8 +302,8 @@ async def _increment_money(server: disnake.Guild):
                                 print(f'{member.display_name} чатился в прошлую минуту в {ch.name}')
                         except (IndexError, AttributeError):
                             pass
-                        except disnake.HTTPException:
-                        print(e.__str__())
+                        except Exception as e:
+                            print(e.__str__())
                     # try:
                     #     gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
                     #     if gold is not None:
