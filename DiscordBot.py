@@ -280,29 +280,29 @@ async def _increment_money(server: disnake.Guild):
     async with pool.acquire() as db:
         print(1)
         #channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice'] # Count voice activity for money only in specific channels
-        for member in server.members:
-            if not member.bot:
-                if str(member.status) not in ['offline'] and member.voice is not None:
+        for guild_member in server.members:
+            if not guild_member.bot:
+                if str(guild_member.status) not in ['offline'] and guild_member.voice is not None:
                     #if any(item in member.voice.channel.name.lower() for item in channel_groups_to_account_contain) and not (member.voice.self_mute or member.voice.mute): # Give money only in specific channels
-                    if not (member.voice.self_mute or member.voice.mute):
+                    if not (guild_member.voice.self_mute or guild_member.voice.mute):
                         try:
-                            gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
+                            gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', guild_member.id)
                             if gold is not None:
                                 gold = int(gold) + 1
-                                await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
+                                await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, guild_member.id)
                             else:
                                 gold = 1
-                                await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
+                                await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, guild_member.id)
                         except Exception as e:
-                            await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
+                            await sys_channel.send(f'Got error trying to give money to user {guild_member.mention}, their gold is {gold}')
                             await sys_channel.send(content=e.__str__())
 
                 for ch in server.channels:
                     if isinstance(ch, (disnake.TextChannel, disnake.VoiceChannel)):
                         print(ch.name, end=", ")
                         try:
-                            if member in list(msg.author for msg in await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()):
-                                print(f'{member.display_name} чатился в прошлую минуту в {ch.name}')
+                            if guild_member in list(msg.author for msg in await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()):
+                                print(f'{guild_member.display_name} чатился в прошлую минуту в {ch.name}')
                         except (IndexError, AttributeError):
                             pass
                         except Exception as e:
