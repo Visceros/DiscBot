@@ -276,6 +276,7 @@ async def _increment_money(server: disnake.Guild):
     ----------
     server: a discord Server
     """
+    print(server.name)
     async with pool.acquire() as db:
         #channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice'] # Count voice activity for money only in specific channels
         for member in server.members:
