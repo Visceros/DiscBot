@@ -295,29 +295,33 @@ async def _increment_money(server: disnake.Guild):
                             await sys_channel.send(f'Got error trying to give money to user {guild_member.mention}, their gold is {gold}')
                             await sys_channel.send(content=e.__str__())
 
-                ids = []
-                for ch in server.channels:
-                    if isinstance(ch, (disnake.TextChannel, disnake.VoiceChannel)):
-                        try:
-                            ids.extend(list(msg.author.id for msg in await ch.history(
-                                after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()))
-                        except (IndexError, AttributeError):
-                            print(e.__str__())
-                        except Exception as e:
-                            print(e.__str__())
-                for uid in ids:
-                    try:
-                        gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', uid)
-                        if gold is not None:
-                            gold = int(gold) + 1
-                            await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, uid)
-                        else:
-                            gold = 1
-                            await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, uid)
-                        print(f'gave 1 gold to user id {uid} for chat activity')
-                    except Exception as e:
-                        await sys_channel.send(f'Got error trying to give money to user id {uid}, his gold is {gold}')
-                        await sys_channel.send(content=e.__str__())
+        ids = []
+        for ch in server.channels:
+            if isinstance(ch, (disnake.TextChannel, disnake.VoiceChannel)):
+                try:
+                    chat_history_for_last_minute = await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()
+                    if len(chat_history_for_last_minute) >= 1:
+                        chatters = list(msg.author.id for msg in chat_history_for_last_minute)
+                        for chatter in chatters:
+                            if chatter not in ids:
+                                ids.append(chatter)
+                except (IndexError, AttributeError):
+                    print(e.__str__())
+                except Exception as e:
+                    print(e.__str__())
+        for uid in ids:
+            try:
+                gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', uid)
+                if gold is not None:
+                    gold = int(gold) + 1
+                    await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, uid)
+                else:
+                    gold = 1
+                    await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, uid)
+                print(f'gave 1 gold to user id {uid} for chat activity')
+            except Exception as e:
+                await sys_channel.send(f'Got error trying to give money to user id {uid}, his gold is {gold}')
+                await sys_channel.send(content=e.__str__())
 
 # Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту
 async def accounting():
