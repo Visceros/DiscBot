@@ -278,6 +278,7 @@ async def _increment_money(server: disnake.Guild):
     """
     print(server.name)
     async with pool.acquire() as db:
+        print(1)
         #channel_groups_to_account_contain = ['party', 'пати', 'связь', 'voice'] # Count voice activity for money only in specific channels
         for member in server.members:
             if not member.bot:
@@ -298,6 +299,7 @@ async def _increment_money(server: disnake.Guild):
 
                 for ch in server.channels:
                     if isinstance(ch, (disnake.TextChannel, disnake.VoiceChannel)):
+                        print(ch.name, end=", ")
                         try:
                             if member in list(msg.author for msg in await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()):
                                 print(f'{member.display_name} чатился в прошлую минуту в {ch.name}')
