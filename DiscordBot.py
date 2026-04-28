@@ -295,27 +295,29 @@ async def _increment_money(server: disnake.Guild):
                             await sys_channel.send(f'Got error trying to give money to user {guild_member.mention}, their gold is {gold}')
                             await sys_channel.send(content=e.__str__())
 
+                ids = []
                 for ch in server.channels:
                     if isinstance(ch, (disnake.TextChannel, disnake.VoiceChannel)):
                         try:
-                            print(ch.name, list(msg.author.id for msg in await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()))
-                            if guild_member.id in list(msg.author.id for msg in await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()):
-                                print(f'{guild_member.display_name} чатился в прошлую минуту в {ch.name}')
+                            ids.extend(list(msg.author.id for msg in await ch.history(
+                                after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()))
                         except (IndexError, AttributeError):
                             print(e.__str__())
                         except Exception as e:
                             print(e.__str__())
-                    # try:
-                    #     gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', member.id)
-                    #     if gold is not None:
-                    #         gold = int(gold) + 1
-                    #         await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
-                    #     else:
-                    #         gold = 1
-                    #         await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, member.id)
-                    # except Exception as e:
-                    #     await sys_channel.send(f'Got error trying to give money to user {member}, his gold is {gold}')
-                    #     await sys_channel.send(content=e.__str__())
+                for uid in ids:
+                    try:
+                        gold = await db.fetchval('SELECT gold FROM discord_users WHERE id=$1;', uid)
+                        if gold is not None:
+                            gold = int(gold) + 1
+                            await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, uid)
+                        else:
+                            gold = 1
+                            await db.execute(f'UPDATE discord_users SET gold=$1 WHERE id=$2;', gold, uid)
+                        print(f'gave 1 gold to user id {uid} for chat activity')
+                    except Exception as e:
+                        await sys_channel.send(f'Got error trying to give money to user id {uid}, his gold is {gold}')
+                        await sys_channel.send(content=e.__str__())
 
 # Проверяем кто из пользователей в данный момент онлайн и находится в голосовом чате. Начисляем им валюту
 async def accounting():
