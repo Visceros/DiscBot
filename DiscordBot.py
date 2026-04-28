@@ -301,7 +301,7 @@ async def _increment_money(server: disnake.Guild):
                 try:
                     chat_history_for_last_minute = await ch.history(after=datetime.datetime.now(tz=tz) - datetime.timedelta(minutes=1)).flatten()
                     if len(chat_history_for_last_minute) >= 1:
-                        chatters = list(msg.author.id for msg in chat_history_for_last_minute)
+                        chatters = list(msg.author.id for msg in chat_history_for_last_minute if not msg.author.bot)
                         for chatter in chatters:
                             if chatter not in ids:
                                 ids.append(chatter)
