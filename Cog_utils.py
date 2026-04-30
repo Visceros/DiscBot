@@ -406,37 +406,52 @@ class Listeners(commands.Cog):
                     await asyncio.sleep(40)
                     break
 
-        async with self.pool.acquire() as db:
-            async def sticker_resend(msg=message):
-                """Переотправляет закрепленное сообщение / Resends the sticker message
-
-                Parameters
-                ----------
-                msg: disnake.Message object
-                """
-                sticky_msg = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id={msg.channel.id};')
-                if sticky_msg is not None and type(sticky_msg) != 'NoneType':
-                    async for history_message in msg.channel.history(limit=1):
-                        if history_message.content == sticky_msg:
-                            break
+            async with self.pool.acquire() as db:
+                # ------------------ БЛОК КОДА СЧЁТЧИКА СООБЩЕНИЙ ------------------
+                try:
+                    messages_count = await db.fetchval(f'SELECT messages FROM discord_users WHERE user_id={message.author.id};')
+                    if messages_count is None:
+                        # Если человека нет в базе данных - добавляем его.
+                        await db.execute(
+                            'INSERT INTO discord_users (id, nickname, join_date, messages) VALUES($1, $2, $3, $4);',
+                            message.author.id, message.author.display_name, message.author.joined_at, 1)
+                        await self.sys_channel.send(f'Юзер добавлен в базу данных: {message.author.display_name}')
                     else:
-                        await asyncio.sleep(1)
-                        async for item in msg.channel.history(limit=10):
-                            if item.content == sticky_msg:
-                                await item.delete()
+                        await db.execute(f'UPDATE discord_users SET messages={int(messages_count) + 1} WHERE id={message.author.id};')
+                except Exception as e:
+                    print('Возникла ошибка в создании профиля при отправке сообщения пользователя', message.author.display_name, message.author.id)
+                    print()
+                    print(e.__str__())
+
+                # ------------------ КОНЕЦ БЛОКА КОДА СЧЁТЧИКА СООБЩЕНИЙ ------------------
+                async def sticker_resend(msg=message):
+                    """Переотправляет закрепленное сообщение / Resends the sticker message
+
+                    Parameters
+                    ----------
+                    msg: disnake.Message object
+                    """
+                    sticky_msg = await db.fetchval(f'SELECT message FROM stickers WHERE channel_id={msg.channel.id};')
+                    if sticky_msg is not None and type(sticky_msg) != 'NoneType':
+                        async for history_message in msg.channel.history(limit=1):
+                            if history_message.content == sticky_msg:
                                 break
-                        await msg.channel.send(sticky_msg)
+                        else:
+                            await asyncio.sleep(1)
+                            async for item in msg.channel.history(limit=10):
+                                if item.content == sticky_msg:
+                                    await item.delete()
+                                    break
+                            await msg.channel.send(sticky_msg)
 
-            # async def message_counter(msg=message):
-            #
-            #     gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={msg.author.id};')
-            #     if not type(gold) == 'NoneType' or gold is not None:
-            #         # messages - количество сообщений от участника
-            #         messages = await db.fetchval(f'SELECT messages FROM LogTable WHERE user_id={msg.author.id};')
-            #         await db.execute(f'UPDATE LogTable SET messages={int(messages)+1} WHERE user_id={msg.author.id} ORDER BY login DESC LIMIT 1;')
+                # async def message_counter(msg=message):
+                #
+                #     gold = await db.fetchval(f'SELECT gold from LogTable WHERE user_id={msg.author.id};')
+                #     if not type(gold) == 'NoneType' or gold is not None:
+                #         # messages - количество сообщений от участника
 
-            await sticker_resend(message)
-            await self.pool.release(db)
+                await sticker_resend(message)
+                await self.pool.release(db)
 
 class Games(commands.Cog):
     def __init__(self, bot, connection):

@@ -558,6 +558,8 @@ async def show(inter:disnake.ApplicationCommandInteraction, member: disnake.Memb
             t_7days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=7)
             t_30days_ago = datetime.datetime.now(tz=tz) - datetime.timedelta(days=30)
 
+            # Добавить просчёт сообщений за 30 дней
+
             try:
                 seven_days_activity_records = await db.fetch(
                     "SELECT login, logoff from LogTable WHERE login BETWEEN $1::timestamptz AND $2::timestamptz AND user_id=$3 ORDER BY login DESC;", t_7days_ago, datetime.datetime.now(tz=tz), member.id)

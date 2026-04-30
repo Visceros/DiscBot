@@ -26,6 +26,7 @@ async def db_connection():
                 Join_date Date,
                 Gold INT DEFAULT 0,
                 Warns INT DEFAULT 0,
+                Messages INT DEFAULT 0,
                 profile_pic text DEFAULT 'default_profile_pic.png',
                 profile_text_color text DEFAULT '(255,207,102,255)',
                 CONSTRAINT users_unique UNIQUE (Id, Nickname));''')
@@ -38,7 +39,6 @@ async def db_connection():
             logoff timestamp with time zone,
             gold INT DEFAULT 0,
             record_id SERIAL PRIMARY KEY NOT NULL,
-            Messages INT DEFAULT 0,
             CONSTRAINT user_id_fkey FOREIGN KEY (user_id) REFERENCES discord_users(Id) ON DELETE CASCADE);''')
             print('Log Table online...')
 
