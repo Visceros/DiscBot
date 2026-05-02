@@ -290,6 +290,15 @@ class Listeners(commands.Cog):
     # ----------------- Назначение роли при присоединении к серверу ---------------------
     @commands.Cog.listener()
     async def on_member_update(self, before:disnake.Member, after:disnake.Member):
+        # Проверка на получение юзером ачивки
+        for m_role in after.roles:
+            if m_role not in before.roles:
+                if 'АЧИВКА' in m_role.name.upper():
+                    # отправка оповещения в чат_where_winds_meet
+                    ch = disnake.utils.get(after.guild.channels, id='1475800934255820932')
+                    await ch.send(f'Пользователь {after.mention} получил достижение {m_role.name}! Поздравляем 🎉')
+
+        # Действия, когда пользователь присоединился к серверу:
         if before.pending and not after.pending:
             pass
             # role = disnake.utils.get(after.guild.roles, id=1004019172323364965)
